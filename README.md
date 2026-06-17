@@ -14,13 +14,17 @@ recurso (buyer) vêm depois.
 
 ## Instalação
 
+O repositório é privado, então a instalação usa o [GitHub CLI](https://cli.github.com)
+(`gh`) autenticado. Com `gh auth login` já feito:
+
 ```bash
-curl -fsSL https://raw.githubusercontent.com/linkanalabs/cli/main/scripts/install.sh | bash
+gh api repos/linkanalabs/cli/contents/scripts/install.sh \
+  -H "Accept: application/vnd.github.raw" | bash
 ```
 
 O instalador detecta OS/arquitetura (Linux/macOS, amd64/arm64), baixa o binário do
-último [release](https://github.com/linkanalabs/cli/releases), verifica o checksum
-e instala em `~/.local/bin/lk` (override com `LK_BIN_DIR`). Depois:
+último [release](https://github.com/linkanalabs/cli/releases) via `gh`, verifica o
+checksum e instala em `~/.local/bin/lk` (override com `LK_BIN_DIR`). Depois:
 
 ```bash
 lk doctor
@@ -30,10 +34,10 @@ lk doctor
 <summary>Outras formas</summary>
 
 ```bash
-# Via Go (precisa de Go 1.26+)
-go install github.com/linkanalabs/cli/cmd/lk@latest
+# Clonando o repo
+git clone https://github.com/linkanalabs/cli && cd cli && ./scripts/install.sh
 
-# A partir do código
+# Build a partir do código (precisa de Go 1.26+)
 git clone https://github.com/linkanalabs/cli && cd cli && make build && ./lk doctor
 ```
 
