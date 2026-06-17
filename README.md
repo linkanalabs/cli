@@ -12,16 +12,43 @@ engenharia. Fala com o backend Rails via `format.json`.
 Esqueleto + `doctor` + autenticação via PAT (`auth`, `whoami`). Comandos de
 recurso (buyer) vêm depois.
 
+## Instalação
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/linkanalabs/cli/main/scripts/install.sh | bash
+```
+
+O instalador detecta OS/arquitetura (Linux/macOS, amd64/arm64), baixa o binário do
+último [release](https://github.com/linkanalabs/cli/releases), verifica o checksum
+e instala em `~/.local/bin/lk` (override com `LK_BIN_DIR`). Depois:
+
+```bash
+lk doctor
+```
+
+<details>
+<summary>Outras formas</summary>
+
+```bash
+# Via Go (precisa de Go 1.26+)
+go install github.com/linkanalabs/cli/cmd/lk@latest
+
+# A partir do código
+git clone https://github.com/linkanalabs/cli && cd cli && make build && ./lk doctor
+```
+
+</details>
+
 ## Requisitos
 
-- Go 1.26+
+- Go 1.26+ (apenas para build a partir do código)
 
 ## Build & uso
 
 ```bash
-make build
-go run ./cmd/lk version
-go run ./cmd/lk doctor
+make build        # gera ./lk
+./lk version
+./lk doctor
 ```
 
 Saída é JSON por padrão (machine-readable). Use `--format styled` para texto

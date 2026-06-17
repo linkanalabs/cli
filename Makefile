@@ -3,7 +3,7 @@ COVER_MIN := 95.0
 .PHONY: build test cover lint fmt vet run dev tidy
 
 build:
-	go build ./...
+	go build -o lk ./cmd/lk
 
 test:
 	go test -race ./...
