@@ -22,4 +22,5 @@ type Response struct {
 // they can be tested with a mock.
 type API interface {
 	Get(ctx context.Context, path string) (*Response, error)
+	GetIdentity(ctx context.Context) (*Identity, error)
 }

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/linkanalabs/cli/internal/auth"
+	"github.com/linkanalabs/cli/internal/client"
 	"github.com/linkanalabs/cli/internal/config"
 	"github.com/linkanalabs/cli/internal/output"
 )
@@ -20,6 +23,7 @@ const (
 	StatusPass = "pass"
 	StatusWarn = "warn"
 	StatusFail = "fail"
+	StatusSkip = "skip"
 )
 
 // Check is a single diagnostic result.
@@ -32,10 +36,11 @@ type Check struct {
 
 // Result aggregates diagnostic checks.
 type Result struct {
-	Checks []Check `json:"checks"`
-	Passed int     `json:"passed"`
-	Failed int     `json:"failed"`
-	Warned int     `json:"warned"`
+	Checks  []Check `json:"checks"`
+	Passed  int     `json:"passed"`
+	Failed  int     `json:"failed"`
+	Warned  int     `json:"warned"`
+	Skipped int     `json:"skipped"`
 }
 
 func (r *Result) add(c Check) {
@@ -47,6 +52,8 @@ func (r *Result) add(c Check) {
 		r.Warned++
 	case StatusFail:
 		r.Failed++
+	case StatusSkip:
+		r.Skipped++
 	}
 }
 
@@ -76,6 +83,8 @@ func statusIcon(status string) string {
 		return "✓"
 	case StatusWarn:
 		return "!"
+	case StatusSkip:
+		return "-"
 	default:
 		return "✗"
 	}
@@ -93,17 +102,57 @@ type doctorInput struct {
 	baseURL    string
 	configDir  string
 	httpClient *http.Client
+
+	// Auth check inputs.
+	hasToken bool
+	identity func(context.Context) (*client.Identity, error)
 }
 
-// runDoctorChecks runs the basic (no-auth) diagnostic checks.
+// authCheckInput carries what the auth check needs, decoupled from the client.
+type authCheckInput struct {
+	reachable bool
+	hasToken  bool
+	identity  func(context.Context) (*client.Identity, error)
+}
+
+// runDoctorChecks runs the diagnostic checks. The Authentication check runs
+// after reachability and skips when the backend was unreachable.
 func runDoctorChecks(ctx context.Context, in doctorInput) *Result {
 	r := &Result{}
 	r.add(checkVersion(in.version))
 	r.add(checkRuntime(in.goVersion, in.os, in.arch))
 	r.add(checkConfig(in.configPath, in.configErr, in.baseURL))
 	r.add(checkFilesystem(in.configDir))
-	r.add(checkReachability(ctx, in.httpClient, in.baseURL))
+
+	reach := checkReachability(ctx, in.httpClient, in.baseURL)
+	r.add(reach)
+
+	r.add(checkAuth(ctx, authCheckInput{
+		reachable: reach.Status != StatusFail,
+		hasToken:  in.hasToken,
+		identity:  in.identity,
+	}))
 	return r
+}
+
+func checkAuth(ctx context.Context, in authCheckInput) Check {
+	const name = "Authentication"
+	switch {
+	case !in.reachable:
+		return Check{Name: name, Status: StatusSkip, Message: "Skipped (backend unreachable)"}
+	case !in.hasToken:
+		return Check{Name: name, Status: StatusSkip, Message: "No token configured", Hint: "Run `lk auth login`"}
+	}
+
+	id, err := in.identity(ctx)
+	switch {
+	case err == nil:
+		return Check{Name: name, Status: StatusPass, Message: "Token accepted (" + id.Email + ")"}
+	case errors.Is(err, client.ErrUnauthorized):
+		return Check{Name: name, Status: StatusFail, Message: "Token rejected (401)", Hint: "Run `lk auth login` to re-authenticate"}
+	default:
+		return Check{Name: name, Status: StatusFail, Message: "Identity check failed", Hint: err.Error()}
+	}
 }
 
 func checkVersion(version string) Check {
@@ -189,6 +238,11 @@ func newDoctorCmd() *cobra.Command {
 			}
 			if cfg != nil {
 				in.baseURL = cfg.BaseURL
+				if token, _, err := auth.Load(cfg.BaseURL); err == nil && token != "" {
+					in.hasToken = true
+					api := newAPI(cfg.BaseURL, token)
+					in.identity = api.GetIdentity
+				}
 			}
 
 			res := runDoctorChecks(cmd.Context(), in)

@@ -79,7 +79,7 @@ func TestGetSendsHeadersAndJSONPath(t *testing.T) {
 
 func TestGetWithoutTokenOmitsAuth(t *testing.T) {
 	var hadAuth bool
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		_, hadAuth = r.Header["Authorization"]
 	}))
 	defer srv.Close()

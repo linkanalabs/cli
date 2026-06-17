@@ -38,9 +38,10 @@ Inspirada no `fizzy-cli` / `fizzy-sdk` da Basecamp — ver `docs/references/fizz
 
 ```
 cmd/lk/            entrypoint (trivial; fora da meta de cobertura)
-internal/commands/ árvore cobra: root, version, doctor
-internal/client/   HTTP fino (format.json) + interface API mockável
+internal/commands/ árvore cobra: root, version, doctor, auth, whoami
+internal/client/   HTTP fino (format.json) + interface API mockável (Get, GetIdentity)
 internal/config/   base_url via YAML (XDG) + env LK_API_URL
+internal/auth/     storage do PAT: keychain (go-keyring) + fallback arquivo atômico, por origin
 internal/output/   render JSON (default) / styled
 ```
 
@@ -55,6 +56,16 @@ internal/output/   render JSON (default) / styled
 
 ## Estado atual
 
-Branch de setup: esqueleto + `doctor` **sem auth** (version, runtime, config,
-filesystem, reachability `GET /up`). Próximas fases: auth via PAT (CLI + Rails),
-comandos de recurso (buyer), `lk schema` self-describing, `SKILL.md` embarcado.
+Esqueleto + `doctor` + **auth via PAT (CLI)**. Comandos: `version`, `doctor`
+(version, runtime, config, filesystem, reachability `GET /up`, **Authentication**
+via `GET /my/identity.json` — pass/fail/skip, com skip-cascade quando o backend
+está inalcançável), `auth login|status|logout`, `whoami`.
+
+Storage do token em `internal/auth`: OS keychain (`go-keyring`) com fallback de
+arquivo atômico (temp+rename, 0600), por origin (base_url). Override `LK_TOKEN`
+sempre vence; `LK_NO_KEYRING` força o fallback (usado em testes).
+
+Credencial: `lkn_<short>_<long>`; header `Authorization: Bearer <cred>`.
+
+Próximas fases: comandos de recurso (buyer), `lk schema` self-describing,
+`SKILL.md` embarcado.

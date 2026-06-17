@@ -40,20 +40,29 @@ func newRootCmd() *cobra.Command {
 	root.PersistentFlags().String("format", output.FormatAuto, "output format: auto|json|styled")
 	root.AddCommand(newVersionCmd())
 	root.AddCommand(newDoctorCmd())
+	root.AddCommand(newAuthCmd())
+	root.AddCommand(newWhoamiCmd())
 	return root
 }
 
 // run executes the CLI with the given args and streams, returning an exit code.
 // It is the testable core of Execute.
 func run(args []string, stdout, stderr io.Writer) int {
+	return runWith(os.Stdin, args, stdout, stderr)
+}
+
+// runWith is like run but with an explicit stdin, so commands that read from
+// stdin (e.g. auth login prompt) stay testable.
+func runWith(stdin io.Reader, args []string, stdout, stderr io.Writer) int {
 	root := newRootCmd()
 	root.SetArgs(args)
+	root.SetIn(stdin)
 	root.SetOut(stdout)
 	root.SetErr(stderr)
 
 	if err := root.Execute(); err != nil {
 		if !errors.Is(err, errSilent) {
-			fmt.Fprintln(stderr, "error:", err)
+			_, _ = fmt.Fprintln(stderr, "error:", err)
 		}
 		return 1
 	}

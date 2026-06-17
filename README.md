@@ -9,8 +9,8 @@ engenharia. Fala com o backend Rails via `format.json`.
 
 ## Status
 
-Branch de setup — esqueleto + `doctor` sem auth. Auth (PAT) e comandos de recurso
-vêm depois.
+Esqueleto + `doctor` + autenticação via PAT (`auth`, `whoami`). Comandos de
+recurso (buyer) vêm depois.
 
 ## Requisitos
 
@@ -40,8 +40,26 @@ legível no terminal.
 | Comando | O que faz |
 |---|---|
 | `lk version` | versão do binário |
-| `lk doctor` | checks básicos: version, runtime, config, filesystem, reachability (`GET /up`) |
+| `lk doctor` | checks: version, runtime, config, filesystem, reachability (`GET /up`) e autenticação (`GET /my/identity.json`, pula se sem token ou backend inalcançável) |
+| `lk auth login` | guarda um PAT (`--token`, env `LK_TOKEN` ou prompt no stdin) para o `base_url` ativo |
+| `lk auth status` | mostra se há token guardado e a origem (env/keychain/arquivo), sem revelar o segredo |
+| `lk auth logout` | apaga o token guardado do `base_url` ativo |
+| `lk whoami` | mostra a identidade autenticada (`GET /my/identity.json`) |
 | `lk --help` | ajuda |
+
+## Autenticação
+
+```bash
+lk auth login --token lkn_xxx_yyy   # ou: LK_TOKEN=lkn_... lk auth login
+lk whoami                            # confirma a identidade
+lk auth status
+lk auth logout
+```
+
+O token é guardado no keychain do SO (via `go-keyring`), com fallback para um
+arquivo atômico `0600` em `~/.config/lk/tokens/` (respeita `XDG_CONFIG_HOME`),
+sempre por `base_url`. A env `LK_TOKEN` sobrepõe o que estiver guardado;
+`LK_NO_KEYRING` força o fallback de arquivo (útil em CI/headless).
 
 ## Desenvolvimento
 
