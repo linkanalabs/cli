@@ -9,8 +9,8 @@ engenharia. Fala com o backend Rails via `format.json`.
 
 ## Status
 
-Esqueleto + `doctor` + autenticação via PAT (`auth`, `whoami`). Comandos de
-recurso (buyer) vêm depois.
+Esqueleto + `doctor` + autenticação via PAT (`auth`, `whoami`) + suppliers
+(`supplier list|show`). Mais comandos de recurso vêm depois.
 
 ## Instalação
 
@@ -76,6 +76,8 @@ legível no terminal.
 | `lk auth status` | mostra se há token guardado e a origem (env/keychain/arquivo), sem revelar o segredo |
 | `lk auth logout` | apaga o token guardado do `base_url` ativo |
 | `lk whoami` | mostra a identidade autenticada (`GET /my/identity.json`) |
+| `lk supplier list` | lista suppliers (`GET /srm/suppliers`); JSON é um array bare |
+| `lk supplier show <id>` | mostra um supplier (`GET /srm/suppliers/<id>/panel`) |
 | `lk --help` | ajuda |
 
 ## Autenticação

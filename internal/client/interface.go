@@ -23,4 +23,6 @@ type Response struct {
 type API interface {
 	Get(ctx context.Context, path string) (*Response, error)
 	GetIdentity(ctx context.Context) (*Identity, error)
+	ListSuppliers(ctx context.Context) ([]Supplier, error)
+	GetSupplier(ctx context.Context, id string) (*Supplier, error)
 }
