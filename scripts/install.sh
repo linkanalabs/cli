@@ -1,51 +1,51 @@
 #!/usr/bin/env bash
 # Instala o binário `lk` (Linkana CLI) a partir do último GitHub Release.
-#   curl -fsSL https://raw.githubusercontent.com/linkanalabs/cli/main/scripts/install.sh | bash
+#
+# O repositório é privado, então o download é autenticado via GitHub CLI (gh):
+#   gh api repos/linkanalabs/cli/contents/scripts/install.sh \
+#     -H "Accept: application/vnd.github.raw" | bash
 set -euo pipefail
 
 REPO="linkanalabs/cli"
 INSTALL_DIR="${LK_BIN_DIR:-$HOME/.local/bin}"
 
+command -v gh >/dev/null 2>&1 || {
+  echo "Requer o GitHub CLI (gh): https://cli.github.com" >&2
+  exit 1
+}
+gh auth status >/dev/null 2>&1 || {
+  echo "Autentique primeiro: gh auth login" >&2
+  exit 1
+}
+
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
-
 case "$ARCH" in
   x86_64 | amd64) ARCH="amd64" ;;
   aarch64 | arm64) ARCH="arm64" ;;
   *) echo "Arquitetura não suportada: $ARCH" >&2; exit 1 ;;
 esac
-
 case "$OS" in
   linux | darwin) ;;
-  *) echo "OS não suportado: $OS (use o instalador no Linux/macOS)" >&2; exit 1 ;;
+  *) echo "OS não suportado: $OS (use Linux/macOS)" >&2; exit 1 ;;
 esac
 
-echo "Buscando a última versão..."
-VERSION=$(curl -fsSLI "https://github.com/$REPO/releases/latest" \
-  | grep -i '^location:' | sed 's#.*/tag/##' | tr -d '\r\n')
-if [ -z "$VERSION" ]; then
-  echo "Não consegui determinar a última versão." >&2
-  exit 1
-fi
+VERSION=$(gh release view -R "$REPO" --json tagName -q .tagName)
+[ -n "$VERSION" ] || { echo "Não consegui determinar a última versão." >&2; exit 1; }
 echo "Última versão: $VERSION"
 
 # goreleaser usa a versão sem o "v" no nome do arquivo (ex: lk_0.1.0_darwin_arm64.tar.gz).
 ARCHIVE="lk_${VERSION#v}_${OS}_${ARCH}.tar.gz"
-BASE="https://github.com/$REPO/releases/download/${VERSION}"
 
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 
 echo "Baixando ${ARCHIVE}..."
-curl -fsSL "${BASE}/${ARCHIVE}" -o "$TMPDIR/$ARCHIVE"
-curl -fsSL "${BASE}/checksums.txt" -o "$TMPDIR/checksums.txt"
+gh release download "$VERSION" -R "$REPO" -p "$ARCHIVE" -p checksums.txt -D "$TMPDIR" --clobber
 
 echo "Verificando checksum..."
 EXPECTED=$(grep " ${ARCHIVE}\$" "$TMPDIR/checksums.txt" | awk '{print $1}')
-if [ -z "$EXPECTED" ]; then
-  echo "ERRO: checksum de ${ARCHIVE} não encontrado." >&2
-  exit 1
-fi
+[ -n "$EXPECTED" ] || { echo "ERRO: checksum de ${ARCHIVE} não encontrado." >&2; exit 1; }
 if command -v sha256sum >/dev/null 2>&1; then
   ACTUAL=$(sha256sum "$TMPDIR/$ARCHIVE" | awk '{print $1}')
 else
