@@ -56,10 +56,16 @@ internal/output/   render JSON (default) / styled
 
 ## Estado atual
 
-Esqueleto + `doctor` + **auth via PAT (CLI)**. Comandos: `version`, `doctor`
-(version, runtime, config, filesystem, reachability `GET /up`, **Authentication**
-via `GET /my/identity.json` — pass/fail/skip, com skip-cascade quando o backend
-está inalcançável), `auth login|status|logout`, `whoami`.
+Esqueleto + `doctor` + **auth via PAT (CLI)** + **suppliers (SRM)**. Comandos:
+`version`, `doctor` (version, runtime, config, filesystem, reachability `GET /up`,
+**Authentication** via `GET /my/identity.json` — pass/fail/skip, com skip-cascade
+quando o backend está inalcançável), `auth login|status|logout`, `whoami`,
+`supplier list|show`.
+
+`supplier list` → `GET /srm/suppliers` (array bare de suppliers). `supplier show
+<id>` → `GET /srm/suppliers/<id>/panel` (um supplier). Contrato do supplier:
+`{id, name, identifier, legal_entity, state, tags:[{id, display_name}]}`. 401 →
+hint `lk auth login`.
 
 Storage do token em `internal/auth`: OS keychain (`go-keyring`) com fallback de
 arquivo atômico (temp+rename, 0600), por origin (base_url). Override `LK_TOKEN`
