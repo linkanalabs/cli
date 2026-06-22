@@ -267,6 +267,69 @@ func TestImpersonateNoArgs(t *testing.T) {
 	}
 }
 
+// TestImpersonateStartRevokesExistingContext asserts that when a previous
+// impersonation context is active, starting a new one issues a best-effort
+// DELETE for the old token before minting and storing the new one.
+func TestImpersonateStartRevokesExistingContext(t *testing.T) {
+	authEnv(t)
+
+	var deleteCount int
+	var deletedToken string
+
+	// Two different impersonation tokens: old one (lkn_old_imp) is already stored;
+	// the server mints lkn_new_imp on the new POST.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/my/identity.json":
+			_, _ = w.Write([]byte(`{"id":"staff1","email":"staff@linkana.com","name":"Staff","role":"admin","buyer_id":"admin","is_staff":true}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/impersonation.json":
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"token":"lkn_new_imp","identity":{"user_id":"u2","email":"new@linkana.com","buyer_id":"b2"},"expires_at":"2026-06-23T14:00:00Z"}`))
+		case r.Method == http.MethodDelete && r.URL.Path == "/impersonation.json":
+			deleteCount++
+			deletedToken = r.Header.Get("Authorization")
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("LK_API_URL", srv.URL)
+	t.Setenv("LK_TOKEN", "lkn_original")
+
+	// Pre-store an existing impersonation.
+	_ = auth.SaveImpersonation(srv.URL, auth.Impersonation{
+		Token: "lkn_old_imp", TargetEmail: "old@linkana.com", BuyerID: "b_old",
+		ImpersonatorEmail: "staff@linkana.com", ExpiresAt: time.Now().Add(time.Hour),
+	})
+
+	var out, errOut strings.Builder
+	code := run([]string{"impersonate", "new@linkana.com"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr = %q, stdout = %q", code, errOut.String(), out.String())
+	}
+
+	// A DELETE must have been issued for the OLD token.
+	if deleteCount == 0 {
+		t.Error("expected a DELETE /impersonation.json for the prior token, got none")
+	}
+	if deletedToken != "Bearer lkn_old_imp" {
+		t.Errorf("DELETE used wrong token: got %q, want \"Bearer lkn_old_imp\"", deletedToken)
+	}
+
+	// The new impersonation must be stored.
+	imp, err := auth.LoadImpersonation(srv.URL)
+	if err != nil || imp == nil {
+		t.Fatalf("new context not stored: imp=%v err=%v", imp, err)
+	}
+	if imp.Token != "lkn_new_imp" {
+		t.Errorf("stored token = %q, want lkn_new_imp", imp.Token)
+	}
+	if imp.TargetEmail != "new@linkana.com" {
+		t.Errorf("stored target = %q, want new@linkana.com", imp.TargetEmail)
+	}
+}
+
 // TestImpersonateStartIdentityFailureWarns verifies that when POST /impersonation.json
 // succeeds (201) but GET /my/identity.json returns 500, the command still exits 0,
 // the impersonation context IS stored (token + target email correct), and a warning

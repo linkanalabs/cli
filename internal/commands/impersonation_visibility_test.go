@@ -2,6 +2,7 @@ package commands
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/linkanalabs/cli/internal/auth"
+	"github.com/linkanalabs/cli/internal/output"
 )
 
 func TestWhoamiShowsImpersonationBanner(t *testing.T) {
@@ -30,9 +32,38 @@ func TestWhoamiShowsImpersonationBanner(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
 	}
-	combined := out.String() + errOut.String()
-	if !strings.Contains(combined, "impersonando") || !strings.Contains(combined, "staff@linkana.com") {
-		t.Errorf("whoami should surface impersonation: out=%q err=%q", out.String(), errOut.String())
+	// Banner must be on stderr (diagnostic), not on stdout (data contract).
+	if !strings.Contains(errOut.String(), "impersonando") || !strings.Contains(errOut.String(), "staff@linkana.com") {
+		t.Errorf("impersonation banner missing from stderr: err=%q", errOut.String())
+	}
+	if strings.Contains(out.String(), "impersonando") {
+		t.Errorf("impersonation banner leaked into stdout (data channel): out=%q", out.String())
+	}
+}
+
+// TestAuthStatusJSONWithImpersonation asserts that `auth status --format json`
+// emits strictly valid JSON on stdout even when an impersonation is active.
+// The impersonation human-readable line must NOT appear in stdout under JSON format.
+func TestAuthStatusJSONWithImpersonation(t *testing.T) {
+	authEnv(t)
+	t.Setenv("LK_API_URL", "http://localhost:3000")
+	t.Setenv("LK_TOKEN", "lkn_original")
+	_ = auth.SaveImpersonation("http://localhost:3000", auth.Impersonation{
+		Token: "lkn_imp", TargetEmail: "suporte@linkana.com", BuyerID: "b1",
+		ImpersonatorEmail: "staff@linkana.com", ExpiresAt: time.Now().Add(time.Hour),
+	})
+	var out, errOut bytes.Buffer
+	if code := run([]string{"auth", "status", "--format", output.FormatJSON}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	// stdout must be valid JSON.
+	var v map[string]any
+	if err := json.Unmarshal(out.Bytes(), &v); err != nil {
+		t.Errorf("auth status --format json produced invalid JSON: %v\nstdout=%q", err, out.String())
+	}
+	// Human impersonation line must not be in stdout.
+	if strings.Contains(out.String(), "impersonação") {
+		t.Errorf("human impersonation line leaked into JSON stdout: %q", out.String())
 	}
 }
 

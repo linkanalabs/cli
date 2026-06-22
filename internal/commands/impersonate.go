@@ -68,6 +68,16 @@ func runImpersonateStart(cmd *cobra.Command, ref string) error {
 	if token == "" {
 		return fmt.Errorf("not authenticated; run `lk auth login`")
 	}
+
+	// Best-effort revoke any existing impersonation before minting a new one.
+	if prior, _ := auth.LoadImpersonation(cfg.BaseURL); prior != nil {
+		priorAPI := newAPI(cfg.BaseURL, prior.Token)
+		if revokeErr := priorAPI.StopImpersonation(cmd.Context()); revokeErr != nil {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+				"aviso: revogação do token anterior falhou (%v); seguindo com nova impersonação\n", revokeErr)
+		}
+	}
+
 	api := newAPI(cfg.BaseURL, token)
 
 	ttl, _ := cmd.Flags().GetDuration("ttl")

@@ -167,15 +167,17 @@ func newAuthStatusCmd() *cobra.Command {
 			if err := output.Render(cmd.OutOrStdout(), formatFlag(cmd), res); err != nil {
 				return err
 			}
-			imp, _ := auth.LoadImpersonation(baseURL)
-			if imp != nil {
-				state := "ativa"
-				if imp.Expired(timeNow()) {
-					state = "EXPIRADA"
+			if formatFlag(cmd) != output.FormatJSON {
+				imp, _ := auth.LoadImpersonation(baseURL)
+				if imp != nil {
+					state := "ativa"
+					if imp.Expired(timeNow()) {
+						state = "EXPIRADA"
+					}
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(),
+						"impersonação (%s): %s (buyer %s, expira %s; por %s)\n",
+						state, imp.TargetEmail, imp.BuyerID, imp.ExpiresAt.Format(time.RFC3339), imp.ImpersonatorEmail)
 				}
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(),
-					"impersonação (%s): %s (buyer %s, expira %s; por %s)\n",
-					state, imp.TargetEmail, imp.BuyerID, imp.ExpiresAt.Format(time.RFC3339), imp.ImpersonatorEmail)
 			}
 			return nil
 		},

@@ -8,8 +8,6 @@ import (
 	"github.com/linkanalabs/cli/internal/auth"
 )
 
-// NOTE: adjust the module path import above to match go.mod if different.
-
 func TestResolveAPIUsesOriginalWhenNoImpersonation(t *testing.T) {
 	authEnv(t)
 	t.Setenv("LK_TOKEN", "lkn_original")
