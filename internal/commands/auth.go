@@ -173,7 +173,7 @@ func newAuthStatusCmd() *cobra.Command {
 				if imp.Expired(timeNow()) {
 					state = "EXPIRADA"
 				}
-				fmt.Fprintf(cmd.OutOrStdout(),
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(),
 					"impersonação (%s): %s (buyer %s, expira %s; por %s)\n",
 					state, imp.TargetEmail, imp.BuyerID, imp.ExpiresAt.Format(time.RFC3339), imp.ImpersonatorEmail)
 			}

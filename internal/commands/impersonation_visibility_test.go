@@ -13,7 +13,7 @@ import (
 
 func TestWhoamiShowsImpersonationBanner(t *testing.T) {
 	authEnv(t)
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		// impersonation token resolves to the target identity
 		_, _ = w.Write([]byte(`{"id":"u1","email":"suporte@linkana.com","name":"Suporte","role":"operator","buyer_id":"b1","is_staff":false}`))
 	}))
