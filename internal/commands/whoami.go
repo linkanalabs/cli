@@ -138,6 +138,11 @@ func newWhoamiCmd() *cobra.Command {
 				}
 				return err
 			}
+			if imp != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(),
+					"⚠ impersonando %s (buyer %s, expira %s); original: %s\n",
+					imp.TargetEmail, imp.BuyerID, imp.ExpiresAt.Format(time.RFC3339), imp.ImpersonatorEmail)
+			}
 			return output.Render(cmd.OutOrStdout(), formatFlag(cmd), identityView{Identity: id})
 		},
 	}

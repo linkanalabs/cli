@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -163,7 +164,20 @@ func newAuthStatusCmd() *cobra.Command {
 				BaseURL:       baseURL,
 				Source:        string(src),
 			}
-			return output.Render(cmd.OutOrStdout(), formatFlag(cmd), res)
+			if err := output.Render(cmd.OutOrStdout(), formatFlag(cmd), res); err != nil {
+				return err
+			}
+			imp, _ := auth.LoadImpersonation(baseURL)
+			if imp != nil {
+				state := "ativa"
+				if imp.Expired(timeNow()) {
+					state = "EXPIRADA"
+				}
+				fmt.Fprintf(cmd.OutOrStdout(),
+					"impersonação (%s): %s (buyer %s, expira %s; por %s)\n",
+					state, imp.TargetEmail, imp.BuyerID, imp.ExpiresAt.Format(time.RFC3339), imp.ImpersonatorEmail)
+			}
+			return nil
 		},
 	}
 }
