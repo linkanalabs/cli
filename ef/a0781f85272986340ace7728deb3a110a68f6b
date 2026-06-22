@@ -1,0 +1,27 @@
+internal/commands/whoami.go
+  s_fafd33f480df76::t_f183b61116e8eb 25-32,35,37-42
+  s_fafd33f480df76::t_882b4bdc99d2fc 11
+internal/commands/root.go
+  s_fafd33f480df76::t_7aed27c1df8655 42-51
+  s_fafd33f480df76::t_8706eae4ed7317 12
+internal/commands/dryrun_routing_test.go
+  s_fafd33f480df76::t_356bfed5053778 1-44,46-82,84-140
+  s_fafd33f480df76::t_1e517ab67bd698 45
+  s_fafd33f480df76::t_47c9f4b6587bf1 83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "efa0781f85272986340ace7728deb3a110a68f6b",
+  "prompts": {},
+  "sessions": {
+    "s_fafd33f480df76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f93f7f0-bada-45ce-8f1a-a380430e05a8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Djalma Araújo <djalma@nossomos.cc>"
+    }
+  }
+}
