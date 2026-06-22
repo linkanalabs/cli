@@ -1,0 +1,21 @@
+internal/dryrun/compose_test.go
+  s_fafd33f480df76::t_7d9357f6666ca3 1-38
+internal/dryrun/compose.go
+  s_fafd33f480df76::t_4b22f6c82626d2 1-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "e5a6a76c64bbf0edb6eadefebc0b4fa872fc5552",
+  "prompts": {},
+  "sessions": {
+    "s_fafd33f480df76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f93f7f0-bada-45ce-8f1a-a380430e05a8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Djalma Araújo <djalma@nossomos.cc>"
+    }
+  }
+}
