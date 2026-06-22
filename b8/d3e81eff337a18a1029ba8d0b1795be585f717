@@ -1,0 +1,41 @@
+internal/client/impersonation_test.go
+  s_3fc9464798f6d0::t_ce8c7276d7f754 150-173
+internal/commands/auth.go
+  s_3fc9464798f6d0::t_f070a0742d6e01 190-194,196-202,205
+  s_3fc9464798f6d0::t_f4be833d75d21b 51-60,63-66,71,73-75,77-86
+internal/commands/impersonation_visibility_test.go
+  s_3fc9464798f6d0::t_fed6bad42e2c93 100
+internal/commands/impersonate_test.go
+  s_3fc9464798f6d0::t_92540754c7c526 113,119-120
+  s_3fc9464798f6d0::t_11c1cae79ba6d2 96
+  s_3fc9464798f6d0::t_6e6d1cab714bc1 121,265-328
+  s_3fc9464798f6d0::t_cd458749779cbc 4
+  s_3fc9464798f6d0::t_4aeedb556daa37 128
+  s_3fc9464798f6d0::t_1f4e2edd1a5872 236
+internal/client/impersonation.go
+  s_3fc9464798f6d0::t_814d58f0552e25 34-38
+  s_3fc9464798f6d0::t_26651e246def99 7
+internal/commands/auth_test.go
+  s_3fc9464798f6d0::t_f85792c8c16546 5,8-10
+  s_3fc9464798f6d0::t_2cea9a136f9c61 151-201
+internal/commands/impersonate.go
+  s_3fc9464798f6d0::t_797931a6673fdd 20-28,32,40-41,43-44,47-64
+  s_3fc9464798f6d0::t_e34d1c4164bf52 142,156,166,169-170
+  s_3fc9464798f6d0::t_c1ad2a40c04112 188,190-191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "b8d3e81eff337a18a1029ba8d0b1795be585f717",
+  "prompts": {},
+  "sessions": {
+    "s_3fc9464798f6d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "42b1b8c3-ebc5-423e-a773-b1863cda8577",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Djalma Araújo <djalma@nossomos.cc>"
+    }
+  }
+}
