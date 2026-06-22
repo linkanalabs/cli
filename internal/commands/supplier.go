@@ -77,17 +77,14 @@ func newSupplierListCmd() *cobra.Command {
 		Short: "List suppliers (GET /srm/suppliers)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			api, _, err := authedClient()
+			api, imp, err := resolveAPI()
 			if err != nil {
-				if errors.Is(err, errNoToken) {
-					return fmt.Errorf("not authenticated; run `lk auth login`")
-				}
 				return err
 			}
 			suppliers, err := api.ListSuppliers(cmd.Context())
 			if err != nil {
 				if errors.Is(err, client.ErrUnauthorized) {
-					return fmt.Errorf("token rejected (401); run `lk auth login` to re-authenticate")
+					return unauthorizedErr(imp)
 				}
 				return err
 			}
@@ -102,17 +99,14 @@ func newSupplierShowCmd() *cobra.Command {
 		Short: "Show a single supplier (GET /srm/suppliers/<id>/panel)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			api, _, err := authedClient()
+			api, imp, err := resolveAPI()
 			if err != nil {
-				if errors.Is(err, errNoToken) {
-					return fmt.Errorf("not authenticated; run `lk auth login`")
-				}
 				return err
 			}
 			s, err := api.GetSupplier(cmd.Context(), args[0])
 			if err != nil {
 				if errors.Is(err, client.ErrUnauthorized) {
-					return fmt.Errorf("token rejected (401); run `lk auth login` to re-authenticate")
+					return unauthorizedErr(imp)
 				}
 				return err
 			}
