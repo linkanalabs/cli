@@ -96,8 +96,8 @@ func TestAuthStatusShowsExpiredImpersonation(t *testing.T) {
 	})
 	var out, errOut bytes.Buffer
 	// auth status itself should still succeed (exit 0) when impersonation is expired;
-	// it just marks the block EXPIRADA. The hard error path is in whoami/resolveAPI.
-	if code := run([]string{"auth", "status"}, &out, &errOut); code != 0 {
+	// the styled block marks it EXPIRADA. The hard error path is in whoami/resolveAPI.
+	if code := run([]string{"auth", "status", "--format", "styled"}, &out, &errOut); code != 0 {
 		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
 	}
 	if !strings.Contains(out.String(), "EXPIRADA") {

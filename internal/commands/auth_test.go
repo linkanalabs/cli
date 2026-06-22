@@ -251,6 +251,36 @@ func TestAuthStatusJSONWithoutImpersonation(t *testing.T) {
 	}
 }
 
+// TestAuthStatusAutoFormatPipedStaysJSON guards the format-resolution bug: in
+// `--format auto` to a non-TTY (piped), output must resolve to JSON and stay a
+// single valid JSON document — no out-of-band human line appended.
+func TestAuthStatusAutoFormatPipedStaysJSON(t *testing.T) {
+	authEnv(t)
+	t.Setenv("LK_TOKEN", "lkn_orig_tok")
+	_ = auth.SaveImpersonation("http://localhost:3000", auth.Impersonation{
+		Token:             "lkn_secret_imp",
+		TargetEmail:       "buyer@linkana.com",
+		BuyerID:           "b42",
+		ImpersonatorEmail: "staff@linkana.com",
+		ExpiresAt:         time.Now().Add(time.Hour),
+	})
+	swapTimeNow(t, func() time.Time { return time.Now() })
+
+	// No --format flag → auto; out is a bytes.Buffer (non-TTY) → resolves to JSON.
+	var out, errOut bytes.Buffer
+	if code := run([]string{"auth", "status"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	raw := strings.TrimSpace(out.String())
+	var m map[string]any
+	if err := json.Unmarshal([]byte(raw), &m); err != nil {
+		t.Fatalf("auto+piped stdout must be valid JSON, got %q: %v", raw, err)
+	}
+	if strings.Contains(raw, "impersonação (") {
+		t.Errorf("human impersonation line leaked into JSON output: %q", raw)
+	}
+}
+
 // TestAuthStatusJSONExpiredImpersonation asserts that an expired context sets
 // expired:true in the impersonation block.
 func TestAuthStatusJSONExpiredImpersonation(t *testing.T) {

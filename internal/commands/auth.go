@@ -68,10 +68,21 @@ type statusResult struct {
 
 // Styled renders the status result as text.
 func (r statusResult) Styled() string {
-	if !r.Authenticated {
-		return fmt.Sprintf("Not authenticated for %s\n", r.BaseURL)
+	var b strings.Builder
+	if r.Authenticated {
+		fmt.Fprintf(&b, "Authenticated for %s (source: %s)\n", r.BaseURL, r.Source)
+	} else {
+		fmt.Fprintf(&b, "Not authenticated for %s\n", r.BaseURL)
 	}
-	return fmt.Sprintf("Authenticated for %s (source: %s)\n", r.BaseURL, r.Source)
+	if imp := r.Impersonation; imp != nil {
+		state := "ativa"
+		if imp.Expired {
+			state = "EXPIRADA"
+		}
+		fmt.Fprintf(&b, "impersonação (%s): %s (buyer %s, expira %s; por %s)\n",
+			state, imp.TargetEmail, imp.BuyerID, imp.ExpiresAt.Format(time.RFC3339), imp.ImpersonatorEmail)
+	}
+	return b.String()
 }
 
 // logoutResult is the payload for `auth logout`.
@@ -183,30 +194,19 @@ func newAuthStatusCmd() *cobra.Command {
 					"aviso: não foi possível ler o contexto de impersonação: %v\n", impErr)
 			}
 			if imp != nil {
-				expired := imp.Expired(timeNow())
 				res.Impersonation = &statusImpersonation{
 					TargetEmail:       imp.TargetEmail,
 					BuyerID:           imp.BuyerID,
 					ExpiresAt:         imp.ExpiresAt,
 					ImpersonatorEmail: imp.ImpersonatorEmail,
-					Expired:           expired,
+					Expired:           imp.Expired(timeNow()),
 				}
 			}
 
-			if err := output.Render(cmd.OutOrStdout(), formatFlag(cmd), res); err != nil {
-				return err
-			}
-			// Styled mode: append the human-readable impersonation line.
-			if formatFlag(cmd) != output.FormatJSON && imp != nil {
-				state := "ativa"
-				if imp.Expired(timeNow()) {
-					state = "EXPIRADA"
-				}
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(),
-					"impersonação (%s): %s (buyer %s, expira %s; por %s)\n",
-					state, imp.TargetEmail, imp.BuyerID, imp.ExpiresAt.Format(time.RFC3339), imp.ImpersonatorEmail)
-			}
-			return nil
+			// Render handles format resolution (auto → JSON when piped). The
+			// impersonation block lives inside the view, so both JSON and styled
+			// stay consistent — no out-of-band append that could corrupt JSON.
+			return output.Render(cmd.OutOrStdout(), formatFlag(cmd), res)
 		},
 	}
 }
