@@ -1,0 +1,24 @@
+internal/commands/auth_test.go
+  s_3fc9464798f6d0::t_ddf35b34a53849 254-283
+internal/commands/auth.go
+  s_3fc9464798f6d0::t_dc094fb0bc0aa2 71-75,77-85
+  s_3fc9464798f6d0::t_c3e3b06e539e75 202,206-209
+internal/commands/impersonation_visibility_test.go
+  s_3fc9464798f6d0::t_656483f1122a15 99-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "faa3e92636f9cca9a9aea115d7daf64c3b34bd35",
+  "prompts": {},
+  "sessions": {
+    "s_3fc9464798f6d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "42b1b8c3-ebc5-423e-a773-b1863cda8577",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Djalma Araújo <djalma@nossomos.cc>"
+    }
+  }
+}
