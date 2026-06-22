@@ -48,11 +48,22 @@ func (r loginResult) Styled() string {
 	return fmt.Sprintf("Token saved for %s\n", r.BaseURL)
 }
 
+// statusImpersonation is the impersonation block inside statusResult JSON.
+// It never carries the secret token.
+type statusImpersonation struct {
+	TargetEmail       string    `json:"target_email"`
+	BuyerID           string    `json:"buyer_id"`
+	ExpiresAt         time.Time `json:"expires_at"`
+	ImpersonatorEmail string    `json:"impersonator_email"`
+	Expired           bool      `json:"expired"`
+}
+
 // statusResult is the payload for `auth status`. It never carries the secret.
 type statusResult struct {
-	Authenticated bool   `json:"authenticated"`
-	BaseURL       string `json:"base_url"`
-	Source        string `json:"source"`
+	Authenticated bool                 `json:"authenticated"`
+	BaseURL       string               `json:"base_url"`
+	Source        string               `json:"source"`
+	Impersonation *statusImpersonation `json:"impersonation,omitempty"`
 }
 
 // Styled renders the status result as text.
@@ -164,20 +175,36 @@ func newAuthStatusCmd() *cobra.Command {
 				BaseURL:       baseURL,
 				Source:        string(src),
 			}
+
+			// Load impersonation context — warn on error but do not fail.
+			imp, impErr := auth.LoadImpersonation(baseURL)
+			if impErr != nil {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+					"aviso: não foi possível ler o contexto de impersonação: %v\n", impErr)
+			}
+			if imp != nil {
+				expired := imp.Expired(timeNow())
+				res.Impersonation = &statusImpersonation{
+					TargetEmail:       imp.TargetEmail,
+					BuyerID:           imp.BuyerID,
+					ExpiresAt:         imp.ExpiresAt,
+					ImpersonatorEmail: imp.ImpersonatorEmail,
+					Expired:           expired,
+				}
+			}
+
 			if err := output.Render(cmd.OutOrStdout(), formatFlag(cmd), res); err != nil {
 				return err
 			}
-			if formatFlag(cmd) != output.FormatJSON {
-				imp, _ := auth.LoadImpersonation(baseURL)
-				if imp != nil {
-					state := "ativa"
-					if imp.Expired(timeNow()) {
-						state = "EXPIRADA"
-					}
-					_, _ = fmt.Fprintf(cmd.OutOrStdout(),
-						"impersonação (%s): %s (buyer %s, expira %s; por %s)\n",
-						state, imp.TargetEmail, imp.BuyerID, imp.ExpiresAt.Format(time.RFC3339), imp.ImpersonatorEmail)
+			// Styled mode: append the human-readable impersonation line.
+			if formatFlag(cmd) != output.FormatJSON && imp != nil {
+				state := "ativa"
+				if imp.Expired(timeNow()) {
+					state = "EXPIRADA"
 				}
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(),
+					"impersonação (%s): %s (buyer %s, expira %s; por %s)\n",
+					state, imp.TargetEmail, imp.BuyerID, imp.ExpiresAt.Format(time.RFC3339), imp.ImpersonatorEmail)
 			}
 			return nil
 		},

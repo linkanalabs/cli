@@ -2,8 +2,16 @@ package commands
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/linkanalabs/cli/internal/auth"
 )
 
 // runWithStdin runs the CLI with the given stdin contents.
@@ -172,5 +180,158 @@ func TestAuthStyledOutput(t *testing.T) {
 	run([]string{"auth", "login", "--token", "lkn_x_y", "--format", "styled"}, &li, &lie)
 	if !strings.Contains(li.String(), "Token saved") {
 		t.Errorf("styled login = %q", li.String())
+	}
+}
+
+// --- Finding C: auth status --format json includes impersonation block ---
+
+// TestAuthStatusJSONImpersonationBlock asserts that `auth status --format json`
+// includes the impersonation block with correct fields and no token.
+func TestAuthStatusJSONImpersonationBlock(t *testing.T) {
+	authEnv(t)
+	t.Setenv("LK_TOKEN", "lkn_orig_tok")
+
+	expires := time.Now().Add(2 * time.Hour).UTC().Round(time.Second)
+	_ = auth.SaveImpersonation("http://localhost:3000", auth.Impersonation{
+		Token:             "lkn_secret_imp",
+		TargetEmail:       "buyer@linkana.com",
+		BuyerID:           "b42",
+		ImpersonatorEmail: "staff@linkana.com",
+		ExpiresAt:         expires,
+	})
+	swapTimeNow(t, func() time.Time { return time.Now() })
+
+	var out, errOut bytes.Buffer
+	if code := run([]string{"auth", "status", "--format", "json"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	raw := strings.TrimSpace(out.String())
+	var m map[string]any
+	if err := json.Unmarshal([]byte(raw), &m); err != nil {
+		t.Fatalf("stdout is not valid JSON: %v; got %q", err, raw)
+	}
+	// Must contain impersonation sub-object.
+	imp, ok := m["impersonation"].(map[string]any)
+	if !ok || imp == nil {
+		t.Fatalf("impersonation block missing or wrong type, got %v", m["impersonation"])
+	}
+	if imp["target_email"] != "buyer@linkana.com" {
+		t.Errorf("impersonation.target_email = %v", imp["target_email"])
+	}
+	if imp["buyer_id"] != "b42" {
+		t.Errorf("impersonation.buyer_id = %v", imp["buyer_id"])
+	}
+	// expired must be present and false (context is active).
+	if imp["expired"] != false {
+		t.Errorf("impersonation.expired = %v, want false", imp["expired"])
+	}
+	// Token must never appear anywhere in the output.
+	if strings.Contains(raw, "lkn_secret_imp") {
+		t.Errorf("token leaked in JSON output: %q", raw)
+	}
+}
+
+// TestAuthStatusJSONWithoutImpersonation asserts that without an active context
+// the impersonation key is absent (omitempty) and JSON is still valid.
+func TestAuthStatusJSONWithoutImpersonation(t *testing.T) {
+	authEnv(t)
+	t.Setenv("LK_TOKEN", "lkn_orig_tok")
+
+	var out, errOut bytes.Buffer
+	if code := run([]string{"auth", "status", "--format", "json"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	raw := strings.TrimSpace(out.String())
+	var m map[string]any
+	if err := json.Unmarshal([]byte(raw), &m); err != nil {
+		t.Fatalf("stdout is not valid JSON: %v; got %q", err, raw)
+	}
+	if _, present := m["impersonation"]; present {
+		t.Errorf("impersonation key should be absent (omitempty), got %v", m)
+	}
+}
+
+// TestAuthStatusJSONExpiredImpersonation asserts that an expired context sets
+// expired:true in the impersonation block.
+func TestAuthStatusJSONExpiredImpersonation(t *testing.T) {
+	authEnv(t)
+	t.Setenv("LK_TOKEN", "lkn_orig_tok")
+
+	past := time.Now().Add(-time.Hour)
+	_ = auth.SaveImpersonation("http://localhost:3000", auth.Impersonation{
+		Token: "lkn_exp_tok", TargetEmail: "old@linkana.com", BuyerID: "b1",
+		ExpiresAt: past,
+	})
+	swapTimeNow(t, func() time.Time { return time.Now() })
+
+	var out, errOut bytes.Buffer
+	if code := run([]string{"auth", "status", "--format", "json"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	var m map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out.String())), &m); err != nil {
+		t.Fatalf("stdout is not valid JSON: %v; got %q", err, out.String())
+	}
+	imp, ok := m["impersonation"].(map[string]any)
+	if !ok {
+		t.Fatalf("impersonation block missing, got %v", m)
+	}
+	if imp["expired"] != true {
+		t.Errorf("impersonation.expired = %v, want true", imp["expired"])
+	}
+	// Token must never appear.
+	if strings.Contains(out.String(), "lkn_exp_tok") {
+		t.Errorf("token leaked: %q", out.String())
+	}
+}
+
+// --- Finding D: auth status warns on LoadImpersonation error ---
+
+// impersonationTokenPath returns the file path where auth.SaveImpersonation stores
+// the impersonation blob for the given base URL. It mirrors the internal logic of
+// the auth package's file-fallback store so tests can corrupt the file directly.
+func impersonationTokenPath(t *testing.T, baseURL string) string {
+	t.Helper()
+	xdg := os.Getenv("XDG_CONFIG_HOME")
+	if xdg == "" {
+		t.Skip("XDG_CONFIG_HOME not set; cannot compute token path")
+	}
+	// Mirror: origin = baseURL + "|impersonation"; file = sha256(origin)[:8] + ".token"
+	origin := baseURL + "|impersonation"
+	sum := sha256.Sum256([]byte(origin))
+	filename := hex.EncodeToString(sum[:8]) + ".token"
+	return filepath.Join(xdg, "lk", "tokens", filename)
+}
+
+// TestAuthStatusWarnsOnImpersonationLoadError asserts that a LoadImpersonation
+// error (corrupt file) causes a warning on stderr but does NOT fail the command.
+func TestAuthStatusWarnsOnImpersonationLoadError(t *testing.T) {
+	authEnv(t)
+	t.Setenv("LK_TOKEN", "lkn_orig_tok")
+
+	// First save a valid impersonation so the dir is created.
+	_ = auth.SaveImpersonation("http://localhost:3000", auth.Impersonation{
+		Token: "lkn_tmp", TargetEmail: "x@x.com", BuyerID: "b1",
+		ExpiresAt: time.Now().Add(time.Hour),
+	})
+
+	// Overwrite with invalid JSON to trigger a parse error in LoadImpersonation.
+	impFile := impersonationTokenPath(t, "http://localhost:3000")
+	if err := os.WriteFile(impFile, []byte("not-json"), 0o600); err != nil {
+		t.Fatalf("failed to corrupt file: %v", err)
+	}
+
+	var out, errOut bytes.Buffer
+	if code := run([]string{"auth", "status", "--format", "json"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d (must be 0 even on impersonation load error), stderr = %q", code, errOut.String())
+	}
+	// A warning must appear on stderr.
+	if !strings.Contains(errOut.String(), "aviso") {
+		t.Errorf("expected aviso warning on stderr, got %q", errOut.String())
+	}
+	// Base status must still be valid JSON.
+	var m map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out.String())), &m); err != nil {
+		t.Fatalf("stdout is not valid JSON: %v; got %q", err, out.String())
 	}
 }

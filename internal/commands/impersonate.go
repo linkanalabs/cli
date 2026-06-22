@@ -36,6 +36,67 @@ func (v impersonationView) Styled() string {
 	)
 }
 
+// impersonateStatusView renders the result of `impersonate status`.
+// When imp is nil (no active context), JSON emits null; styled emits a human notice.
+// When non-nil, JSON uses the stable impersonationView shape; styled appends EXPIRED note.
+type impersonateStatusView struct {
+	imp  *auth.Impersonation
+	note string // appended in styled mode (e.g. EXPIRED warning)
+}
+
+// MarshalJSON emits null when there is no active impersonation, or the stable
+// public JSON object (no token) when one is active.
+func (v impersonateStatusView) MarshalJSON() ([]byte, error) {
+	if v.imp == nil {
+		return []byte("null"), nil
+	}
+	return jsonMarshalImpersonation(v.imp)
+}
+
+// Styled renders a human-readable line when no context is active, or the full
+// impersonation block (+ optional EXPIRED note) when one is.
+func (v impersonateStatusView) Styled() string {
+	if v.imp == nil {
+		return "nenhuma impersonação ativa\n"
+	}
+	out := impersonationView{Impersonation: v.imp}.Styled()
+	if v.note != "" {
+		out = strings.TrimRight(out, "\n") + v.note + "\n"
+	}
+	return out
+}
+
+// impersonateStopView renders the result of `impersonate stop`.
+// JSON: {"stopped":true,"target_email":"..."} or {"stopped":false}.
+// Styled: human sentence.
+type impersonateStopView struct {
+	stopped     bool
+	targetEmail string
+}
+
+// MarshalJSON emits a machine-readable stop result.
+func (v impersonateStopView) MarshalJSON() ([]byte, error) {
+	if !v.stopped {
+		type noCtx struct {
+			Stopped bool `json:"stopped"`
+		}
+		return jsonMarshal(noCtx{Stopped: false})
+	}
+	type withCtx struct {
+		Stopped     bool   `json:"stopped"`
+		TargetEmail string `json:"target_email"`
+	}
+	return jsonMarshal(withCtx{Stopped: true, TargetEmail: v.targetEmail})
+}
+
+// Styled renders a human-readable stop confirmation.
+func (v impersonateStopView) Styled() string {
+	if !v.stopped {
+		return "nenhuma impersonação ativa\n"
+	}
+	return fmt.Sprintf("impersonação de %s encerrada\n", v.targetEmail)
+}
+
 func newImpersonateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "impersonate <email|user_id>",
@@ -125,8 +186,7 @@ func newImpersonateStopCmd() *cobra.Command {
 				return err
 			}
 			if imp == nil {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "nenhuma impersonação ativa")
-				return nil
+				return output.Render(cmd.OutOrStdout(), formatFlag(cmd), impersonateStopView{stopped: false})
 			}
 			// Best-effort revoke using the impersonation token itself.
 			api := newAPI(cfg.BaseURL, imp.Token)
@@ -136,8 +196,7 @@ func newImpersonateStopCmd() *cobra.Command {
 			if err := auth.DeleteImpersonation(cfg.BaseURL); err != nil {
 				return fmt.Errorf("clearing impersonation context: %w", err)
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "impersonação de %s encerrada\n", imp.TargetEmail)
-			return nil
+			return output.Render(cmd.OutOrStdout(), formatFlag(cmd), impersonateStopView{stopped: true, targetEmail: imp.TargetEmail})
 		},
 	}
 }
@@ -156,20 +215,11 @@ func newImpersonateStatusCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if imp == nil {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "nenhuma impersonação ativa")
-				return nil
-			}
 			note := ""
-			if imp.Expired(timeNow()) {
+			if imp != nil && imp.Expired(timeNow()) {
 				note = " (EXPIRADA — rode `lk impersonate stop` ou re-impersonar)"
 			}
-			if formatFlag(cmd) == output.FormatJSON {
-				return output.Render(cmd.OutOrStdout(), output.FormatJSON, impersonationView{Impersonation: imp})
-			}
-			out := impersonationView{Impersonation: imp}.Styled()
-			_, _ = fmt.Fprint(cmd.OutOrStdout(), strings.TrimRight(out, "\n")+note+"\n")
-			return nil
+			return output.Render(cmd.OutOrStdout(), formatFlag(cmd), impersonateStatusView{imp: imp, note: note})
 		},
 	}
 }

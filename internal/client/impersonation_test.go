@@ -166,3 +166,31 @@ func TestPostMarshalError(t *testing.T) {
 		t.Errorf("error = %v", err)
 	}
 }
+
+// --- Finding E: sub-second TTL rounded up via math.Ceil ---
+
+// TestStartImpersonationSubSecondTTLRoundsUp asserts that a 500ms TTL is sent
+// as ttl_seconds=1 (math.Ceil) rather than 0 (int truncation), preventing the
+// backend from silently applying its 24h default.
+func TestStartImpersonationSubSecondTTLRoundsUp(t *testing.T) {
+	var gotTTL float64
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if v, ok := body["ttl_seconds"]; ok {
+			gotTTL, _ = v.(float64)
+		}
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"token":"lkn_t","identity":{"user_id":"u","email":"x@x.com","buyer_id":"b"},"expires_at":"2026-06-23T14:00:00Z"}`))
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL)
+	if _, err := c.StartImpersonation(context.Background(), "x@x.com", 500*time.Millisecond); err != nil {
+		t.Fatalf("StartImpersonation() error: %v", err)
+	}
+	// 500ms → Ceil(0.5) = 1
+	if gotTTL != 1 {
+		t.Errorf("ttl_seconds = %v, want 1 (math.Ceil of 0.5s)", gotTTL)
+	}
+}

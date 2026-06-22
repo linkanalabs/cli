@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -88,11 +89,14 @@ func TestImpersonateStatusActive(t *testing.T) {
 	}
 }
 
+// TestImpersonateStatusNone verifies styled output when no context is active.
+// (styled is explicit here because auto→json in non-TTY tests; the JSON case
+// is covered by TestImpersonateStatusNoneJSON.)
 func TestImpersonateStatusNone(t *testing.T) {
 	authEnv(t)
 	t.Setenv("LK_API_URL", "http://localhost:3000")
 	var out, errOut strings.Builder
-	if code := run([]string{"impersonate", "status"}, &out, &errOut); code != 0 {
+	if code := run([]string{"impersonate", "status", "--format", "styled"}, &out, &errOut); code != 0 {
 		t.Fatalf("exit = %d", code)
 	}
 	if !strings.Contains(out.String(), "nenhuma") {
@@ -117,11 +121,13 @@ func TestImpersonateStopClearsContext(t *testing.T) {
 	}
 }
 
+// TestImpersonateStopWhenNone verifies styled output when no context is active.
+// (styled is explicit; JSON case is TestImpersonateStopJSONNoContext.)
 func TestImpersonateStopWhenNone(t *testing.T) {
 	authEnv(t)
 	t.Setenv("LK_API_URL", "http://localhost:3000")
 	var out, errOut strings.Builder
-	if code := run([]string{"impersonate", "stop"}, &out, &errOut); code != 0 {
+	if code := run([]string{"impersonate", "stop", "--format", "styled"}, &out, &errOut); code != 0 {
 		t.Fatalf("exit = %d", code)
 	}
 	if !strings.Contains(out.String()+errOut.String(), "nenhuma") {
@@ -217,6 +223,8 @@ func TestImpersonateStatusConfigError(t *testing.T) {
 	}
 }
 
+// TestImpersonateStatusExpired uses --format styled to verify the EXPIRADA notice.
+// (In non-TTY tests auto→json so styled must be explicit for the text assertion.)
 func TestImpersonateStatusExpired(t *testing.T) {
 	authEnv(t)
 	t.Setenv("LK_API_URL", "http://localhost:3000")
@@ -229,7 +237,7 @@ func TestImpersonateStatusExpired(t *testing.T) {
 	swapTimeNow(t, func() time.Time { return time.Now() })
 
 	var out, errOut strings.Builder
-	if code := run([]string{"impersonate", "status"}, &out, &errOut); code != 0 {
+	if code := run([]string{"impersonate", "status", "--format", "styled"}, &out, &errOut); code != 0 {
 		t.Fatalf("exit = %d", code)
 	}
 	combined := out.String() + errOut.String()
@@ -376,5 +384,133 @@ func TestImpersonateStartIdentityFailureWarns(t *testing.T) {
 	stderrStr := errOut.String()
 	if !strings.Contains(stderrStr, "impersonador") && !strings.Contains(stderrStr, "identity") {
 		t.Errorf("expected warning about impersonador/identity in stderr, got %q", stderrStr)
+	}
+}
+
+// --- Finding A: `impersonate status` no-context in JSON mode → null ---
+
+// TestImpersonateStatusNoneJSON asserts that JSON output is `null` (parseable)
+// when there is no active impersonation.
+func TestImpersonateStatusNoneJSON(t *testing.T) {
+	authEnv(t)
+	t.Setenv("LK_API_URL", "http://localhost:3000")
+	var out, errOut strings.Builder
+	if code := run([]string{"impersonate", "status", "--format", "json"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	raw := strings.TrimSpace(out.String())
+	// Must be parseable JSON that represents null.
+	var v any
+	if err := json.Unmarshal([]byte(raw), &v); err != nil {
+		t.Fatalf("stdout is not valid JSON: %v; got %q", err, raw)
+	}
+	if v != nil {
+		t.Errorf("expected JSON null, got %v (%q)", v, raw)
+	}
+	// Token must never appear.
+	if strings.Contains(raw, "lkn") {
+		t.Errorf("token leaked in output: %q", raw)
+	}
+}
+
+// TestImpersonateStatusActiveJSONNoToken asserts that with an active context,
+// JSON output is a valid object with target_email but NO token field.
+func TestImpersonateStatusActiveJSONNoToken(t *testing.T) {
+	authEnv(t)
+	t.Setenv("LK_API_URL", "http://localhost:3000")
+	_ = auth.SaveImpersonation("http://localhost:3000", auth.Impersonation{
+		Token: "lkn_secret_tok", TargetEmail: "buyer@linkana.com", BuyerID: "b42",
+		ImpersonatorEmail: "staff@linkana.com", ExpiresAt: time.Now().Add(time.Hour),
+	})
+	var out, errOut strings.Builder
+	if code := run([]string{"impersonate", "status", "--format", "json"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	raw := out.String()
+	// Must be valid JSON object.
+	var m map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimSpace(raw)), &m); err != nil {
+		t.Fatalf("stdout is not valid JSON: %v; got %q", err, raw)
+	}
+	// Must contain target_email.
+	if m["target_email"] != "buyer@linkana.com" {
+		t.Errorf("target_email = %v, got full map %v", m["target_email"], m)
+	}
+	// Token must never appear.
+	if strings.Contains(raw, "lkn_secret_tok") {
+		t.Errorf("token leaked in JSON: %q", raw)
+	}
+}
+
+// --- Finding B: `impersonate stop` JSON output ---
+
+// TestImpersonateStopJSONWithContext asserts that stopping with an active context
+// emits {stopped:true, target_email:"..."} in JSON mode, with no token.
+func TestImpersonateStopJSONWithContext(t *testing.T) {
+	authEnv(t)
+	srv := impersonateServer(t)
+	t.Setenv("LK_API_URL", srv.URL)
+	_ = auth.SaveImpersonation(srv.URL, auth.Impersonation{
+		Token: "lkn_stop_tok", TargetEmail: "buyer@linkana.com", BuyerID: "b1",
+		ExpiresAt: time.Now().Add(time.Hour),
+	})
+	var out, errOut strings.Builder
+	if code := run([]string{"impersonate", "stop", "--format", "json"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	raw := out.String()
+	var m map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimSpace(raw)), &m); err != nil {
+		t.Fatalf("stdout is not valid JSON: %v; got %q", err, raw)
+	}
+	if m["stopped"] != true {
+		t.Errorf("stopped = %v, want true", m["stopped"])
+	}
+	if m["target_email"] != "buyer@linkana.com" {
+		t.Errorf("target_email = %v, want buyer@linkana.com", m["target_email"])
+	}
+	// Token must never appear.
+	if strings.Contains(raw, "lkn_stop_tok") {
+		t.Errorf("token leaked in JSON: %q", raw)
+	}
+}
+
+// TestImpersonateStopJSONNoContext asserts that stopping with no context
+// emits {stopped:false} in JSON mode (no target_email key).
+func TestImpersonateStopJSONNoContext(t *testing.T) {
+	authEnv(t)
+	t.Setenv("LK_API_URL", "http://localhost:3000")
+	var out, errOut strings.Builder
+	if code := run([]string{"impersonate", "stop", "--format", "json"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	var m map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out.String())), &m); err != nil {
+		t.Fatalf("stdout is not valid JSON: %v; got %q", err, out.String())
+	}
+	if m["stopped"] != false {
+		t.Errorf("stopped = %v, want false", m["stopped"])
+	}
+	if _, hasEmail := m["target_email"]; hasEmail {
+		t.Errorf("target_email should be absent when stopped=false, got %v", m)
+	}
+}
+
+// TestImpersonateStopStyledWithContext covers the stopped=true branch of
+// impersonateStopView.Styled() which is not exercised by the JSON tests.
+func TestImpersonateStopStyledWithContext(t *testing.T) {
+	authEnv(t)
+	srv := impersonateServer(t)
+	t.Setenv("LK_API_URL", srv.URL)
+	_ = auth.SaveImpersonation(srv.URL, auth.Impersonation{
+		Token: "lkn_imp", TargetEmail: "target@linkana.com", BuyerID: "b1",
+		ExpiresAt: time.Now().Add(time.Hour),
+	})
+	var out, errOut strings.Builder
+	if code := run([]string{"impersonate", "stop", "--format", "styled"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	if !strings.Contains(out.String(), "encerrada") || !strings.Contains(out.String(), "target@linkana.com") {
+		t.Errorf("expected encerrada message, got %q", out.String())
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 )
@@ -30,7 +31,7 @@ type startImpersonationRequest struct {
 // StartImpersonation mints an impersonation Access Token for userRef (email or
 // uuid). A zero ttl lets the backend apply its default.
 func (c *Client) StartImpersonation(ctx context.Context, userRef string, ttl time.Duration) (*Impersonation, error) {
-	body := startImpersonationRequest{Target: userRef, TTLSeconds: int(ttl.Seconds())}
+	body := startImpersonationRequest{Target: userRef, TTLSeconds: int(math.Ceil(ttl.Seconds()))}
 	resp, err := c.Post(ctx, "/impersonation", body)
 	if err != nil {
 		return nil, err
