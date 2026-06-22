@@ -1,0 +1,19 @@
+CLAUDE.local.md
+  s_b09d862ae354d5::t_d9e6019d52dfab 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "b1c94ee5758f9a0633a7ea952ef1655bf6de4f5b",
+  "prompts": {},
+  "sessions": {
+    "s_b09d862ae354d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1a03a4e-9888-4b91-bc9e-d14535f3dfa2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Djalma Araújo <djalma@nossomos.cc>"
+    }
+  }
+}
