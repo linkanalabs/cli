@@ -131,3 +131,38 @@ func TestStopImpersonationUnauthorizedIsOK(t *testing.T) {
 		t.Errorf("StopImpersonation() on 401 should be nil, got %v", err)
 	}
 }
+
+func TestStopImpersonationServerError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	err := New(srv.URL).StopImpersonation(context.Background())
+	if err == nil {
+		t.Fatal("expected error on 500")
+	}
+	if !strings.Contains(err.Error(), "500") {
+		t.Errorf("error = %v", err)
+	}
+}
+
+func TestServerErrorFallback(t *testing.T) {
+	// When JSON parse succeeds but the error field is empty, fall back to raw body.
+	got := serverError([]byte(`{"other":"field"}`))
+	if got != `{"other":"field"}` {
+		t.Errorf("serverError fallback = %q", got)
+	}
+}
+
+func TestPostMarshalError(t *testing.T) {
+	c := New("http://localhost:3000")
+	// A channel cannot be marshalled to JSON.
+	_, err := c.Post(context.Background(), "/x", make(chan int))
+	if err == nil {
+		t.Fatal("expected marshal error")
+	}
+	if !strings.Contains(err.Error(), "encoding request body") {
+		t.Errorf("error = %v", err)
+	}
+}
