@@ -94,3 +94,42 @@ func TestImpersonationIsolatedFromToken(t *testing.T) {
 		t.Errorf("original token = %q, want lkn_original", tok)
 	}
 }
+
+// TestLoadImpersonationNotMaskedByEnvToken proves that an active stored
+// impersonation context is NOT silently ignored when LK_TOKEN is set.
+// This is the key safety property: LK_TOKEN overrides the original token only;
+// impersonation context (which is sticky and explicit) must take precedence.
+func TestLoadImpersonationNotMaskedByEnvToken(t *testing.T) {
+	// Use file store (no keyring), with a temp XDG dir.
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv(EnvNoKeyring, "1")
+	// LK_TOKEN is set (simulating an operator or CI environment).
+	t.Setenv(EnvToken, "lkn_env_original")
+
+	origin := "http://localhost:3000"
+	imp := Impersonation{
+		Token:             "lkn_imp_tok",
+		TargetEmail:       "target@linkana.com",
+		TargetUserID:      "u42",
+		BuyerID:           "b99",
+		ImpersonatorEmail: "staff@linkana.com",
+		ExpiresAt:         time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	if err := SaveImpersonation(origin, imp); err != nil {
+		t.Fatalf("SaveImpersonation() error: %v", err)
+	}
+
+	got, err := LoadImpersonation(origin)
+	if err != nil {
+		t.Fatalf("LoadImpersonation() error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("LoadImpersonation() = nil; LK_TOKEN must not mask a stored impersonation context")
+	}
+	if got.Token != "lkn_imp_tok" {
+		t.Errorf("got.Token = %q, want lkn_imp_tok", got.Token)
+	}
+	if got.TargetEmail != "target@linkana.com" {
+		t.Errorf("got.TargetEmail = %q, want target@linkana.com", got.TargetEmail)
+	}
+}

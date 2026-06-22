@@ -74,6 +74,42 @@ func TestResolveAPIHardErrorsWhenImpersonationExpired(t *testing.T) {
 	}
 }
 
+// TestResolveAPIImpersonationWinsOverLKToken is a regression test for the
+// footgun where LK_TOKEN set in the environment would silently mask an active,
+// stored impersonation context, causing authedClient to fall through to the
+// original token with no error or warning.
+//
+// LK_TOKEN is an override for the *original* token only. An explicit sticky
+// impersonation context must take precedence over ambient env.
+func TestResolveAPIImpersonationWinsOverLKToken(t *testing.T) {
+	authEnv(t)
+	// LK_TOKEN is set — simulating an operator or CI environment with the
+	// original credential baked into the environment.
+	t.Setenv("LK_TOKEN", "lkn_env_original")
+
+	base := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	swapTimeNow(t, func() time.Time { return base })
+
+	cfg := "http://localhost:3000"
+	if err := auth.SaveImpersonation(cfg, auth.Impersonation{
+		Token: "lkn_imp_tok", TargetEmail: "buyer@linkana.com", BuyerID: "b42",
+		ExpiresAt: base.Add(time.Hour), // non-expired
+	}); err != nil {
+		t.Fatalf("SaveImpersonation: %v", err)
+	}
+
+	_, imp, err := resolveAPI()
+	if err != nil {
+		t.Fatalf("resolveAPI() error: %v", err)
+	}
+	if imp == nil {
+		t.Fatal("resolveAPI() imp = nil; LK_TOKEN must not mask a stored impersonation context")
+	}
+	if imp.TargetEmail != "buyer@linkana.com" {
+		t.Errorf("imp.TargetEmail = %q, want buyer@linkana.com", imp.TargetEmail)
+	}
+}
+
 func TestUnauthorizedErrWithoutImpersonation(t *testing.T) {
 	if got := unauthorizedErr(nil).Error(); !strings.Contains(got, "lk auth login") {
 		t.Errorf("got %q, want auth login hint", got)

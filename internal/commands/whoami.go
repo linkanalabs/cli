@@ -36,6 +36,10 @@ var newAPI = func(baseURL, token string) client.API {
 //   - impersonation context present & expired      → errImpersonationExpired
 //     (sticky; never falls back to the original token).
 //   - no impersonation context                     → use the original token.
+//
+// Note: auth.LoadImpersonation reads the keychain/file store directly and is
+// NOT affected by LK_TOKEN. LK_TOKEN overrides the original token only; a
+// stored impersonation context always takes precedence over the ambient env var.
 func authedClient() (client.API, string, *auth.Impersonation, error) {
 	cfg, err := config.Load()
 	if err != nil {

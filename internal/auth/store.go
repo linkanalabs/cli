@@ -69,13 +69,11 @@ func keyringAvailable() bool {
 	return true
 }
 
-// Load returns the token for the given origin and where it came from. The
-// LK_TOKEN env var wins over stored credentials. A missing token is not an
-// error: it returns ("", SourceNone, nil).
-func Load(origin string) (string, Source, error) {
-	if tok := os.Getenv(EnvToken); tok != "" {
-		return tok, SourceEnv, nil
-	}
+// loadStored reads the token for origin directly from the keychain/file store,
+// bypassing the LK_TOKEN env override. This is the canonical "what is
+// physically stored for this key?" lookup used by LoadImpersonation so that an
+// explicit, sticky impersonation context is never masked by the ambient env var.
+func loadStored(origin string) (string, Source, error) {
 	if keyringAvailable() {
 		tok, err := keyringGet(keyringService, origin)
 		switch {
@@ -88,6 +86,16 @@ func Load(origin string) (string, Source, error) {
 		}
 	}
 	return loadFile(origin)
+}
+
+// Load returns the token for the given origin and where it came from. The
+// LK_TOKEN env var wins over stored credentials. A missing token is not an
+// error: it returns ("", SourceNone, nil).
+func Load(origin string) (string, Source, error) {
+	if tok := os.Getenv(EnvToken); tok != "" {
+		return tok, SourceEnv, nil
+	}
+	return loadStored(origin)
 }
 
 // Save stores the token for the given origin.

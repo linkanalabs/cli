@@ -39,12 +39,15 @@ func SaveImpersonation(origin string, imp Impersonation) error {
 }
 
 // LoadImpersonation returns the stored impersonation context, or nil when none.
+// It reads directly from the keychain/file store via loadStored, bypassing the
+// LK_TOKEN env override. LK_TOKEN is an override for the original token only;
+// an explicit, sticky impersonation context must always take precedence.
 func LoadImpersonation(origin string) (*Impersonation, error) {
-	blob, src, err := Load(impersonationOrigin(origin))
+	blob, _, err := loadStored(impersonationOrigin(origin))
 	if err != nil {
 		return nil, err
 	}
-	if blob == "" || src == SourceEnv {
+	if blob == "" {
 		return nil, nil
 	}
 	var imp Impersonation
