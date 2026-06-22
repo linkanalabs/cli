@@ -82,6 +82,8 @@ func runImpersonateStart(cmd *cobra.Command, ref string) error {
 	impersonator := ""
 	if id, idErr := api.GetIdentity(cmd.Context()); idErr == nil {
 		impersonator = id.Email
+	} else {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "aviso: não foi possível obter o email do impersonador (%v); seguindo sem ele\n", idErr)
 	}
 
 	ctx := auth.Impersonation{

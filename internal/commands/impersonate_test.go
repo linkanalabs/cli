@@ -266,3 +266,52 @@ func TestImpersonateNoArgs(t *testing.T) {
 		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
 	}
 }
+
+// TestImpersonateStartIdentityFailureWarns verifies that when POST /impersonation.json
+// succeeds (201) but GET /my/identity.json returns 500, the command still exits 0,
+// the impersonation context IS stored (token + target email correct), and a warning
+// containing "impersonador" or "identity" is printed to STDERR.
+func TestImpersonateStartIdentityFailureWarns(t *testing.T) {
+	authEnv(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/my/identity.json":
+			w.WriteHeader(http.StatusInternalServerError)
+		case r.Method == http.MethodPost && r.URL.Path == "/impersonation.json":
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"token":"lkn_imp_tok","identity":{"user_id":"u1","email":"suporte@linkana.com","buyer_id":"b1"},"expires_at":"2026-06-23T14:00:00Z"}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("LK_API_URL", srv.URL)
+	t.Setenv("LK_TOKEN", "lkn_original")
+
+	var out, errOut strings.Builder
+	code := run([]string{"impersonate", "suporte@linkana.com"}, &out, &errOut)
+	// Must exit 0 even though identity lookup failed.
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr = %q, stdout = %q", code, errOut.String(), out.String())
+	}
+	// Impersonation context must be stored with correct token and target email.
+	imp, err := auth.LoadImpersonation(srv.URL)
+	if err != nil || imp == nil {
+		t.Fatalf("context not stored: imp=%v err=%v", imp, err)
+	}
+	if imp.Token != "lkn_imp_tok" {
+		t.Errorf("imp.Token = %q, want lkn_imp_tok", imp.Token)
+	}
+	if imp.TargetEmail != "suporte@linkana.com" {
+		t.Errorf("imp.TargetEmail = %q, want suporte@linkana.com", imp.TargetEmail)
+	}
+	// ImpersonatorEmail must be empty (identity lookup failed).
+	if imp.ImpersonatorEmail != "" {
+		t.Errorf("imp.ImpersonatorEmail = %q, want empty", imp.ImpersonatorEmail)
+	}
+	// A warning must be printed to stderr mentioning the failure.
+	stderrStr := errOut.String()
+	if !strings.Contains(stderrStr, "impersonador") && !strings.Contains(stderrStr, "identity") {
+		t.Errorf("expected warning about impersonador/identity in stderr, got %q", stderrStr)
+	}
+}
