@@ -1,0 +1,32 @@
+internal/commands/auth.go
+  s_3fc9464798f6d0::t_26bafd753edbde 51-60,63-66,178-195,199-203,205-207
+internal/commands/auth_test.go
+  s_3fc9464798f6d0::t_23b9d656ad4c41 188-190
+  s_3fc9464798f6d0::t_2a8c56949dbb67 7-9,12-14,185-187,191-289,306-311,313-317,320-336
+  s_3fc9464798f6d0::t_6545d1c47a88d8 5-6,290-305,312,318-319,337
+internal/client/impersonation_test.go
+  s_3fc9464798f6d0::t_beb61849622036 169-196
+internal/commands/impersonate_test.go
+  s_3fc9464798f6d0::t_f9f1a2a6bfce52 4,92-94,99,124-125,130,226-227,240,389-495
+  s_3fc9464798f6d0::t_c1aaab40851fbc 496-516
+internal/client/impersonation.go
+  s_3fc9464798f6d0::t_809634e23b6a1c 7,34
+internal/commands/impersonate.go
+  s_3fc9464798f6d0::t_301e1a3338b9f8 39-99,189,199,219,222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "0b6b9688ecf4c29eae24e7d10ba08b22be4c2036",
+  "prompts": {},
+  "sessions": {
+    "s_3fc9464798f6d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "42b1b8c3-ebc5-423e-a773-b1863cda8577",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Djalma Araújo <djalma@nossomos.cc>"
+    }
+  }
+}
