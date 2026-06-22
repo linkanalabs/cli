@@ -1,0 +1,22 @@
+internal/client/client_test.go
+  s_fafd33f480df76::t_7861bf7b65bbeb 113-140
+internal/client/client.go
+  s_fafd33f480df76::t_c08a123685bc4c 18
+  s_fafd33f480df76::t_90acbe27640ec6 81-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c4edee18b1fa814469fc27ba06a933f3ce8c73a1",
+  "prompts": {},
+  "sessions": {
+    "s_fafd33f480df76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f93f7f0-bada-45ce-8f1a-a380430e05a8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Djalma Araújo <djalma@nossomos.cc>"
+    }
+  }
+}
