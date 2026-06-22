@@ -1,0 +1,64 @@
+internal/commands/dryrun_routing_test.go
+  s_fafd33f480df76::t_9e153d092689f0 69-73
+internal/commands/dryrun.go
+  s_fafd33f480df76::t_6ef109a9eeaa3e 24
+internal/dryrun/compose_test.go
+  s_fafd33f480df76::t_a4fa7d0ff5cf4a 20-27
+internal/commands/doctor_test.go
+  s_fafd33f480df76::t_1812e316a4de5c 122-123,125-141
+  s_fafd33f480df76::t_2aaf1f49100db3 124
+internal/dryrun/exec_test.go
+  s_fafd33f480df76::t_0ecf61253b76ca 195-212
+  s_fafd33f480df76::t_3d36d3b4296154 194,213-226
+  s_fafd33f480df76::t_129bf4b6646b8e 27
+  s_fafd33f480df76::t_a814945d4dd9c2 76-193
+internal/commands/dryrun_test.go
+  s_fafd33f480df76::t_e206e02bf16bb8 7
+  s_fafd33f480df76::t_94bc2d92979916 112-120,123-289
+  s_fafd33f480df76::t_507feab5e8922b 64,367-384
+  s_fafd33f480df76::t_169086e200ef0a 49,51,58-63
+  s_fafd33f480df76::t_91fd2d4f3f5d5a 9-10
+  s_fafd33f480df76::t_2243dce33dfc5b 121-122
+  s_fafd33f480df76::t_6b81f8e455661b 302-316
+  s_fafd33f480df76::t_f891b54521342b 14
+  s_fafd33f480df76::t_9384ecabe0071e 290-301,317-366
+internal/commands/whoami_test.go
+  s_fafd33f480df76::t_68294fa072c6d2 8
+  s_fafd33f480df76::t_20c380cd5456eb 118-137
+internal/dryrun/manager_test.go
+  s_fafd33f480df76::t_b2e2f400f53cd0 7-8
+  s_fafd33f480df76::t_9eae230ec02a8a 250-272
+  s_fafd33f480df76::t_6b5462e437c14f 5
+  s_fafd33f480df76::t_7f07d3ba46fdcf 19,23,25-28
+  s_fafd33f480df76::t_b54e2bc969c6e1 208-249
+  s_fafd33f480df76::t_0b8b41f65f458e 95
+  s_fafd33f480df76::t_bb1b343d4a3c8d 128-130
+  s_fafd33f480df76::t_0b58fa2b2d6620 145-207
+internal/dryrun/session_test.go
+  s_fafd33f480df76::t_a8a2e14e944b15 70-87
+  s_fafd33f480df76::t_04106bd4b69dcd 88-110
+  s_fafd33f480df76::t_513437afb9362f 4-6
+  s_fafd33f480df76::t_f0cf31382f9a28 111-128
+  s_fafd33f480df76::t_d26313dd4d9f70 23-36
+  s_fafd33f480df76::t_2045813b41cc5d 12-22,37-69
+internal/dryrun/report_test.go
+  s_fafd33f480df76::t_cd65e7437dc294 60-108
+internal/dryrun/manager.go
+  s_fafd33f480df76::t_229e2b93cfab15 58-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "3d3fd81c066789ad1a4108591cd0c0767fd88fc1",
+  "prompts": {},
+  "sessions": {
+    "s_fafd33f480df76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f93f7f0-bada-45ce-8f1a-a380430e05a8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Djalma Araújo <djalma@nossomos.cc>"
+    }
+  }
+}
