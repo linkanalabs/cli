@@ -1,0 +1,22 @@
+internal/commands/doctor_test.go
+  s_fafd33f480df76::t_1f38074c81f767 13
+  s_fafd33f480df76::t_29f8e84bf5c78b 226,235,237,240,244
+  s_fafd33f480df76::t_a1e91499985ebd 287-294,297,302-303,305-306
+  s_fafd33f480df76::t_3bcc454cf25109 319-321,323-324
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "75e94d3887ca6acd7595279df42f8fc7be5c0bdf",
+  "prompts": {},
+  "sessions": {
+    "s_fafd33f480df76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f93f7f0-bada-45ce-8f1a-a380430e05a8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Djalma Araújo <djalma@nossomos.cc>"
+    }
+  }
+}
