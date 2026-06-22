@@ -1,0 +1,21 @@
+internal/commands/whoami_test.go
+  s_fafd33f480df76::t_cc8b525eede3ba 177-181
+  s_fafd33f480df76::t_e48aadd58a4573 136-139,142,144
+  s_fafd33f480df76::t_800cfb806314df 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "6578210f0db356f968ad716099eac1ed96054106",
+  "prompts": {},
+  "sessions": {
+    "s_fafd33f480df76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f93f7f0-bada-45ce-8f1a-a380430e05a8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Djalma Araújo <djalma@nossomos.cc>"
+    }
+  }
+}
