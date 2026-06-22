@@ -1,0 +1,36 @@
+internal/commands/auth.go
+  s_fafd33f480df76::t_5530f720a4cfb3 174-179
+  s_fafd33f480df76::t_1ee24c1f051c34 173
+  s_fafd33f480df76::t_27f1449ae609f7 52-55,60,62-64,66-69
+internal/commands/whoami.go
+  s_fafd33f480df76::t_c727a9d4d22a8c 110
+  s_fafd33f480df76::t_6ff4a10615f51c 18-20
+  s_fafd33f480df76::t_8816b91551187f 60-69,71,74-75,80,84-87,111-118
+internal/commands/auth_test.go
+  s_fafd33f480df76::t_411a43b61edead 8-9
+  s_fafd33f480df76::t_891f9f34aa766d 94-97
+  s_fafd33f480df76::t_642bb291da17d9 5
+  s_fafd33f480df76::t_3d9d314de40cbe 184,199-255
+  s_fafd33f480df76::t_be9b20c4d326ce 185-198
+internal/commands/whoami_test.go
+  s_fafd33f480df76::t_93738bb07c1ef6 240,243-244,246,251-258
+  s_fafd33f480df76::t_03bbf8fdb6f8cd 13
+  s_fafd33f480df76::t_95c88382404239 233-239,241-242,245,247-250
+  s_fafd33f480df76::t_9392ac85fb3ce5 120-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "3d3eddd6796763c76736901483e51778f00ee26b",
+  "prompts": {},
+  "sessions": {
+    "s_fafd33f480df76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f93f7f0-bada-45ce-8f1a-a380430e05a8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Djalma Araújo <djalma@nossomos.cc>"
+    }
+  }
+}
