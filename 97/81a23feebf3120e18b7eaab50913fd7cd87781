@@ -1,0 +1,33 @@
+internal/commands/auth.go
+  s_fafd33f480df76::t_048bad63668cf2 14
+  s_fafd33f480df76::t_9a28b743df2e55 53-56,64
+  s_fafd33f480df76::t_54dd91eef3ecd4 163-166,171
+internal/commands/doctor.go
+  s_fafd33f480df76::t_acae33e24407cf 18
+  s_fafd33f480df76::t_4ec32619270795 244-245
+internal/commands/whoami_test.go
+  s_fafd33f480df76::t_71412b3a8a3129 12-14
+  s_fafd33f480df76::t_8667d78d74006d 120-165
+internal/commands/auth_test.go
+  s_fafd33f480df76::t_091ecc5b04a6ea 7-8
+  s_fafd33f480df76::t_d1de5f36ce6863 156-175
+internal/commands/whoami.go
+  s_fafd33f480df76::t_7eadf391835588 71,85-89
+  s_fafd33f480df76::t_8a4ac85e1babc5 11,19,22,40-44,47-48,50,54,60-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "9781a23feebf3120e18b7eaab50913fd7cd87781",
+  "prompts": {},
+  "sessions": {
+    "s_fafd33f480df76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f93f7f0-bada-45ce-8f1a-a380430e05a8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Djalma Araújo <djalma@nossomos.cc>"
+    }
+  }
+}
