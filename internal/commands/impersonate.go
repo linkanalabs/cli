@@ -12,6 +12,7 @@ import (
 	"github.com/linkanalabs/cli/internal/auth"
 	"github.com/linkanalabs/cli/internal/client"
 	"github.com/linkanalabs/cli/internal/config"
+	"github.com/linkanalabs/cli/internal/mode"
 	"github.com/linkanalabs/cli/internal/output"
 )
 
@@ -129,17 +130,21 @@ func runImpersonateStart(cmd *cobra.Command, ref string) error {
 	if token == "" {
 		return fmt.Errorf("not authenticated; run `lk auth login`")
 	}
+	m, err := mode.Load(cfg.BaseURL)
+	if err != nil {
+		return fmt.Errorf("loading mode: %w", err)
+	}
 
 	// Best-effort revoke any existing impersonation before minting a new one.
 	if prior, _ := auth.LoadImpersonation(cfg.BaseURL); prior != nil {
-		priorAPI := newAPI(cfg.BaseURL, prior.Token)
+		priorAPI := newAPI(cfg.BaseURL, prior.Token, m)
 		if revokeErr := priorAPI.StopImpersonation(cmd.Context()); revokeErr != nil {
 			_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
 				"aviso: revogação do token anterior falhou (%v); seguindo com nova impersonação\n", revokeErr)
 		}
 	}
 
-	api := newAPI(cfg.BaseURL, token)
+	api := newAPI(cfg.BaseURL, token, m)
 
 	ttl, _ := cmd.Flags().GetDuration("ttl")
 	imp, err := api.StartImpersonation(cmd.Context(), ref, ttl)
@@ -188,8 +193,12 @@ func newImpersonateStopCmd() *cobra.Command {
 			if imp == nil {
 				return output.Render(cmd.OutOrStdout(), formatFlag(cmd), impersonateStopView{stopped: false})
 			}
+			m, err := mode.Load(cfg.BaseURL)
+			if err != nil {
+				return fmt.Errorf("loading mode: %w", err)
+			}
 			// Best-effort revoke using the impersonation token itself.
-			api := newAPI(cfg.BaseURL, imp.Token)
+			api := newAPI(cfg.BaseURL, imp.Token, m)
 			if stopErr := api.StopImpersonation(cmd.Context()); stopErr != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "aviso: revogação remota falhou (%v); limpando estado local mesmo assim\n", stopErr)
 			}

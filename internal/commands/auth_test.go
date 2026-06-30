@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/linkanalabs/cli/internal/auth"
+	"github.com/linkanalabs/cli/internal/mode"
 )
 
 // runWithStdin runs the CLI with the given stdin contents.
@@ -156,6 +157,26 @@ func TestStatusResultStyledNotAuthenticated(t *testing.T) {
 	r := statusResult{Authenticated: false, BaseURL: "http://x"}
 	if !strings.Contains(r.Styled(), "Not authenticated") {
 		t.Errorf("styled = %q", r.Styled())
+	}
+}
+
+func TestAuthStatusShowsMode(t *testing.T) {
+	authEnv(t)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+	// Save write mode for the active base URL.
+	if err := mode.Save("http://localhost:3000", mode.Write); err != nil {
+		t.Fatal(err)
+	}
+	var out, errOut bytes.Buffer
+	code := run([]string{"auth", "status", "--format", "json"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	if !strings.Contains(out.String(), `"mode"`) {
+		t.Errorf("output missing mode field: %q", out.String())
+	}
+	if !strings.Contains(out.String(), `"write"`) {
+		t.Errorf("output should contain write mode: %q", out.String())
 	}
 }
 

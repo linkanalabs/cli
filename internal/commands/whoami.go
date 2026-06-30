@@ -10,6 +10,7 @@ import (
 	"github.com/linkanalabs/cli/internal/auth"
 	"github.com/linkanalabs/cli/internal/client"
 	"github.com/linkanalabs/cli/internal/config"
+	"github.com/linkanalabs/cli/internal/mode"
 	"github.com/linkanalabs/cli/internal/output"
 )
 
@@ -24,9 +25,10 @@ var errImpersonationExpired = errors.New("impersonation expired")
 var timeNow = time.Now
 
 // newAPI is a seam so tests/commands can substitute the backend client.
-var newAPI = func(baseURL, token string) client.API {
+var newAPI = func(baseURL, token string, m mode.Mode) client.API {
 	c := client.New(baseURL)
 	c.Token = token
+	c.Mode = m
 	return c
 }
 
@@ -45,6 +47,10 @@ func authedClient() (client.API, string, *auth.Impersonation, error) {
 	if err != nil {
 		return nil, "", nil, err
 	}
+	m, err := mode.Load(cfg.BaseURL)
+	if err != nil {
+		return nil, cfg.BaseURL, nil, fmt.Errorf("loading mode: %w", err)
+	}
 	imp, err := auth.LoadImpersonation(cfg.BaseURL)
 	if err != nil {
 		return nil, cfg.BaseURL, nil, err
@@ -53,7 +59,7 @@ func authedClient() (client.API, string, *auth.Impersonation, error) {
 		if imp.Expired(timeNow()) {
 			return nil, cfg.BaseURL, imp, errImpersonationExpired
 		}
-		return newAPI(cfg.BaseURL, imp.Token), cfg.BaseURL, imp, nil
+		return newAPI(cfg.BaseURL, imp.Token, m), cfg.BaseURL, imp, nil
 	}
 	token, _, err := authLoad(cfg.BaseURL)
 	if err != nil {
@@ -62,7 +68,7 @@ func authedClient() (client.API, string, *auth.Impersonation, error) {
 	if token == "" {
 		return nil, cfg.BaseURL, nil, errNoToken
 	}
-	return newAPI(cfg.BaseURL, token), cfg.BaseURL, nil, nil
+	return newAPI(cfg.BaseURL, token, m), cfg.BaseURL, nil, nil
 }
 
 // resolveAPI wraps authedClient and maps known errors to user-facing messages.
@@ -104,20 +110,21 @@ func unauthorizedErr(imp *auth.Impersonation) error {
 	return fmt.Errorf("token rejected (401); run `lk auth login` to re-authenticate")
 }
 
-// identityView wraps an identity for human-friendly styled output.
-type identityView struct {
+// whoamiView wraps an identity and its resolved mode for output.
+type whoamiView struct {
 	*client.Identity
+	Mode mode.Mode `json:"mode"`
 }
 
 // Styled renders the identity as text.
-func (v identityView) Styled() string {
+func (v whoamiView) Styled() string {
 	buyer := "(none)"
 	if v.BuyerID != nil {
 		buyer = *v.BuyerID
 	}
 	return fmt.Sprintf(
-		"%s <%s>\n  id:      %s\n  role:    %s\n  buyer:   %s\n  staff:   %t\n",
-		v.Name, v.Email, v.ID, v.Role, buyer, v.IsStaff,
+		"%s <%s>\n  id:      %s\n  role:    %s\n  buyer:   %s\n  staff:   %t\n  mode:    %s\n",
+		v.Name, v.Email, v.ID, v.Role, buyer, v.IsStaff, v.Mode,
 	)
 }
 
@@ -143,7 +150,15 @@ func newWhoamiCmd() *cobra.Command {
 					"⚠ impersonando %s (buyer %s, expira %s); original: %s\n",
 					imp.TargetEmail, imp.BuyerID, imp.ExpiresAt.Format(time.RFC3339), imp.ImpersonatorEmail)
 			}
-			return output.Render(cmd.OutOrStdout(), formatFlag(cmd), identityView{Identity: id})
+			origin, err := activeBaseURL()
+			if err != nil {
+				return err
+			}
+			m, err := mode.Load(origin)
+			if err != nil {
+				return fmt.Errorf("loading mode: %w", err)
+			}
+			return output.Render(cmd.OutOrStdout(), formatFlag(cmd), whoamiView{Identity: id, Mode: m})
 		},
 	}
 }

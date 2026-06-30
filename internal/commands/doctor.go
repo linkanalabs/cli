@@ -15,6 +15,7 @@ import (
 	"github.com/linkanalabs/cli/internal/auth"
 	"github.com/linkanalabs/cli/internal/client"
 	"github.com/linkanalabs/cli/internal/config"
+	"github.com/linkanalabs/cli/internal/mode"
 	"github.com/linkanalabs/cli/internal/output"
 )
 
@@ -240,7 +241,8 @@ func newDoctorCmd() *cobra.Command {
 				in.baseURL = cfg.BaseURL
 				if token, _, err := auth.Load(cfg.BaseURL); err == nil && token != "" {
 					in.hasToken = true
-					api := newAPI(cfg.BaseURL, token)
+					m, _ := mode.Load(cfg.BaseURL)
+					api := newAPI(cfg.BaseURL, token, m)
 					in.identity = api.GetIdentity
 				}
 			}

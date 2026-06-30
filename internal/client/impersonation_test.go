@@ -9,7 +9,18 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/linkanalabs/cli/internal/mode"
 )
+
+// newWriteClient returns a client already in write mode. These tests exercise
+// the HTTP layer of the impersonation verbs; the read/write gate itself is
+// covered in client_test.go.
+func newWriteClient(url string) *Client {
+	c := New(url)
+	c.Mode = mode.Write
+	return c
+}
 
 func TestStartImpersonationSuccess(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +43,7 @@ func TestStartImpersonationSuccess(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := New(srv.URL)
+	c := newWriteClient(srv.URL)
 	c.Token = "lkn_orig_tok"
 	imp, err := c.StartImpersonation(context.Background(), "suporte@linkana.com", time.Hour)
 	if err != nil {
@@ -58,7 +69,7 @@ func TestStartImpersonationOmitsZeroTTL(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := New(srv.URL)
+	c := newWriteClient(srv.URL)
 	if _, err := c.StartImpersonation(context.Background(), "x@linkana.com", 0); err != nil {
 		t.Fatalf("error: %v", err)
 	}
@@ -70,7 +81,7 @@ func TestStartImpersonationUnauthorized(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if _, err := New(srv.URL).StartImpersonation(context.Background(), "x@linkana.com", 0); !errors.Is(err, ErrUnauthorized) {
+	if _, err := newWriteClient(srv.URL).StartImpersonation(context.Background(), "x@linkana.com", 0); !errors.Is(err, ErrUnauthorized) {
 		t.Errorf("error = %v, want ErrUnauthorized", err)
 	}
 }
@@ -82,7 +93,7 @@ func TestStartImpersonationServerError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, err := New(srv.URL).StartImpersonation(context.Background(), "x@cliente.com", 0)
+	_, err := newWriteClient(srv.URL).StartImpersonation(context.Background(), "x@cliente.com", 0)
 	if err == nil {
 		t.Fatal("expected error on 422")
 	}
@@ -98,7 +109,7 @@ func TestStartImpersonationBadJSON(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if _, err := New(srv.URL).StartImpersonation(context.Background(), "x@linkana.com", 0); err == nil {
+	if _, err := newWriteClient(srv.URL).StartImpersonation(context.Background(), "x@linkana.com", 0); err == nil {
 		t.Error("expected decode error")
 	}
 }
@@ -112,7 +123,7 @@ func TestStopImpersonationSuccess(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := New(srv.URL)
+	c := newWriteClient(srv.URL)
 	c.Token = "lkn_imp_tok"
 	if err := c.StopImpersonation(context.Background()); err != nil {
 		t.Fatalf("StopImpersonation() error: %v", err)
@@ -127,7 +138,7 @@ func TestStopImpersonationUnauthorizedIsOK(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if err := New(srv.URL).StopImpersonation(context.Background()); err != nil {
+	if err := newWriteClient(srv.URL).StopImpersonation(context.Background()); err != nil {
 		t.Errorf("StopImpersonation() on 401 should be nil, got %v", err)
 	}
 }
@@ -138,7 +149,7 @@ func TestStopImpersonationServerError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	err := New(srv.URL).StopImpersonation(context.Background())
+	err := newWriteClient(srv.URL).StopImpersonation(context.Background())
 	if err == nil {
 		t.Fatal("expected error on 500")
 	}
@@ -185,7 +196,7 @@ func TestStartImpersonationSubSecondTTLRoundsUp(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := New(srv.URL)
+	c := newWriteClient(srv.URL)
 	if _, err := c.StartImpersonation(context.Background(), "x@x.com", 500*time.Millisecond); err != nil {
 		t.Fatalf("StartImpersonation() error: %v", err)
 	}
@@ -201,7 +212,7 @@ func TestStartImpersonationRejectsNegativeTTL(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := New(srv.URL)
+	c := newWriteClient(srv.URL)
 	_, err := c.StartImpersonation(context.Background(), "x@linkana.com", -5*time.Minute)
 	if err == nil {
 		t.Fatal("expected error for negative ttl")
