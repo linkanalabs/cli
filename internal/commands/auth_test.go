@@ -365,3 +365,52 @@ func TestAuthStatusWarnsOnImpersonationLoadError(t *testing.T) {
 		t.Fatalf("stdout is not valid JSON: %v; got %q", err, out.String())
 	}
 }
+
+// TestAuthStatusAuthenticatedViaActiveImpersonation: an active (non-expired)
+// impersonation reports authenticated even with no base token — the impersonation
+// token takes precedence and is usable.
+func TestAuthStatusAuthenticatedViaActiveImpersonation(t *testing.T) {
+	authEnv(t) // no LK_TOKEN, no stored token => base token absent
+	future := time.Now().Add(time.Hour)
+	_ = auth.SaveImpersonation("http://localhost:3000", auth.Impersonation{
+		Token: "lkn_imp", TargetEmail: "b@linkana.com", BuyerID: "b1", ExpiresAt: future,
+	})
+	swapTimeNow(t, func() time.Time { return time.Now() })
+
+	var out, errOut bytes.Buffer
+	if code := run([]string{"auth", "status", "--format", "json"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	var m map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out.String())), &m); err != nil {
+		t.Fatalf("invalid JSON: %v; got %q", err, out.String())
+	}
+	if m["authenticated"] != true {
+		t.Errorf("authenticated = %v, want true (active impersonation, no base token)", m["authenticated"])
+	}
+}
+
+// TestAuthStatusNotAuthenticatedWhenImpersonationExpired: an expired impersonation
+// is sticky (hard error, no fallback), so status reports not authenticated even
+// when a base token exists.
+func TestAuthStatusNotAuthenticatedWhenImpersonationExpired(t *testing.T) {
+	authEnv(t)
+	t.Setenv("LK_TOKEN", "lkn_orig_tok")
+	past := time.Now().Add(-time.Hour)
+	_ = auth.SaveImpersonation("http://localhost:3000", auth.Impersonation{
+		Token: "lkn_exp", TargetEmail: "old@linkana.com", BuyerID: "b1", ExpiresAt: past,
+	})
+	swapTimeNow(t, func() time.Time { return time.Now() })
+
+	var out, errOut bytes.Buffer
+	if code := run([]string{"auth", "status", "--format", "json"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	var m map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out.String())), &m); err != nil {
+		t.Fatalf("invalid JSON: %v; got %q", err, out.String())
+	}
+	if m["authenticated"] != false {
+		t.Errorf("authenticated = %v, want false (expired impersonation)", m["authenticated"])
+	}
+}

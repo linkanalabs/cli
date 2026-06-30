@@ -194,13 +194,20 @@ func newAuthStatusCmd() *cobra.Command {
 					"aviso: não foi possível ler o contexto de impersonação: %v\n", impErr)
 			}
 			if imp != nil {
+				expired := imp.Expired(timeNow())
 				res.Impersonation = &statusImpersonation{
 					TargetEmail:       imp.TargetEmail,
 					BuyerID:           imp.BuyerID,
 					ExpiresAt:         imp.ExpiresAt,
 					ImpersonatorEmail: imp.ImpersonatorEmail,
-					Expired:           imp.Expired(timeNow()),
+					Expired:           expired,
 				}
+				// Impersonation context takes precedence over the base token
+				// (see CLAUDE.md). While active, auth status reflects the
+				// impersonation: authenticated only while not expired. An
+				// expired context is sticky — a hard error with no fallback to
+				// the original token — so it reads as not authenticated.
+				res.Authenticated = !expired
 			}
 
 			// Render handles format resolution (auto → JSON when piped). The

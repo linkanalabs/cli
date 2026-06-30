@@ -194,3 +194,19 @@ func TestStartImpersonationSubSecondTTLRoundsUp(t *testing.T) {
 		t.Errorf("ttl_seconds = %v, want 1 (math.Ceil of 0.5s)", gotTTL)
 	}
 }
+
+func TestStartImpersonationRejectsNegativeTTL(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Error("server must not be called for a negative ttl")
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL)
+	_, err := c.StartImpersonation(context.Background(), "x@linkana.com", -5*time.Minute)
+	if err == nil {
+		t.Fatal("expected error for negative ttl")
+	}
+	if !strings.Contains(err.Error(), "negative") {
+		t.Errorf("error = %v, want mention of negative", err)
+	}
+}
