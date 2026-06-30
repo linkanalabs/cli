@@ -1,0 +1,44 @@
+internal/commands/mode_test.go
+  s_fafd33f480df76::t_45e089ce8c3cb9 66,88-99
+  s_fafd33f480df76::t_48274683241479 29-35,60-65
+CLAUDE.md
+  s_fafd33f480df76::t_78011ab101dce2 79-95
+  s_fafd33f480df76::t_632ababed637d3 59-60,64
+internal/client/client_test.go
+  s_fafd33f480df76::t_83ca5ebd62ca9b 127,132-133,139,144-157
+internal/commands/whoami.go
+  s_fafd33f480df76::t_ff89fc398d9563 27-29,32,36,39,43,45
+  s_fafd33f480df76::t_af583a11cab0b1 72
+internal/mode/mode_test.go
+  s_fafd33f480df76::t_11fa9706417dee 164
+  s_fafd33f480df76::t_456bd28c84c8fb 340-355
+  s_fafd33f480df76::t_2cc37272d9ccca 295,299-306,309-310,314-339,371-385
+  s_fafd33f480df76::t_8882fd48b3bfd8 356-370
+internal/commands/whoami_test.go
+  s_fafd33f480df76::t_b29c7e64bce561 194
+  s_fafd33f480df76::t_3aabd18a287196 144
+  s_fafd33f480df76::t_aabca842c30d95 153,159-167,173-193,195-199
+  s_fafd33f480df76::t_44f6724401579a 8
+internal/commands/supplier.go
+  s_fafd33f480df76::t_36b54eb6907dd0 80,105
+internal/mode/mode.go
+  s_fafd33f480df76::t_15f068c21b1d2c 89
+  s_fafd33f480df76::t_16bc6a61327763 23-31
+  s_fafd33f480df76::t_34d2d2500ef437 84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "3e7100707703be6d125ed25f114b6d5f01006a39",
+  "prompts": {},
+  "sessions": {
+    "s_fafd33f480df76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f93f7f0-bada-45ce-8f1a-a380430e05a8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Djalma Araújo <djalma@nossomos.cc>"
+    }
+  }
+}
