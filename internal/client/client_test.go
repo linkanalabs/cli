@@ -2,9 +2,12 @@ package client
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/linkanalabs/cli/internal/mode"
 )
 
 func TestNewTrimsTrailingSlash(t *testing.T) {
@@ -108,5 +111,41 @@ func TestGetTransportError(t *testing.T) {
 	c := New(url)
 	if _, err := c.Get(context.Background(), "/up"); err == nil {
 		t.Fatal("expected transport error against closed server")
+	}
+}
+
+func TestDoBlocksNonGetInReadMode(t *testing.T) {
+	c := New("http://example")
+	// default Mode is read (zero value "")
+	_, err := c.do(context.Background(), http.MethodPost, "/x", nil)
+	if !errors.Is(err, ErrReadOnly) {
+		t.Fatalf("want ErrReadOnly, got %v", err)
+	}
+}
+
+func TestDoAllowsNonGetInWriteMode(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("method = %s", r.Method)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	c := New(srv.URL)
+	c.Mode = mode.Write
+	resp, err := c.do(context.Background(), http.MethodPost, "/x", nil)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		t.Fatalf("do = (%v, %v)", resp, err)
+	}
+}
+
+func TestGetAlwaysAllowedInReadMode(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	c := New(srv.URL) // read mode
+	if _, err := c.Get(context.Background(), "/up"); err != nil {
+		t.Fatalf("Get in read mode should work: %v", err)
 	}
 }
