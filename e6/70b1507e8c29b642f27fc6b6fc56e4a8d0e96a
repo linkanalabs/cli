@@ -1,0 +1,25 @@
+internal/commands/auth_test.go
+  s_fafd33f480df76::t_51c649a96e3328 368-416
+internal/commands/auth.go
+  s_fafd33f480df76::t_fb779fe7e5f54a 197,203,205-210
+internal/client/impersonation.go
+  s_fafd33f480df76::t_f2b9a258b5d0d8 34-36
+internal/client/impersonation_test.go
+  s_fafd33f480df76::t_51c649a96e3328 197-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "e670b1507e8c29b642f27fc6b6fc56e4a8d0e96a",
+  "prompts": {},
+  "sessions": {
+    "s_fafd33f480df76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f93f7f0-bada-45ce-8f1a-a380430e05a8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Djalma Araújo <djalma@nossomos.cc>"
+    }
+  }
+}
