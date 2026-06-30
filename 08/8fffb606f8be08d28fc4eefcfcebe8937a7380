@@ -1,0 +1,43 @@
+internal/mode/mode.go
+  s_fafd33f480df76::t_2a42873a819725 22,30
+  s_fafd33f480df76::t_3adf80e9cb397a 115
+  s_fafd33f480df76::t_71374c85e14ac4 12,16-18
+  s_fafd33f480df76::t_13d172680d6a80 1-11,13-15,19-21,31-93,99-102,106-107,110-111,113-114,116-119
+  s_fafd33f480df76::t_78f6eac77d535a 104-105,108-109,112
+  s_fafd33f480df76::t_856c0d754b7b39 23-29
+  s_fafd33f480df76::t_bdd8b86f6588fb 94-97
+  s_fafd33f480df76::t_6b755cff33c7c9 98,103
+internal/mode/mode_test.go
+  s_fafd33f480df76::t_c675137fb500f8 294-315,317,322,325,329-330,335,338-339,344-345
+  s_fafd33f480df76::t_4f2f9e025cebc9 269
+  s_fafd33f480df76::t_b94ee7dddc0787 316,318-321,323-324,326-328,331-334,336-337,340-343
+  s_fafd33f480df76::t_bde97b737272ec 243-245
+  s_fafd33f480df76::t_c8aa6bba4f6bf6 346-358,360-380,382-402,404-411
+  s_fafd33f480df76::t_412b3dc48b11cc 381
+  s_fafd33f480df76::t_52bcb631f44ee9 208
+  s_fafd33f480df76::t_8196f675bee2af 3-7,33-137
+  s_fafd33f480df76::t_f3ce350d37d37b 169
+  s_fafd33f480df76::t_b1aa0bfe4b2537 403
+  s_fafd33f480df76::t_5e5d58e267ff14 140-168,170-207,209-214
+  s_fafd33f480df76::t_21e20c09a1fa2f 215-242,246-261
+  s_fafd33f480df76::t_3492a735dec01a 359
+  s_fafd33f480df76::t_f9cfcc0bb01d7e 285
+  s_fafd33f480df76::t_b5bfd2d3bb7ecf 1-2,8-32,138-139
+  s_fafd33f480df76::t_20d49d24bbe617 262-268,270-284,286-293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "088fffb606f8be08d28fc4eefcfcebe8937a7380",
+  "prompts": {},
+  "sessions": {
+    "s_fafd33f480df76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f93f7f0-bada-45ce-8f1a-a380430e05a8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Djalma Araújo <djalma@nossomos.cc>"
+    }
+  }
+}
