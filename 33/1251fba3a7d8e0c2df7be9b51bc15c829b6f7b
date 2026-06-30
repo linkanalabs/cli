@@ -1,0 +1,21 @@
+docs/superpowers/specs/2026-06-29-rw-mode-design.md
+  s_fafd33f480df76::t_5d7e9758db1e5b 1-140
+docs/superpowers/plans/2026-06-29-rw-mode.md
+  s_fafd33f480df76::t_97082c877fd805 1-595
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "331251fba3a7d8e0c2df7be9b51bc15c829b6f7b",
+  "prompts": {},
+  "sessions": {
+    "s_fafd33f480df76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f93f7f0-bada-45ce-8f1a-a380430e05a8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Djalma Araújo <djalma@nossomos.cc>"
+    }
+  }
+}
