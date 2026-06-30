@@ -44,6 +44,7 @@ func newRootCmd() *cobra.Command {
 	root.AddCommand(newWhoamiCmd())
 	root.AddCommand(newSupplierCmd())
 	root.AddCommand(newImpersonateCmd())
+	root.AddCommand(newModeCmd())
 	return root
 }
 
