@@ -20,13 +20,15 @@ const (
 )
 
 var (
-	userHomeDir = os.UserHomeDir
-	createTemp  = os.CreateTemp
-	osRename    = os.Rename
-	osRemove    = os.Remove
-	fileChmod   = (*os.File).Chmod
-	fileWrite   = (*os.File).Write
-	fileClose   = (*os.File).Close
+	userHomeDir     = os.UserHomeDir
+	createTemp      = os.CreateTemp
+	osRename        = os.Rename
+	osRemove        = os.Remove
+	fileChmod       = (*os.File).Chmod
+	fileWrite       = (*os.File).Write
+	fileClose       = (*os.File).Close
+	osMkdirAll      = os.MkdirAll // seam so tests can force the MkdirAll error in Save
+	saveStatePathFn = statePath   // seam for the statePath call inside Save
 )
 
 func statePath() (string, error) {
@@ -79,12 +81,12 @@ func Save(origin string, m Mode) error {
 		return err
 	}
 	all[origin] = m
-	path, err := statePath()
+	path, err := saveStatePathFn()
 	if err != nil {
 		return err
 	}
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	if err := osMkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("creating modes dir %s: %w", dir, err)
 	}
 	data, err := json.MarshalIndent(all, "", "  ")

@@ -32,7 +32,8 @@ var newAPI = func(baseURL, token string, m mode.Mode) client.API {
 	return c
 }
 
-// authedClient resolves the active credential for the configured backend.
+// authedClient resolves the active credential for the configured backend and
+// the origin's read/write mode (injected into the client — see client.do).
 //
 //   - impersonation context present & not expired → use the impersonation token.
 //   - impersonation context present & expired      → errImpersonationExpired
@@ -42,48 +43,48 @@ var newAPI = func(baseURL, token string, m mode.Mode) client.API {
 // Note: auth.LoadImpersonation reads the keychain/file store directly and is
 // NOT affected by LK_TOKEN. LK_TOKEN overrides the original token only; a
 // stored impersonation context always takes precedence over the ambient env var.
-func authedClient() (client.API, string, *auth.Impersonation, error) {
+func authedClient() (client.API, string, *auth.Impersonation, mode.Mode, error) {
 	cfg, err := config.Load()
 	if err != nil {
-		return nil, "", nil, err
+		return nil, "", nil, mode.Read, err
 	}
 	m, err := mode.Load(cfg.BaseURL)
 	if err != nil {
-		return nil, cfg.BaseURL, nil, fmt.Errorf("loading mode: %w", err)
+		return nil, cfg.BaseURL, nil, mode.Read, fmt.Errorf("loading mode: %w", err)
 	}
 	imp, err := auth.LoadImpersonation(cfg.BaseURL)
 	if err != nil {
-		return nil, cfg.BaseURL, nil, err
+		return nil, cfg.BaseURL, nil, m, err
 	}
 	if imp != nil {
 		if imp.Expired(timeNow()) {
-			return nil, cfg.BaseURL, imp, errImpersonationExpired
+			return nil, cfg.BaseURL, imp, m, errImpersonationExpired
 		}
-		return newAPI(cfg.BaseURL, imp.Token, m), cfg.BaseURL, imp, nil
+		return newAPI(cfg.BaseURL, imp.Token, m), cfg.BaseURL, imp, m, nil
 	}
 	token, _, err := authLoad(cfg.BaseURL)
 	if err != nil {
-		return nil, cfg.BaseURL, nil, err
+		return nil, cfg.BaseURL, nil, m, err
 	}
 	if token == "" {
-		return nil, cfg.BaseURL, nil, errNoToken
+		return nil, cfg.BaseURL, nil, m, errNoToken
 	}
-	return newAPI(cfg.BaseURL, token, m), cfg.BaseURL, nil, nil
+	return newAPI(cfg.BaseURL, token, m), cfg.BaseURL, nil, m, nil
 }
 
 // resolveAPI wraps authedClient and maps known errors to user-facing messages.
-func resolveAPI() (client.API, *auth.Impersonation, error) {
-	api, _, imp, err := authedClient()
+func resolveAPI() (client.API, *auth.Impersonation, mode.Mode, error) {
+	api, _, imp, m, err := authedClient()
 	if err == nil {
-		return api, imp, nil
+		return api, imp, m, nil
 	}
 	switch {
 	case errors.Is(err, errNoToken):
-		return nil, nil, fmt.Errorf("not authenticated; run `lk auth login`")
+		return nil, nil, m, fmt.Errorf("not authenticated; run `lk auth login`")
 	case errors.Is(err, errImpersonationExpired):
-		return nil, imp, impersonationExpiredErr(imp)
+		return nil, imp, m, impersonationExpiredErr(imp)
 	default:
-		return nil, imp, err
+		return nil, imp, m, err
 	}
 }
 
@@ -134,7 +135,7 @@ func newWhoamiCmd() *cobra.Command {
 		Short: "Show the authenticated identity",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			api, imp, err := resolveAPI()
+			api, imp, m, err := resolveAPI()
 			if err != nil {
 				return err
 			}
@@ -149,14 +150,6 @@ func newWhoamiCmd() *cobra.Command {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
 					"⚠ impersonando %s (buyer %s, expira %s); original: %s\n",
 					imp.TargetEmail, imp.BuyerID, imp.ExpiresAt.Format(time.RFC3339), imp.ImpersonatorEmail)
-			}
-			origin, err := activeBaseURL()
-			if err != nil {
-				return err
-			}
-			m, err := mode.Load(origin)
-			if err != nil {
-				return fmt.Errorf("loading mode: %w", err)
 			}
 			return output.Render(cmd.OutOrStdout(), formatFlag(cmd), whoamiView{Identity: id, Mode: m})
 		},

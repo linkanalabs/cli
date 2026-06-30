@@ -161,7 +161,7 @@ func TestSaveReadOnlyDirFails(t *testing.T) {
 		t.Fatalf("initial Save: %v", err)
 	}
 
-	// Make config dir read-only to force mkdir failure
+	// Make config dir read-only to force CreateTemp failure on the already-created dir
 	lkDir := filepath.Join(configDir, "lk")
 	if err := os.Chmod(lkDir, 0o555); err != nil {
 		t.Fatalf("Chmod to ro: %v", err)
@@ -292,24 +292,97 @@ func TestSaveRenameError(t *testing.T) {
 	}
 }
 
-func TestSaveEncodingError(t *testing.T) {
+func TestLoadUnknownValueDefaultsToRead(t *testing.T) {
 	configDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", configDir)
 
-	// Create an existing file with valid data
-	if err := Save("https://test1", Write); err != nil {
-		t.Fatalf("initial Save: %v", err)
+	// Write an unknown mode value directly to modes.json.
+	lkDir := filepath.Join(configDir, "lk")
+	if err := os.MkdirAll(lkDir, 0o700); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	modesFile := filepath.Join(lkDir, "modes.json")
+	if err := os.WriteFile(modesFile, []byte(`{"https://x":"banana"}`), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
 	}
 
-	// This test verifies the happy path for encoding - actual JSON marshal
-	// errors are hard to trigger since we control the data structure.
-	// The code is implicitly tested by TestSaveLoadPerOrigin et al.
-	m, err := Load("https://test1")
+	// Load must fall back to Read for an unrecognised value.
+	got, err := Load("https://x")
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if m != Write {
-		t.Errorf("Load = %q, want write", m)
+	if got != Read {
+		t.Errorf("Load for unknown value = %q, want read", got)
+	}
+}
+
+func TestSaveWithLoadAllError(t *testing.T) {
+	configDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", configDir)
+
+	// Write garbage JSON so loadAll fails when Save calls it.
+	lkDir := filepath.Join(configDir, "lk")
+	if err := os.MkdirAll(lkDir, 0o700); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	modesFile := filepath.Join(lkDir, "modes.json")
+	if err := os.WriteFile(modesFile, []byte("{not valid json"), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	// Save must propagate the loadAll parse error.
+	err := Save("https://new", Write)
+	if err == nil {
+		t.Fatal("Save: expected error from loadAll, got nil")
+	}
+}
+
+func TestSaveSaveStatePathError(t *testing.T) {
+	// loadAll must succeed (XDG set, no existing file) then saveStatePathFn fails.
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	oldSaveStatePathFn := saveStatePathFn
+	t.Cleanup(func() { saveStatePathFn = oldSaveStatePathFn })
+	saveStatePathFn = func() (string, error) {
+		return "", os.ErrPermission
+	}
+
+	err := Save("https://x", Write)
+	if err == nil {
+		t.Fatal("Save: expected saveStatePathFn error, got nil")
+	}
+}
+
+func TestSaveMkdirAllError(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	oldMkdirAll := osMkdirAll
+	t.Cleanup(func() { osMkdirAll = oldMkdirAll })
+	osMkdirAll = func(_ string, _ os.FileMode) error {
+		return os.ErrPermission
+	}
+
+	err := Save("https://test", Write)
+	if err == nil {
+		t.Fatal("Save: expected MkdirAll error, got nil")
+	}
+}
+
+func TestSaveStatePath_HomeDirError(t *testing.T) {
+	// Unset XDG so statePath falls through to userHomeDir.
+	t.Setenv("XDG_CONFIG_HOME", "")
+
+	oldUserHomeDir := userHomeDir
+	t.Cleanup(func() { userHomeDir = oldUserHomeDir })
+	userHomeDir = func() (string, error) {
+		return "", os.ErrPermission
+	}
+
+	// Save must propagate the statePath error (which comes from loadAll's call to
+	// statePath before the second statePath call inside Save).
+	err := Save("https://x", Read)
+	if err == nil {
+		t.Fatal("Save: expected error when userHomeDir fails, got nil")
 	}
 }
 

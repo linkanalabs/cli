@@ -26,6 +26,13 @@ func TestModeWriteRequiresTTYAndConfirmation(t *testing.T) {
 	if code := runWith(strings.NewReader("write\n"), []string{"mode", "write"}, &o, &e); code == 0 {
 		t.Fatal("no-TTY should refuse")
 	}
+	// verify mode was NOT persisted after no-TTY refusal
+	o.Reset()
+	e.Reset()
+	runWith(strings.NewReader(""), []string{"mode", "--format", "json"}, &o, &e)
+	if !strings.Contains(o.String(), `"read"`) {
+		t.Errorf("mode should still be read after no-TTY refusal, got %q", o.String())
+	}
 
 	// TTY + correct word -> enables write
 	isStdinTTY = func() bool { return true }
@@ -50,6 +57,13 @@ func TestModeWriteRequiresTTYAndConfirmation(t *testing.T) {
 	if code := runWith(strings.NewReader("nope\n"), []string{"mode", "write"}, &o, &e); code == 0 {
 		t.Fatal("wrong confirmation should abort")
 	}
+	// verify mode was NOT persisted after wrong-word abort
+	o.Reset()
+	e.Reset()
+	runWith(strings.NewReader(""), []string{"mode", "--format", "json"}, &o, &e)
+	if !strings.Contains(o.String(), `"read"`) {
+		t.Errorf("mode should still be read after wrong-word abort, got %q", o.String())
+	}
 }
 
 func TestModeReadIsFree(t *testing.T) {
@@ -69,5 +83,17 @@ func TestModeShowStyledOutput(t *testing.T) {
 	}
 	if !strings.Contains(o.String(), "read") {
 		t.Errorf("styled output should contain mode, got %q", o.String())
+	}
+}
+
+func TestReadLineEOF(t *testing.T) {
+	// "hello" with no trailing newline — Read returns io.EOF; readLine must
+	// return the accumulated bytes and nil error.
+	got, err := readLine(strings.NewReader("hello"))
+	if err != nil {
+		t.Fatalf("readLine: %v", err)
+	}
+	if got != "hello" {
+		t.Errorf("readLine = %q, want %q", got, "hello")
 	}
 }

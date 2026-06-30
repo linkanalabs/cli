@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -140,7 +141,7 @@ func TestAuthedClientInjectsMode(t *testing.T) {
 		return c
 	}
 	defer func() { newAPI = prev }()
-	if _, _, _, err := authedClient(); err != nil {
+	if _, _, _, _, err := authedClient(); err != nil {
 		t.Fatalf("authedClient: %v", err)
 	}
 	if gotMode != mode.Write {
@@ -149,17 +150,52 @@ func TestAuthedClientInjectsMode(t *testing.T) {
 }
 
 func TestWhoamiShowsMode(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	authEnv(t)
 	srv := identityServer(t, http.StatusOK, `{"id":"u_1","email":"a@b.com","name":"Ana","role":"admin","buyer_id":null,"is_staff":true}`)
 	t.Setenv("LK_API_URL", srv.URL)
 	t.Setenv("LK_TOKEN", "lkn_abc_def")
+
+	// Persist write mode for this origin so whoami reflects it.
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	if err := mode.Save(cfg.BaseURL, mode.Write); err != nil {
+		t.Fatalf("mode.Save: %v", err)
+	}
 
 	var out, errOut bytes.Buffer
 	code := run([]string{"whoami", "--format", "json"}, &out, &errOut)
 	if code != 0 {
 		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
 	}
-	if !strings.Contains(out.String(), `"mode"`) {
-		t.Errorf("output missing mode field: %q", out.String())
+	if !strings.Contains(out.String(), `"write"`) {
+		t.Errorf("output missing write mode value: %q", out.String())
+	}
+}
+
+func TestAuthedClientModeLoadError(t *testing.T) {
+	configDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", configDir)
+	t.Setenv("LK_NO_KEYRING", "1")
+	t.Setenv("LK_TOKEN", "lkn_x_y")
+	t.Setenv("LK_API_URL", "http://localhost:3000")
+
+	// Write garbage JSON to modes.json so mode.Load errors inside authedClient.
+	lkDir := configDir + "/lk"
+	if err := os.MkdirAll(lkDir, 0o700); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(lkDir+"/modes.json", []byte("{bad json"), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	_, _, _, _, err := authedClient()
+	if err == nil {
+		t.Fatal("authedClient: expected error from mode.Load, got nil")
+	}
+	if !strings.Contains(err.Error(), "loading mode") {
+		t.Errorf("error should mention 'loading mode': %v", err)
 	}
 }

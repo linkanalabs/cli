@@ -124,18 +124,36 @@ func TestDoBlocksNonGetInReadMode(t *testing.T) {
 }
 
 func TestDoAllowsNonGetInWriteMode(t *testing.T) {
+	var gotAccept, gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			t.Errorf("method = %s", r.Method)
 		}
+		gotAccept = r.Header.Get("Accept")
+		gotAuth = r.Header.Get("Authorization")
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
 	c := New(srv.URL)
 	c.Mode = mode.Write
+	c.Token = "lkn_test_tok"
 	resp, err := c.do(context.Background(), http.MethodPost, "/x", nil)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		t.Fatalf("do = (%v, %v)", resp, err)
+	}
+	if gotAccept != "application/json" {
+		t.Errorf("Accept = %q, want application/json", gotAccept)
+	}
+	if gotAuth != "Bearer lkn_test_tok" {
+		t.Errorf("Authorization = %q, want Bearer lkn_test_tok", gotAuth)
+	}
+}
+
+func TestDoWriteModeBuildError(t *testing.T) {
+	// A newline in the URL makes http.NewRequestWithContext return an error.
+	c := &Client{BaseURL: "http://host\n", HTTPClient: http.DefaultClient, Mode: mode.Write}
+	if _, err := c.do(context.Background(), http.MethodPost, "/x\n", nil); err == nil {
+		t.Fatal("expected request build error in write mode")
 	}
 }
 
