@@ -73,7 +73,7 @@ func TestStatePathHomeDirError(t *testing.T) {
 	}
 }
 
-func TestLoadAllUnmarshalError(t *testing.T) {
+func TestLoadCorruptFileFailsSafeToRead(t *testing.T) {
 	configDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", configDir)
 
@@ -86,9 +86,14 @@ func TestLoadAllUnmarshalError(t *testing.T) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	_, err := Load("https://test")
-	if err == nil {
-		t.Fatal("Load: expected parse error, got nil")
+	// A corrupt modes.json must fail safe to read, not error (else every
+	// command would be bricked). See cubic PR#6 finding.
+	got, err := Load("https://test")
+	if err != nil {
+		t.Fatalf("Load: corrupt file must not error, got %v", err)
+	}
+	if got != Read {
+		t.Errorf("Load on corrupt file = %q, want read", got)
 	}
 }
 
@@ -316,11 +321,11 @@ func TestLoadUnknownValueDefaultsToRead(t *testing.T) {
 	}
 }
 
-func TestSaveWithLoadAllError(t *testing.T) {
+func TestSaveRecoversFromCorruptFile(t *testing.T) {
 	configDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", configDir)
 
-	// Write garbage JSON so loadAll fails when Save calls it.
+	// A corrupt modes.json must not block Save; it rewrites a clean file.
 	lkDir := filepath.Join(configDir, "lk")
 	if err := os.MkdirAll(lkDir, 0o700); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
@@ -330,10 +335,12 @@ func TestSaveWithLoadAllError(t *testing.T) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	// Save must propagate the loadAll parse error.
-	err := Save("https://new", Write)
-	if err == nil {
-		t.Fatal("Save: expected error from loadAll, got nil")
+	if err := Save("https://new", Write); err != nil {
+		t.Fatalf("Save must recover from a corrupt file, got %v", err)
+	}
+	got, err := Load("https://new")
+	if err != nil || got != Write {
+		t.Fatalf("Load after recovery = (%q, %v), want (write, nil)", got, err)
 	}
 }
 

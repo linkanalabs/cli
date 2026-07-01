@@ -61,7 +61,8 @@ Esqueleto + `doctor` + **auth via PAT (CLI)** + **suppliers (SRM)** +
 `version`, `doctor` (version, runtime, config, filesystem, reachability `GET /up`,
 **Authentication** via `GET /my/identity.json` — pass/fail/skip, com skip-cascade
 quando o backend está inalcançável), `auth login|status|logout`, `whoami`,
-`supplier list|show`, `impersonate <ref>|stop|status`, `mode (show/write/read)`.
+`supplier list|show`, `impersonate <ref>|stop|status`, `mode`, `mode write`,
+`mode read`.
 
 `supplier list` → `GET /srm/suppliers` (array bare de suppliers). `supplier show
 <id>` → `GET /srm/suppliers/<id>/panel` (um supplier). Contrato do supplier:

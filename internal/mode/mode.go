@@ -52,7 +52,11 @@ func loadAll() (map[string]Mode, error) {
 	case err == nil:
 		m := map[string]Mode{}
 		if err := json.Unmarshal(data, &m); err != nil {
-			return nil, fmt.Errorf("parsing modes %s: %w", path, err)
+			// A corrupt modes.json must not brick the CLI. Fail safe to the
+			// restrictive default (read) by treating it as empty; a later Save
+			// rewrites a clean file. The gate fails closed-to-read, never
+			// closed-to-error.
+			return map[string]Mode{}, nil
 		}
 		return m, nil
 	case os.IsNotExist(err):

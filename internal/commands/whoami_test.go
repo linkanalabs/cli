@@ -182,13 +182,11 @@ func TestAuthedClientModeLoadError(t *testing.T) {
 	t.Setenv("LK_TOKEN", "lkn_x_y")
 	t.Setenv("LK_API_URL", "http://localhost:3000")
 
-	// Write garbage JSON to modes.json so mode.Load errors inside authedClient.
+	// Make modes.json a directory so mode.Load hits a read error (not a parse
+	// error, which now fails safe to read) and authedClient propagates it.
 	lkDir := configDir + "/lk"
-	if err := os.MkdirAll(lkDir, 0o700); err != nil {
+	if err := os.MkdirAll(lkDir+"/modes.json", 0o700); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
-	}
-	if err := os.WriteFile(lkDir+"/modes.json", []byte("{bad json"), 0o600); err != nil {
-		t.Fatalf("WriteFile: %v", err)
 	}
 
 	_, _, _, _, err := authedClient()
