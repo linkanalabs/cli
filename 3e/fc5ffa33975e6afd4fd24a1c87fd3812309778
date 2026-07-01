@@ -1,0 +1,28 @@
+CLAUDE.md
+  s_fafd33f480df76::t_416212701a020b 64
+  s_fafd33f480df76::t_5ecce889399881 91-94
+internal/commands/whoami_test.go
+  s_fafd33f480df76::t_5ffd2b57fd4064 185-186,188
+internal/mode/mode.go
+  s_fafd33f480df76::t_72b92127ee830c 55-59
+internal/mode/mode_test.go
+  s_fafd33f480df76::t_270fe319964f80 76
+  s_fafd33f480df76::t_03878bbeae5c7d 324,328,338-343
+  s_fafd33f480df76::t_a3472548652a72 89-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "3efc5ffa33975e6afd4fd24a1c87fd3812309778",
+  "prompts": {},
+  "sessions": {
+    "s_fafd33f480df76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f93f7f0-bada-45ce-8f1a-a380430e05a8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Djalma Araújo <djalma@nossomos.cc>"
+    }
+  }
+}
