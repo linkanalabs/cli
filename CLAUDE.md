@@ -76,6 +76,9 @@ o token **original** — mas uma impersonação ativa tem precedência sobre `LK
 
 Credencial: `lkn_<short>_<long>`; header `Authorization: Bearer <cred>`.
 
+Distribuição: repo **público**, release via GoReleaser + Homebrew tap próprio
+(`linkanalabs/homebrew-tap`) — ver seção "Release / Homebrew (LIN-6287)".
+
 Próximas fases: comandos de recurso (buyer), `lk schema` self-describing,
 `SKILL.md` embarcado.
 
@@ -122,6 +125,33 @@ read falha com aviso (best-effort).
 
 **Storage:** `internal/mode/` — `Load(origin)` / `Save(origin, m)`. Arquivo atômico
 (temp+rename, 0o600). Chave no mapa = `cfg.BaseURL`.
+
+## Release / Homebrew (LIN-6287)
+
+Instalação pública: `brew install linkanalabs/tap/lk`. O cask vive em
+`linkanalabs/homebrew-tap` (`Casks/lk.rb`) e é **gerado pelo GoReleaser** a cada
+release — nunca editar na mão.
+
+**Nunca publique release sem aprovação explícita.** Publicar = merge na `main` +
+tag `vX.Y.Z` (semver). O push da tag dispara `.github/workflows/release.yml`
+(GoReleaser), que builda darwin/linux/windows × amd64/arm64, cria o GitHub
+Release e commita o cask atualizado no tap.
+
+Pré-requisitos antes de tagear:
+- `make test`, `make lint` e `make cover` (≥95%) verdes na `main`.
+- `goreleaser check` limpo; mudou o `.goreleaser.yaml` → validar com
+  `goreleaser release --snapshot --clean` (build local, não publica).
+
+O CI precisa do secret `HOMEBREW_TAP_GITHUB_TOKEN` (fine-grained PAT com
+Contents write **só** no tap) — o `GITHUB_TOKEN` padrão não escreve em outro
+repo. **Armadilha:** se o release sair mas a atualização do tap falhar (token
+expirado etc.), o brew continua servindo a versão velha silenciosamente. Após
+cada release, verificar o commit novo em `linkanalabs/homebrew-tap` e rodar
+`brew upgrade lk` (ou `brew install linkanalabs/tap/lk`) + `lk version` pra
+confirmar a versão nova de verdade.
+
+Release local (contingência, com aprovação):
+`GITHUB_TOKEN=$(gh auth token) HOMEBREW_TAP_GITHUB_TOKEN=$(gh auth token) goreleaser release --clean`.
 
 ## Repositório backend (Rails)
 
