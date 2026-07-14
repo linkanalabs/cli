@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -55,5 +56,32 @@ func TestWhoamiConfigError(t *testing.T) {
 	var out, errOut bytes.Buffer
 	if code := run([]string{"whoami"}, &out, &errOut); code != 1 {
 		t.Fatalf("exit = %d, want 1", code)
+	}
+}
+
+func TestModeConfigError(t *testing.T) {
+	badConfigEnv(t)
+	var out, errOut bytes.Buffer
+	if code := run([]string{"mode"}, &out, &errOut); code != 1 {
+		t.Fatalf("mode: exit = %d, want 1", code)
+	}
+}
+
+func TestModeWriteConfigError(t *testing.T) {
+	badConfigEnv(t)
+	prev := isStdinTTY
+	defer func() { isStdinTTY = prev }()
+	isStdinTTY = func() bool { return true }
+	var out, errOut bytes.Buffer
+	if code := runWith(strings.NewReader("write\n"), []string{"mode", "write"}, &out, &errOut); code != 1 {
+		t.Fatalf("mode write config error: exit = %d, want 1", code)
+	}
+}
+
+func TestModeReadConfigError(t *testing.T) {
+	badConfigEnv(t)
+	var out, errOut bytes.Buffer
+	if code := run([]string{"mode", "read"}, &out, &errOut); code != 1 {
+		t.Fatalf("mode read config error: exit = %d, want 1", code)
 	}
 }

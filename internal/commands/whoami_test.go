@@ -5,10 +5,14 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/linkanalabs/cli/internal/auth"
+	"github.com/linkanalabs/cli/internal/client"
+	"github.com/linkanalabs/cli/internal/config"
+	"github.com/linkanalabs/cli/internal/mode"
 )
 
 // identityServer serves /my/identity.json with the given status and body.
@@ -112,5 +116,84 @@ func TestWhoamiServerError(t *testing.T) {
 	code := run([]string{"whoami"}, &out, &errOut)
 	if code != 1 {
 		t.Fatalf("exit = %d, want 1", code)
+	}
+}
+
+func TestAuthedClientInjectsMode(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("LK_NO_KEYRING", "1")
+	t.Setenv("LK_TOKEN", "lkn_x_y")
+	t.Setenv("LK_API_URL", "http://localhost:3000")
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := mode.Save(cfg.BaseURL, mode.Write); err != nil {
+		t.Fatal(err)
+	}
+	var gotMode mode.Mode
+	prev := newAPI
+	newAPI = func(baseURL, token string, m mode.Mode) client.API {
+		gotMode = m
+		c := client.New(baseURL)
+		c.Token = token
+		c.Mode = m
+		return c
+	}
+	defer func() { newAPI = prev }()
+	if _, _, _, _, err := authedClient(); err != nil {
+		t.Fatalf("authedClient: %v", err)
+	}
+	if gotMode != mode.Write {
+		t.Errorf("mode = %q, want write", gotMode)
+	}
+}
+
+func TestWhoamiShowsMode(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	authEnv(t)
+	srv := identityServer(t, http.StatusOK, `{"id":"u_1","email":"a@b.com","name":"Ana","role":"admin","buyer_id":null,"is_staff":true}`)
+	t.Setenv("LK_API_URL", srv.URL)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+
+	// Persist write mode for this origin so whoami reflects it.
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	if err := mode.Save(cfg.BaseURL, mode.Write); err != nil {
+		t.Fatalf("mode.Save: %v", err)
+	}
+
+	var out, errOut bytes.Buffer
+	code := run([]string{"whoami", "--format", "json"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	if !strings.Contains(out.String(), `"write"`) {
+		t.Errorf("output missing write mode value: %q", out.String())
+	}
+}
+
+func TestAuthedClientModeLoadError(t *testing.T) {
+	configDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", configDir)
+	t.Setenv("LK_NO_KEYRING", "1")
+	t.Setenv("LK_TOKEN", "lkn_x_y")
+	t.Setenv("LK_API_URL", "http://localhost:3000")
+
+	// Make modes.json a directory so mode.Load hits a read error (not a parse
+	// error, which now fails safe to read) and authedClient propagates it.
+	lkDir := configDir + "/lk"
+	if err := os.MkdirAll(lkDir+"/modes.json", 0o700); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+
+	_, _, _, _, err := authedClient()
+	if err == nil {
+		t.Fatal("authedClient: expected error from mode.Load, got nil")
+	}
+	if !strings.Contains(err.Error(), "loading mode") {
+		t.Errorf("error should mention 'loading mode': %v", err)
 	}
 }

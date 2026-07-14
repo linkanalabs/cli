@@ -77,7 +77,7 @@ func newSupplierListCmd() *cobra.Command {
 		Short: "List suppliers (GET /srm/suppliers)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			api, imp, err := resolveAPI()
+			api, imp, _, err := resolveAPI()
 			if err != nil {
 				return err
 			}
@@ -99,7 +99,7 @@ func newSupplierShowCmd() *cobra.Command {
 		Short: "Show a single supplier (GET /srm/suppliers/<id>/panel)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			api, imp, err := resolveAPI()
+			api, imp, _, err := resolveAPI()
 			if err != nil {
 				return err
 			}

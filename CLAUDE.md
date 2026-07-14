@@ -57,11 +57,12 @@ internal/output/   render JSON (default) / styled
 ## Estado atual
 
 Esqueleto + `doctor` + **auth via PAT (CLI)** + **suppliers (SRM)** +
-**impersonação (LIN-5921)**. Comandos:
+**impersonação (LIN-5921)** + **modo read/write (LIN-5985)**. Comandos:
 `version`, `doctor` (version, runtime, config, filesystem, reachability `GET /up`,
 **Authentication** via `GET /my/identity.json` — pass/fail/skip, com skip-cascade
 quando o backend está inalcançável), `auth login|status|logout`, `whoami`,
-`supplier list|show`, `impersonate <ref>|stop|status`.
+`supplier list|show`, `impersonate <ref>|stop|status`, `mode`, `mode write`,
+`mode read`.
 
 `supplier list` → `GET /srm/suppliers` (array bare de suppliers). `supplier show
 <id>` → `GET /srm/suppliers/<id>/panel` (um supplier). Contrato do supplier:
@@ -101,6 +102,26 @@ PAT do keychain/arquivo. `LK_TOKEN` sobrescreve apenas o token **original**; nã
 desativa nem bypassa uma impersonação ativa. Isso foi decidido intencionalmente para
 fechar um footgun de segurança (antes, `LK_TOKEN` silenciosamente ignorava a
 impersonação).
+
+## Modo read/write (LIN-5985)
+
+Cada origin tem um modo independente, persistido em `modes.json` (XDG). **Padrão: read.**
+
+- `lk mode` — exibe o modo atual do origin ativo (JSON ou styled).
+- `lk mode write` — habilita escrita; exige TTY interativo + digitação literal de `"write"`. Agente de IA não consegue habilitar write sem humano no terminal.
+- `lk mode read` — retorna ao modo read sem confirmação.
+
+**Gate em `client.do`:** qualquer requisição não-GET em modo read retorna `client.ErrReadOnly`
+(`CLI is in read mode`). Comandos de leitura (`GET`) sempre passam.
+
+**Credencial:** `authedClient()` injeta o modo no `client.Client`; impersonação ativa
+herda o modo — não há bypass silencioso. Os verbos de impersonação (`POST/DELETE
+/impersonation`) também passam pelo gate: `lk impersonate <ref>` exige modo write;
+`lk impersonate stop` sempre limpa o estado local, mas a revogação remota em modo
+read falha com aviso (best-effort).
+
+**Storage:** `internal/mode/` — `Load(origin)` / `Save(origin, m)`. Arquivo atômico
+(temp+rename, 0o600). Chave no mapa = `cfg.BaseURL`.
 
 ## Repositório backend (Rails)
 

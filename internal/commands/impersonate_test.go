@@ -10,8 +10,18 @@ import (
 	"time"
 
 	"github.com/linkanalabs/cli/internal/auth"
+	"github.com/linkanalabs/cli/internal/mode"
 	"github.com/linkanalabs/cli/internal/output"
 )
+
+// enableWrite puts the origin in write mode: `impersonate` mints/revokes via
+// POST/DELETE, which the read/write gate blocks in read mode.
+func enableWrite(t *testing.T, baseURL string) {
+	t.Helper()
+	if err := mode.Save(baseURL, mode.Write); err != nil {
+		t.Fatal(err)
+	}
+}
 
 // impersonateServer mocks the backend: GET /my/identity.json (impersonator),
 // POST /impersonation.json (mint), DELETE /impersonation.json (revoke).
@@ -39,6 +49,7 @@ func TestImpersonateStartStoresContext(t *testing.T) {
 	srv := impersonateServer(t)
 	t.Setenv("LK_API_URL", srv.URL)
 	t.Setenv("LK_TOKEN", "lkn_original")
+	enableWrite(t, srv.URL)
 
 	var out, errOut strings.Builder
 	code := run([]string{"impersonate", "suporte@linkana.com"}, &out, &errOut)
@@ -165,6 +176,7 @@ func TestImpersonateStartUnauthorized(t *testing.T) {
 	t.Cleanup(srv.Close)
 	t.Setenv("LK_API_URL", srv.URL)
 	t.Setenv("LK_TOKEN", "lkn_bad_tok")
+	enableWrite(t, srv.URL)
 
 	var out, errOut strings.Builder
 	if code := run([]string{"impersonate", "suporte@linkana.com"}, &out, &errOut); code != 1 {
@@ -304,6 +316,7 @@ func TestImpersonateStartRevokesExistingContext(t *testing.T) {
 	t.Cleanup(srv.Close)
 	t.Setenv("LK_API_URL", srv.URL)
 	t.Setenv("LK_TOKEN", "lkn_original")
+	enableWrite(t, srv.URL)
 
 	// Pre-store an existing impersonation.
 	_ = auth.SaveImpersonation(srv.URL, auth.Impersonation{
@@ -358,6 +371,7 @@ func TestImpersonateStartIdentityFailureWarns(t *testing.T) {
 	t.Cleanup(srv.Close)
 	t.Setenv("LK_API_URL", srv.URL)
 	t.Setenv("LK_TOKEN", "lkn_original")
+	enableWrite(t, srv.URL)
 
 	var out, errOut strings.Builder
 	code := run([]string{"impersonate", "suporte@linkana.com"}, &out, &errOut)
