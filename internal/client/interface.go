@@ -8,6 +8,7 @@ package client
 import (
 	"context"
 	"net/http"
+	"time"
 )
 
 // Response is a minimal HTTP response wrapper.
@@ -25,4 +26,6 @@ type API interface {
 	GetIdentity(ctx context.Context) (*Identity, error)
 	ListSuppliers(ctx context.Context) ([]Supplier, error)
 	GetSupplier(ctx context.Context, id string) (*Supplier, error)
+	StartImpersonation(ctx context.Context, userRef string, ttl time.Duration) (*Impersonation, error)
+	StopImpersonation(ctx context.Context) error
 }

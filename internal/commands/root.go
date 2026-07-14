@@ -43,6 +43,7 @@ func newRootCmd() *cobra.Command {
 	root.AddCommand(newAuthCmd())
 	root.AddCommand(newWhoamiCmd())
 	root.AddCommand(newSupplierCmd())
+	root.AddCommand(newImpersonateCmd())
 	return root
 }
 

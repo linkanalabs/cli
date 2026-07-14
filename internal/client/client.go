@@ -1,7 +1,9 @@
 package client
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -53,11 +55,14 @@ func ensureJSON(path string) string {
 	return path + query
 }
 
-// Get performs a GET request and returns the response.
-func (c *Client) Get(ctx context.Context, path string) (*Response, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.buildURL(path), nil)
+// do builds and executes a request, reading the full body into a Response.
+func (c *Client) do(ctx context.Context, method, path string, body io.Reader) (*Response, error) {
+	req, err := http.NewRequestWithContext(ctx, method, c.buildURL(path), body)
 	if err != nil {
 		return nil, fmt.Errorf("building request: %w", err)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
 	}
 	c.setHeaders(req)
 
@@ -67,12 +72,34 @@ func (c *Client) Get(ctx context.Context, path string) (*Response, error) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	body, err := io.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("reading response body: %w", err)
 	}
+	return &Response{StatusCode: resp.StatusCode, Body: b, Header: resp.Header}, nil
+}
 
-	return &Response{StatusCode: resp.StatusCode, Body: body, Header: resp.Header}, nil
+// Get performs a GET request and returns the response.
+func (c *Client) Get(ctx context.Context, path string) (*Response, error) {
+	return c.do(ctx, http.MethodGet, path, nil)
+}
+
+// Post performs a POST request with an optional JSON-encoded payload.
+func (c *Client) Post(ctx context.Context, path string, payload any) (*Response, error) {
+	var body io.Reader
+	if payload != nil {
+		b, err := json.Marshal(payload)
+		if err != nil {
+			return nil, fmt.Errorf("encoding request body: %w", err)
+		}
+		body = bytes.NewReader(b)
+	}
+	return c.do(ctx, http.MethodPost, path, body)
+}
+
+// Delete performs a DELETE request and returns the response.
+func (c *Client) Delete(ctx context.Context, path string) (*Response, error) {
+	return c.do(ctx, http.MethodDelete, path, nil)
 }
 
 func (c *Client) setHeaders(req *http.Request) {

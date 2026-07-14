@@ -56,11 +56,12 @@ internal/output/   render JSON (default) / styled
 
 ## Estado atual
 
-Esqueleto + `doctor` + **auth via PAT (CLI)** + **suppliers (SRM)**. Comandos:
+Esqueleto + `doctor` + **auth via PAT (CLI)** + **suppliers (SRM)** +
+**impersonação (LIN-5921)**. Comandos:
 `version`, `doctor` (version, runtime, config, filesystem, reachability `GET /up`,
 **Authentication** via `GET /my/identity.json` — pass/fail/skip, com skip-cascade
 quando o backend está inalcançável), `auth login|status|logout`, `whoami`,
-`supplier list|show`.
+`supplier list|show`, `impersonate <ref>|stop|status`.
 
 `supplier list` → `GET /srm/suppliers` (array bare de suppliers). `supplier show
 <id>` → `GET /srm/suppliers/<id>/panel` (um supplier). Contrato do supplier:
@@ -68,10 +69,47 @@ quando o backend está inalcançável), `auth login|status|logout`, `whoami`,
 hint `lk auth login`.
 
 Storage do token em `internal/auth`: OS keychain (`go-keyring`) com fallback de
-arquivo atômico (temp+rename, 0600), por origin (base_url). Override `LK_TOKEN`
-sempre vence; `LK_NO_KEYRING` força o fallback (usado em testes).
+arquivo atômico (temp+rename, 0600), por origin (base_url). `LK_TOKEN` substitui
+o token **original** — mas uma impersonação ativa tem precedência sobre `LK_TOKEN`
+(ver seção abaixo). `LK_NO_KEYRING` força o fallback (usado em testes).
 
 Credencial: `lkn_<short>_<long>`; header `Authorization: Bearer <cred>`.
 
 Próximas fases: comandos de recurso (buyer), `lk schema` self-describing,
 `SKILL.md` embarcado.
+
+## Impersonação / buyer-scope (LIN-5921)
+
+Comandos SRM são **buyer-scoped** (dependem de `current_user.buyer`). O agente não
+tem sessão de buyer próprio; para agir num buyer, **impersone o usuário `@linkana`
+daquele buyer**:
+
+- `lk impersonate <email|user_id>` — cunha um Access Token real no buyer+user alvo
+  (gate no backend: caller `linkana_admin?` + alvo `@linkana` + buyer com
+  `allow_linkana_support`). Default TTL 24h, `--ttl` ajusta. Parâmetro do request:
+  `target` (não `user`).
+- `lk impersonate status` — mostra a impersonação ativa (alvo, buyer, expiry).
+- `lk impersonate stop` — revoga o token no servidor e limpa o estado local.
+
+**Estado pegajoso:** enquanto há impersonação gravada, o token original fica
+inacessível. Expirou (relógio local) → comando falha com erro duro. Rejeitado pelo
+servidor (401) → mesmo erro duro. **Nunca** cai silenciosamente pro usuário
+original — escolha sempre `lk impersonate stop` ou re-impersonar.
+
+**Precedência de credencial:** contexto de impersonação ativo > `LK_TOKEN` >
+PAT do keychain/arquivo. `LK_TOKEN` sobrescreve apenas o token **original**; não
+desativa nem bypassa uma impersonação ativa. Isso foi decidido intencionalmente para
+fechar um footgun de segurança (antes, `LK_TOKEN` silenciosamente ignorava a
+impersonação).
+
+## Repositório backend (Rails)
+
+O backend Linkana fica em `../linkana` (working dir adicional). Referências da
+impersonação:
+
+- `app/controllers/impersonations_controller.rb` — endpoint JSON `POST/DELETE /impersonation`.
+- `app/policies/srm_policy.rb` — `enforce_impersonation_rules` (gate de escrita).
+- `lib/warden/pat_bearer_strategy.rb` — PAT Bearer → `current_user`.
+- `app/models/api_token.rb` + `app/models/api_tokens/build.rb` — Access Token.
+- `buyers.allow_linkana_support` — flag que libera suporte (toggle em
+  `app/controllers/srm_settings/access_configurations_controller.rb`).
