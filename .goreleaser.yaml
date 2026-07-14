@@ -40,5 +40,24 @@ checksum:
 changelog:
   use: github-native
 
+homebrew_casks:
+  - name: lk
+    repository:
+      owner: linkanalabs
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: "https://github.com/linkanalabs/cli"
+    description: "Linkana CLI — parametrização programática de buyers"
+    commit_author:
+      name: goreleaser-bot
+      email: bot@goreleaser.com
+    # Binário não assinado: remove o quarantine xattr pro Gatekeeper não bloquear.
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/lk"]
+          end
+
 release:
   prerelease: auto
