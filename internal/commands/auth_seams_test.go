@@ -70,7 +70,7 @@ func TestAuthLogoutError(t *testing.T) {
 
 func TestPromptTokenScannerError(t *testing.T) {
 	// A reader that always errors exercises the scanner-error branch.
-	_, err := promptToken(errReader{}, &bytes.Buffer{})
+	_, err := promptToken(errReader{}, &bytes.Buffer{}, "http://localhost:3000")
 	if err == nil {
 		t.Error("expected scanner error")
 	}

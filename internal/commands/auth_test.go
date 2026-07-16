@@ -87,6 +87,77 @@ func TestAuthLoginFromStdin(t *testing.T) {
 	}
 }
 
+func TestAuthLoginPromptShowsInstructions(t *testing.T) {
+	authEnv(t)
+	var out, errOut bytes.Buffer
+	code := runWithStdin(t, []string{"auth", "login", "--format", "json"}, "lkn_stdin_token\n", &out, &errOut)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	// Instructions go to stderr, with the active origin's URL and the real UI labels.
+	for _, want := range []string{
+		"http://localhost:3000/srm_settings/access_tokens",
+		"Novo token",
+		"Copie seu token agora",
+		"Token: ",
+	} {
+		if !strings.Contains(errOut.String(), want) {
+			t.Errorf("stderr missing %q: %q", want, errOut.String())
+		}
+	}
+	// stdout stays data-only.
+	if strings.Contains(out.String(), "srm_settings/access_tokens") {
+		t.Errorf("stdout leaked prompt instructions: %q", out.String())
+	}
+}
+
+func TestAuthLoginTokenFlagSkipsInstructions(t *testing.T) {
+	authEnv(t)
+	var out, errOut bytes.Buffer
+	if code := run([]string{"auth", "login", "--token", "lkn_abc_def"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	if strings.Contains(errOut.String(), "srm_settings/access_tokens") {
+		t.Errorf("non-interactive login printed instructions: %q", errOut.String())
+	}
+}
+
+func TestAuthLoginEnvSkipsInstructions(t *testing.T) {
+	authEnv(t)
+	t.Setenv("LK_TOKEN", "lkn_env_token")
+	var out, errOut bytes.Buffer
+	if code := run([]string{"auth", "login"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	if strings.Contains(errOut.String(), "srm_settings/access_tokens") {
+		t.Errorf("env login printed instructions: %q", errOut.String())
+	}
+}
+
+func TestAuthLoginMalformedHintsTokensURL(t *testing.T) {
+	authEnv(t)
+	var out, errOut bytes.Buffer
+	if code := run([]string{"auth", "login", "--token", "not-a-token"}, &out, &errOut); code != 1 {
+		t.Fatalf("exit = %d, want 1", code)
+	}
+	if !strings.Contains(errOut.String(), "http://localhost:3000/srm_settings/access_tokens") {
+		t.Errorf("malformed-token error missing tokens URL: %q", errOut.String())
+	}
+}
+
+func TestAuthLoginHelpDocumentsTokenPage(t *testing.T) {
+	authEnv(t)
+	var out, errOut bytes.Buffer
+	if code := run([]string{"auth", "login", "--help"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	for _, want := range []string{"/srm_settings/access_tokens", "lkn_"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("help missing %q: %q", want, out.String())
+		}
+	}
+}
+
 func TestAuthStatusNoToken(t *testing.T) {
 	authEnv(t)
 	var out, errOut bytes.Buffer

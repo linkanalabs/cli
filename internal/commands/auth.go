@@ -110,11 +110,25 @@ func newAuthCmd() *cobra.Command {
 	return cmd
 }
 
+// accessTokensURL is the page on the active backend where PATs are generated.
+func accessTokensURL(baseURL string) string {
+	return strings.TrimRight(baseURL, "/") + "/srm_settings/access_tokens"
+}
+
 func newAuthLoginCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "Store a Personal Access Token for the active backend",
-		Args:  cobra.NoArgs,
+		Long: `Store a Personal Access Token (PAT) for the active backend.
+
+The token is read from --token, then the LK_TOKEN environment variable, and
+finally an interactive prompt.
+
+Generate a PAT at <base_url>/srm_settings/access_tokens (SRM settings, menu
+"Tokens de acesso" — Linkana staff only): click "Novo token", confirm with
+"Criar token", and copy the secret from the "Copie seu token agora" dialog.
+The secret is shown only once. Tokens look like lkn_<short>_<long>.`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			flagToken, _ := cmd.Flags().GetString("token")
 			return runAuthLogin(cmd, flagToken)
@@ -130,13 +144,13 @@ func runAuthLogin(cmd *cobra.Command, flagToken string) error {
 		return err
 	}
 
-	token, err := resolveLoginToken(cmd, flagToken)
+	token, err := resolveLoginToken(cmd, flagToken, baseURL)
 	if err != nil {
 		return err
 	}
 	token = strings.TrimSpace(token)
 	if !strings.HasPrefix(token, tokenPrefix) {
-		return fmt.Errorf("token does not look like a Linkana PAT (expected %s...)", tokenPrefix)
+		return fmt.Errorf("token does not look like a Linkana PAT (expected %s...); generate one at %s", tokenPrefix, accessTokensURL(baseURL))
 	}
 
 	if err := authSave(baseURL, token); err != nil {
@@ -147,17 +161,26 @@ func runAuthLogin(cmd *cobra.Command, flagToken string) error {
 
 // resolveLoginToken returns the token from the flag, then LK_TOKEN, then an
 // interactive prompt on stdin.
-func resolveLoginToken(cmd *cobra.Command, flagToken string) (string, error) {
+func resolveLoginToken(cmd *cobra.Command, flagToken, baseURL string) (string, error) {
 	if flagToken != "" {
 		return flagToken, nil
 	}
 	if env := getenv(auth.EnvToken); env != "" {
 		return env, nil
 	}
-	return promptToken(cmd.InOrStdin(), cmd.ErrOrStderr())
+	return promptToken(cmd.InOrStdin(), cmd.ErrOrStderr(), baseURL)
 }
 
-func promptToken(in io.Reader, prompt io.Writer) (string, error) {
+func promptToken(in io.Reader, prompt io.Writer, baseURL string) (string, error) {
+	_, _ = fmt.Fprintf(prompt, `No token yet? Generate one at:
+
+  %s
+
+Click "Novo token", confirm with "Criar token", and copy the secret from the
+"Copie seu token agora" dialog — it is shown only once. Then come back here
+and paste it.
+
+`, accessTokensURL(baseURL))
 	_, _ = fmt.Fprint(prompt, "Token: ")
 	sc := bufio.NewScanner(in)
 	if !sc.Scan() {
