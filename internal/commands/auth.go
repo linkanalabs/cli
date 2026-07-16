@@ -119,15 +119,15 @@ func newAuthLoginCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "Store a Personal Access Token for the active backend",
-		Long: `Store a Personal Access Token (PAT) for the active backend.
+		Long: `Guarda um Personal Access Token (PAT) para o backend ativo.
 
-The token is read from --token, then the LK_TOKEN environment variable, and
-finally an interactive prompt.
+O token é lido de --token, depois da variável de ambiente LK_TOKEN e, por
+último, de um prompt interativo.
 
-Generate a PAT at <base_url>/srm_settings/access_tokens (SRM settings, menu
-"Tokens de acesso" — Linkana staff only): click "Novo token", confirm with
-"Criar token", and copy the secret from the "Copie seu token agora" dialog.
-The secret is shown only once. Tokens look like lkn_<short>_<long>.`,
+Gere um PAT em <base_url>/srm_settings/access_tokens (configurações do SRM,
+menu "Tokens de acesso" — apenas usuários Linkana): clique em "Novo token",
+confirme em "Criar token" e copie o segredo na modal "Copie seu token agora".
+O segredo é exibido uma única vez. Tokens têm o formato lkn_<short>_<long>.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			flagToken, _ := cmd.Flags().GetString("token")
@@ -150,7 +150,7 @@ func runAuthLogin(cmd *cobra.Command, flagToken string) error {
 	}
 	token = strings.TrimSpace(token)
 	if !strings.HasPrefix(token, tokenPrefix) {
-		return fmt.Errorf("token does not look like a Linkana PAT (expected %s...); generate one at %s", tokenPrefix, accessTokensURL(baseURL))
+		return fmt.Errorf("o token não parece um PAT da Linkana (esperado %s...); gere um em %s", tokenPrefix, accessTokensURL(baseURL))
 	}
 
 	if err := authSave(baseURL, token); err != nil {
@@ -172,13 +172,13 @@ func resolveLoginToken(cmd *cobra.Command, flagToken, baseURL string) (string, e
 }
 
 func promptToken(in io.Reader, prompt io.Writer, baseURL string) (string, error) {
-	_, _ = fmt.Fprintf(prompt, `No token yet? Generate one at:
+	_, _ = fmt.Fprintf(prompt, `Ainda sem token? Gere um em:
 
   %s
 
-Click "Novo token", confirm with "Criar token", and copy the secret from the
-"Copie seu token agora" dialog — it is shown only once. Then come back here
-and paste it.
+Clique em "Novo token", confirme em "Criar token" e copie o segredo na modal
+"Copie seu token agora" — ele é exibido uma única vez. Depois volte aqui e
+cole abaixo.
 
 `, accessTokensURL(baseURL))
 	_, _ = fmt.Fprint(prompt, "Token: ")
