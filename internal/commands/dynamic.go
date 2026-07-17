@@ -115,9 +115,13 @@ func addDynamicFlag(cmd *cobra.Command, p *manifest.Param) {
 // response contract.
 func dynamicLong(e *manifest.Endpoint) string {
 	var b strings.Builder
-	b.WriteString(e.Description)
-	b.WriteString("\n\nEndpoint:\n  " + e.Method + " " + e.Path + "\n")
-	b.WriteString("\nAuth: " + e.Auth + "\n")
+	if e.Description != "" {
+		b.WriteString(e.Description + "\n\n")
+	}
+	b.WriteString("Endpoint:\n  " + e.Method + " " + e.Path + "\n")
+	if e.Auth != "" {
+		b.WriteString("\nAuth: " + e.Auth + "\n")
+	}
 	if len(e.PathParams) > 0 {
 		b.WriteString("\nArguments (positional, in path order):\n")
 		for i, pp := range e.PathParams {

@@ -114,12 +114,27 @@ func (e *Endpoint) validate() error {
 	if e.Path == "" {
 		return fmt.Errorf("missing path")
 	}
+	declared := make(map[string]bool, len(e.PathParams))
 	for _, pp := range e.PathParams {
+		if declared[pp] {
+			return fmt.Errorf("duplicate path param %q", pp)
+		}
+		declared[pp] = true
 		if !pathHasParam(e.Path, pp) {
 			return fmt.Errorf("path param %q not present in path %q", pp, e.Path)
 		}
 	}
+	for _, seg := range strings.Split(e.Path, "/") {
+		if strings.HasPrefix(seg, ":") && !declared[seg[1:]] {
+			return fmt.Errorf("path segment %q not declared in path_params", seg)
+		}
+	}
+	seen := make(map[string]bool, len(e.Params))
 	for _, p := range e.Params {
+		if seen[p.Name] {
+			return fmt.Errorf("duplicate param %q", p.Name)
+		}
+		seen[p.Name] = true
 		if err := p.validate(); err != nil {
 			return fmt.Errorf("param %q: %w", p.Name, err)
 		}
@@ -127,7 +142,14 @@ func (e *Endpoint) validate() error {
 	return nil
 }
 
+// reservedParamNames are flag names owned by the CLI itself; a manifest param
+// with one of these names would shadow (or panic on) a built-in flag.
+var reservedParamNames = map[string]bool{"format": true, "help": true, "h": true}
+
 func (p *Param) validate() error {
+	if reservedParamNames[p.Name] {
+		return fmt.Errorf("reserved name (would shadow the built-in --%s flag)", p.Name)
+	}
 	if !validTypes[p.Type] {
 		return fmt.Errorf("unknown type %q", p.Type)
 	}

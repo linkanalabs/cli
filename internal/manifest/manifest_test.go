@@ -90,6 +90,36 @@ func TestParseValidationErrors(t *testing.T) {
 				"path_params":["id","other"]}]}`,
 			want: `path param "other" not present in path`,
 		},
+		"path segment not declared": {
+			body: `{"manifest_version":1,"endpoints":[{"command":["a"],"method":"GET","path":"/x/:id",
+				"path_params":[]}]}`,
+			want: `path segment ":id" not declared in path_params`,
+		},
+		"duplicate path_params": {
+			body: `{"manifest_version":1,"endpoints":[{"command":["a"],"method":"GET","path":"/x/:id/:id",
+				"path_params":["id","id"]}]}`,
+			want: `duplicate path param "id"`,
+		},
+		"duplicate param name": {
+			body: `{"manifest_version":1,"endpoints":[{"command":["a"],"method":"GET","path":"/x",
+				"params":[{"name":"q","type":"string","in":"query"},{"name":"q","type":"integer","in":"query"}]}]}`,
+			want: `duplicate param "q"`,
+		},
+		"reserved param name format": {
+			body: `{"manifest_version":1,"endpoints":[{"command":["a"],"method":"GET","path":"/x",
+				"params":[{"name":"format","type":"string","in":"query"}]}]}`,
+			want: `reserved name`,
+		},
+		"reserved param name help": {
+			body: `{"manifest_version":1,"endpoints":[{"command":["a"],"method":"GET","path":"/x",
+				"params":[{"name":"help","type":"string","in":"query"}]}]}`,
+			want: `reserved name`,
+		},
+		"reserved param name h": {
+			body: `{"manifest_version":1,"endpoints":[{"command":["a"],"method":"GET","path":"/x",
+				"params":[{"name":"h","type":"string","in":"query"}]}]}`,
+			want: `reserved name`,
+		},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
