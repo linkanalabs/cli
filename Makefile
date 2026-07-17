@@ -33,15 +33,17 @@ tidy:
 	go mod tidy
 
 # Refresh the vendored CLI manifest from the Rails repo root. Downloads to a
-# temp file first so a 404 (manifest not committed yet) or a flaky fetch never
-# clobbers the local copy.
+# temp file and sanity-checks the JSON shape first, so a 404 (manifest not
+# committed yet), a flaky fetch or a corrupt payload never clobbers the local
+# copy.
 update-manifest:
 	@tmp=$$(mktemp); \
-	if gh api repos/linkanalabs/linkana/contents/cli-manifest.json --jq .content 2>/dev/null | base64 -d > $$tmp 2>/dev/null && [ -s $$tmp ]; then \
+	if gh api repos/linkanalabs/linkana/contents/cli-manifest.json --jq .content 2>/dev/null | base64 -d > $$tmp 2>/dev/null \
+		&& jq -e '.manifest_version >= 1 and (.endpoints | type == "array")' $$tmp > /dev/null 2>&1; then \
 		mv $$tmp internal/manifest/cli-manifest.json; \
 		echo "internal/manifest/cli-manifest.json updated from linkanalabs/linkana"; \
 	else \
 		rm -f $$tmp; \
-		echo "error: cli-manifest.json not found in linkanalabs/linkana (404?); local copy kept" >&2; \
+		echo "error: could not fetch a valid cli-manifest.json from linkanalabs/linkana (404 or invalid JSON); local copy kept" >&2; \
 		exit 1; \
 	fi
