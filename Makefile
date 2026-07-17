@@ -1,6 +1,6 @@
 COVER_MIN := 95.0
 
-.PHONY: build test cover lint fmt vet run dev tidy
+.PHONY: build test cover lint fmt vet run dev tidy update-manifest
 
 build:
 	go build -o lk ./cmd/lk
@@ -31,3 +31,17 @@ dev:
 
 tidy:
 	go mod tidy
+
+# Refresh the vendored CLI manifest from the Rails repo root. Downloads to a
+# temp file first so a 404 (manifest not committed yet) or a flaky fetch never
+# clobbers the local copy.
+update-manifest:
+	@tmp=$$(mktemp); \
+	if gh api repos/linkanalabs/linkana/contents/cli-manifest.json --jq .content 2>/dev/null | base64 -d > $$tmp 2>/dev/null && [ -s $$tmp ]; then \
+		mv $$tmp internal/manifest/cli-manifest.json; \
+		echo "internal/manifest/cli-manifest.json updated from linkanalabs/linkana"; \
+	else \
+		rm -f $$tmp; \
+		echo "error: cli-manifest.json not found in linkanalabs/linkana (404?); local copy kept" >&2; \
+		exit 1; \
+	fi
