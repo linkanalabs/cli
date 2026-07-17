@@ -8,6 +8,7 @@ package client
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -23,6 +24,7 @@ type Response struct {
 // they can be tested with a mock.
 type API interface {
 	Get(ctx context.Context, path string) (*Response, error)
+	Do(ctx context.Context, method, path string, query url.Values, payload any) (*Response, error)
 	GetIdentity(ctx context.Context) (*Identity, error)
 	ListSuppliers(ctx context.Context) ([]Supplier, error)
 	GetSupplier(ctx context.Context, id string) (*Supplier, error)
