@@ -57,7 +57,8 @@ internal/output/   render JSON (default) / styled
 ## Estado atual
 
 Esqueleto + `doctor` + **auth via PAT (CLI)** + **suppliers (SRM)** +
-**impersonação (LIN-5921)** + **modo read/write (LIN-5985)**. Comandos:
+**impersonação (LIN-5921)** + **modo read/write (LIN-5985)** + **comandos
+dinâmicos por manifest (LIN-6332)** — ver seção própria. Comandos manuais:
 `version`, `doctor` (version, runtime, config, filesystem, reachability `GET /up`,
 **Authentication** via `GET /my/identity.json` — pass/fail/skip, com skip-cascade
 quando o backend está inalcançável), `auth login|status|logout`, `whoami`,
@@ -81,6 +82,38 @@ Distribuição: repo **público**, release via GoReleaser + Homebrew tap própri
 
 Próximas fases: comandos de recurso (buyer), `lk schema` self-describing,
 `SKILL.md` embarcado.
+
+## Comandos dinâmicos por manifest (LIN-6332)
+
+O backend Rails gera um `cli-manifest.json` descrevendo endpoints expostos; a
+CLI vendora esse arquivo em `internal/manifest/cli-manifest.json` (go:embed) e
+monta comandos Cobra em runtime com um executor REST genérico. Hoje o manifest
+expõe `identity show` e `settings email-message list|show|update`.
+
+- `internal/manifest/` — types do schema + `Load()`/`Parse()` com validação
+  (command/method/path obrigatórios, tipos e `in` fechados, path_param tem que
+  existir no path). `make update-manifest` baixa a cópia nova do repo Rails
+  (falha limpa em 404, nunca sobrescreve com lixo).
+- `internal/commands/dynamic.go` — `registerDynamic(root, m)` roda no FIM de
+  `newRootCmd()`: **manuais registram antes e vencem colisão de nome no mesmo
+  nível** (dinâmico colidente é pulado em silêncio). Grupos intermediários
+  ganham Short derivado. `path_params` viram args posicionais (ExactArgs);
+  `params` viram flags (string/integer/boolean nativos; date/datetime/decimal
+  como string; array de scalar repete a flag; object e array de object são
+  flag string JSON). Help LLM-first: description + Endpoint/Auth/Arguments/
+  Parameters/Response.
+- `internal/commands/dynamic_exec.go` — RunE genérico: `resolveAPI()` →
+  substitui `/:param` (PathEscape) → flags alteradas viram query (`in: query`,
+  arrays como `name[]`) ou body (`in: body`, embrulhado em `body_root`) →
+  `client.Do` (herda gate read/write, Bearer, `.json`). 2xx → JSON cru no
+  stdout; 401 → hint de login; não-2xx → body no stderr + exit 1.
+- `lk version` mostra `manifest: <generated_at> (<source>)`.
+- `SURFACE.txt` na raiz é golden da árvore completa de comandos; o teste
+  `TestSurfaceGolden` compara e regenera com
+  `go test ./internal/commands -run TestSurfaceGolden -update`. Mudou a
+  superfície de comandos → atualizar o golden no mesmo PR.
+- Igualdade com o manifest real do backend é sobre `endpoints` apenas —
+  `generated_at`/`source` são voláteis.
 
 ## Impersonação / buyer-scope (LIN-5921)
 
