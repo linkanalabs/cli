@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/linkanalabs/cli/internal/manifest"
 )
 
 func TestVersionCommandJSON(t *testing.T) {
@@ -28,12 +30,22 @@ func TestVersionInfoStyled(t *testing.T) {
 }
 
 func TestVersionShowsManifestJSON(t *testing.T) {
+	m, err := manifest.Load()
+	if err != nil {
+		t.Fatalf("manifest.Load: %v", err)
+	}
 	var out, errOut bytes.Buffer
 	code := run([]string{"version", "--format", "json"}, &out, &errOut)
 	if code != 0 {
 		t.Fatalf("exit code = %d, stderr = %q", code, errOut.String())
 	}
-	for _, want := range []string{`"generated_at": "2026-07-17T00:00:00Z"`, `"source": "linkanalabs/linkana@development"`} {
+	// Compare against the embedded manifest itself: generated_at/source are
+	// volatile and change on every `make update-manifest`.
+	wants := []string{
+		`"generated_at": "` + m.GeneratedAt + `"`,
+		`"source": "` + m.Source + `"`,
+	}
+	for _, want := range wants {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("output missing %q: %q", want, out.String())
 		}
@@ -41,12 +53,16 @@ func TestVersionShowsManifestJSON(t *testing.T) {
 }
 
 func TestVersionShowsManifestStyled(t *testing.T) {
+	m, err := manifest.Load()
+	if err != nil {
+		t.Fatalf("manifest.Load: %v", err)
+	}
 	var out, errOut bytes.Buffer
 	code := run([]string{"version", "--format", "styled"}, &out, &errOut)
 	if code != 0 {
 		t.Fatalf("exit code = %d, stderr = %q", code, errOut.String())
 	}
-	if !strings.Contains(out.String(), "manifest: 2026-07-17T00:00:00Z (linkanalabs/linkana@development)") {
+	if !strings.Contains(out.String(), "manifest: "+m.GeneratedAt+" ("+m.Source+")") {
 		t.Errorf("output = %q", out.String())
 	}
 }
