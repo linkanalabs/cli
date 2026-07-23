@@ -243,6 +243,35 @@ func TestDynamicExecInvalidJSONFlag(t *testing.T) {
 	}
 }
 
+func TestDynamicExecJSONFlagWrongShape(t *testing.T) {
+	cases := map[string]struct {
+		args []string
+		want string
+	}{
+		"object flag given an array":       {[]string{"widget", "create", "--name", "X", "--metadata", `[1,2]`}, "--metadata must be a JSON object"},
+		"object flag given a scalar":       {[]string{"widget", "create", "--name", "X", "--metadata", `"str"`}, "--metadata must be a JSON object"},
+		"array flag given an object":       {[]string{"widget", "create", "--name", "X", "--items", `{"a":1}`}, "--items must be a JSON array of objects"},
+		"array flag with a scalar element": {[]string{"widget", "create", "--name", "X", "--items", `[{"a":1},2]`}, "--items: element 1 is not a JSON object"},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			swapFixtureManifest(t)
+			authEnv(t)
+			t.Setenv("LK_TOKEN", "lkn_abc_def")
+			enableWrite(t, "http://localhost:3000")
+
+			var out, errOut bytes.Buffer
+			code := run(tc.args, &out, &errOut)
+			if code != 1 {
+				t.Fatalf("exit = %d, want 1", code)
+			}
+			if !strings.Contains(errOut.String(), tc.want) {
+				t.Errorf("stderr = %q, want it to contain %q", errOut.String(), tc.want)
+			}
+		})
+	}
+}
+
 func TestDynamicExecInvalidIntegerArrayItem(t *testing.T) {
 	swapFixtureManifest(t)
 	authEnv(t)

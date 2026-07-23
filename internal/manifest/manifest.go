@@ -4,6 +4,7 @@ package manifest
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -147,6 +148,9 @@ func (e *Endpoint) validate() error {
 var reservedParamNames = map[string]bool{"format": true, "help": true, "h": true}
 
 func (p *Param) validate() error {
+	if p.Name == "" {
+		return errors.New("missing name")
+	}
 	if reservedParamNames[p.Name] {
 		return fmt.Errorf("reserved name (would shadow the built-in --%s flag)", p.Name)
 	}

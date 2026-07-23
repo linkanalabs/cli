@@ -138,6 +138,22 @@ func jsonFlagValue(flags *pflag.FlagSet, name, kind string) (any, error) {
 	if err := json.Unmarshal([]byte(raw), &v); err != nil {
 		return nil, fmt.Errorf("--%s must be valid JSON (%s): %w", name, kind, err)
 	}
+	switch kind {
+	case "object":
+		if _, ok := v.(map[string]any); !ok {
+			return nil, fmt.Errorf("--%s must be a JSON object", name)
+		}
+	case "array":
+		items, ok := v.([]any)
+		if !ok {
+			return nil, fmt.Errorf("--%s must be a JSON array of objects", name)
+		}
+		for i, item := range items {
+			if _, ok := item.(map[string]any); !ok {
+				return nil, fmt.Errorf("--%s: element %d is not a JSON object", name, i)
+			}
+		}
+	}
 	return v, nil
 }
 

@@ -105,6 +105,11 @@ func TestParseValidationErrors(t *testing.T) {
 				"params":[{"name":"q","type":"string","in":"query"},{"name":"q","type":"integer","in":"query"}]}]}`,
 			want: `duplicate param "q"`,
 		},
+		"missing param name": {
+			body: `{"manifest_version":1,"endpoints":[{"command":["a"],"method":"GET","path":"/x",
+				"params":[{"type":"string","in":"query"}]}]}`,
+			want: "missing name",
+		},
 		"reserved param name format": {
 			body: `{"manifest_version":1,"endpoints":[{"command":["a"],"method":"GET","path":"/x",
 				"params":[{"name":"format","type":"string","in":"query"}]}]}`,
