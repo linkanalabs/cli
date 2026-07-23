@@ -164,6 +164,34 @@ func TestSaveMkdirError(t *testing.T) {
 	}
 }
 
+func TestFileBaseURL(t *testing.T) {
+	t.Run("missing file", func(t *testing.T) {
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+		got, err := FileBaseURL()
+		if err != nil || got != "" {
+			t.Errorf("got %q, %v; want empty, nil", got, err)
+		}
+	})
+	t.Run("file with base_url ignores env override", func(t *testing.T) {
+		dir := t.TempDir()
+		t.Setenv("XDG_CONFIG_HOME", dir)
+		t.Setenv(EnvBaseURL, "https://env.example.com")
+		writeConfig(t, dir, "base_url: https://file.example.com\n")
+		got, err := FileBaseURL()
+		if err != nil || got != "https://file.example.com" {
+			t.Errorf("got %q, %v; want file value, nil", got, err)
+		}
+	})
+	t.Run("malformed file errors", func(t *testing.T) {
+		dir := t.TempDir()
+		t.Setenv("XDG_CONFIG_HOME", dir)
+		writeConfig(t, dir, "base_url: [unclosed\n")
+		if _, err := FileBaseURL(); err == nil {
+			t.Error("expected parse error")
+		}
+	})
+}
+
 func writeConfig(t *testing.T, xdgDir, content string) {
 	t.Helper()
 	cfgDir := filepath.Join(xdgDir, "lk")

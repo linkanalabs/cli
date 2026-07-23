@@ -40,7 +40,7 @@ Inspirada no `fizzy-cli` / `fizzy-sdk` da Basecamp — ver `docs/references/fizz
 cmd/lk/            entrypoint (trivial; fora da meta de cobertura)
 internal/commands/ árvore cobra: root, version, doctor, auth, whoami
 internal/client/   HTTP fino (format.json) + interface API mockável (Get, GetIdentity)
-internal/config/   base_url via YAML (XDG) + env LK_API_URL
+internal/config/   base_url via YAML (XDG) + env LK_API_URL; default = produção
 internal/auth/     storage do PAT: keychain (go-keyring) + fallback arquivo atômico, por origin
 internal/output/   render JSON (default) / styled
 ```
@@ -63,7 +63,13 @@ dinâmicos por manifest (LIN-6332)** — ver seção própria. Comandos manuais:
 **Authentication** via `GET /my/identity.json` — pass/fail/skip, com skip-cascade
 quando o backend está inalcançável), `auth login|status|logout`, `whoami`,
 `supplier list|show`, `impersonate <ref>|stop|status`, `mode`, `mode write`,
-`mode read`.
+`mode read`, `config`, `config set-url <url>`.
+
+`base_url` resolve na ordem `LK_API_URL` (env) → `config.yml` (XDG) →
+**default `https://app.linkana.com`** (produção — install limpo via brew fala
+com produção; dev sobrepõe com `LK_API_URL`, ver `make dev`). `lk config` mostra
+o valor efetivo e a origem (env|file|default); `lk config set-url` grava no
+arquivo (e avisa se `LK_API_URL` estiver setada, pois a env vence em runtime).
 
 `supplier list` → `GET /srm/suppliers` (array bare de suppliers). `supplier show
 <id>` → `GET /srm/suppliers/<id>/panel` (um supplier). Contrato do supplier:

@@ -3,6 +3,8 @@ lk auth
 lk auth login
 lk auth logout
 lk auth status
+lk config
+lk config set-url
 lk doctor
 lk identity
 lk identity show

@@ -60,9 +60,13 @@ legível no terminal.
 
 | Fonte | Como |
 |---|---|
+| Env | `LK_API_URL` sobrepõe o arquivo (maior precedência) |
 | Arquivo | `~/.config/lk/config.yml` (`base_url: ...`), respeita `XDG_CONFIG_HOME` |
-| Env | `LK_API_URL` sobrepõe o arquivo |
-| Default | `http://localhost:3000` |
+| Default | `https://app.linkana.com` (produção) |
+
+`lk config` mostra o `base_url` efetivo e a origem (env/arquivo/default);
+`lk config set-url <url>` grava o `base_url` no arquivo. Em desenvolvimento,
+aponte para o backend local com `LK_API_URL=http://localhost:3000` (ver `make dev`).
 
 ## Comandos
 

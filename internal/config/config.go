@@ -10,8 +10,11 @@ import (
 )
 
 const (
-	// DefaultBaseURL is used when no base URL is configured.
-	DefaultBaseURL = "http://localhost:3000"
+	// DefaultBaseURL is used when no base URL is configured. It points at
+	// production so a fresh install (e.g. via Homebrew) talks to the real
+	// backend by default; local development overrides it with LK_API_URL
+	// (see `make dev`) or a config file.
+	DefaultBaseURL = "https://app.linkana.com"
 
 	// EnvBaseURL overrides the configured base URL when set.
 	EnvBaseURL = "LK_API_URL"
@@ -78,6 +81,28 @@ func Load() (*Config, error) {
 		cfg.BaseURL = DefaultBaseURL
 	}
 	return cfg, nil
+}
+
+// FileBaseURL returns the base_url set in the config file only, ignoring the
+// LK_API_URL override and the default. It returns "" when there is no file or
+// the file does not set a base_url. A malformed file surfaces as an error.
+func FileBaseURL() (string, error) {
+	path, err := Path()
+	if err != nil {
+		return "", err
+	}
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("reading config %s: %w", path, err)
+	}
+	var c Config
+	if err := yaml.Unmarshal(data, &c); err != nil {
+		return "", fmt.Errorf("parsing config %s: %w", path, err)
+	}
+	return c.BaseURL, nil
 }
 
 // Save writes the config to disk, creating the directory if needed.
