@@ -1,10 +1,13 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-07-17T00:00:00Z",
-  "source": "linkanalabs/linkana@development",
+  "generated_at": "2026-07-23T18:27:35Z",
+  "source": "linkanalabs/linkana@53d09346ec",
   "endpoints": [
     {
-      "command": ["identity", "show"],
+      "command": [
+        "identity",
+        "show"
+      ],
       "summary": "Show the identity behind the current credential",
       "description": "Returns the identity of the authenticated user: user id, email, name, role, buyer_id and staff flag. Useful to confirm which user and buyer the CLI is acting as.",
       "method": "GET",
@@ -16,36 +19,52 @@
       "controller": "my/identity#show"
     },
     {
-      "command": ["settings", "email-message", "list"],
+      "command": [
+        "settings",
+        "email-message",
+        "list"
+      ],
       "summary": "List e-mail message templates",
       "description": "Lists the buyer's customizable e-mail message templates with their current content. Each entry is identified by its template name. Possible templates: supplier_invite, qualification_approved, qualification_refused, document_review_pending.",
       "method": "GET",
       "path": "/srm_settings/email_messages",
       "path_params": [],
       "params": [],
-      "response": "200 with array of {template, content, updated_at}.",
+      "response": "200 with array of {template, content, updated_at}. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access.",
       "auth": "pat",
       "controller": "srm_settings/email_messages#index"
     },
     {
-      "command": ["settings", "email-message", "show"],
+      "command": [
+        "settings",
+        "email-message",
+        "show"
+      ],
       "summary": "Show an e-mail message template",
       "description": "Shows one e-mail message template by its template name (see `settings email-message list` for available names).",
       "method": "GET",
       "path": "/srm_settings/email_messages/:template",
-      "path_params": ["template"],
+      "path_params": [
+        "template"
+      ],
       "params": [],
-      "response": "200 with {template, content, updated_at}; 404 {error} if template unknown.",
+      "response": "200 with {template, content, updated_at}. 404 Rails default {status, error} if the template is unknown; 401 (empty body) when unauthenticated; 403 {error} when the policy denies access.",
       "auth": "pat",
       "controller": "srm_settings/email_messages#show"
     },
     {
-      "command": ["settings", "email-message", "update"],
+      "command": [
+        "settings",
+        "email-message",
+        "update"
+      ],
       "summary": "Update an e-mail message template",
       "description": "Updates the content of an e-mail message template for the buyer. Content is limited to 280 characters.",
       "method": "PATCH",
       "path": "/srm_settings/email_messages/:template",
-      "path_params": ["template"],
+      "path_params": [
+        "template"
+      ],
       "body_root": "setting_email_message",
       "params": [
         {
@@ -56,7 +75,7 @@
           "in": "body"
         }
       ],
-      "response": "200 with {template, content, updated_at}; 422 {errors} on validation; 404 {error} if template unknown.",
+      "response": "200 with {template, content, updated_at}. 422 {errors} on validation (e.g. content over 280 chars); 400 Rails default {status, error} when content is missing; 404 Rails default {status, error} if the template is unknown; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/email_messages#update"
     }
