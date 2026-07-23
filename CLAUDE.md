@@ -200,8 +200,16 @@ Contents write **só** no tap) — o `GITHUB_TOKEN` padrão não escreve em outr
 repo. **Armadilha:** se o release sair mas a atualização do tap falhar (token
 expirado etc.), o brew continua servindo a versão velha silenciosamente. Após
 cada release, verificar o commit novo em `linkanalabs/homebrew-tap` e rodar
-`brew upgrade lk` (ou `brew install linkanalabs/tap/lk`) + `lk version` pra
-confirmar a versão nova de verdade.
+`lk version` pra confirmar a versão nova de verdade. Comando de instalação/
+atualização — **sempre o nome qualificado do tap**:
+
+- `brew install linkanalabs/tap/lk` — instala do zero (adiciona o tap) **e**
+  atualiza pra última versão. É o comando canônico; funciona em qualquer estado.
+- `brew upgrade lk` — **só** funciona se o tap já foi adicionado e o `lk` já está
+  instalado; numa máquina limpa falha com `No available formula with the name "lk"`
+  (é cask em tap próprio, não formula do core). Não usar como primeiro comando.
+- `brew reinstall linkanalabs/tap/lk` — se o brew estiver servindo uma versão em
+  cache mesmo após o tap atualizar.
 
 Release local (contingência, com aprovação):
 `GITHUB_TOKEN=$(gh auth token) HOMEBREW_TAP_GITHUB_TOKEN=$(gh auth token) goreleaser release --clean`.
