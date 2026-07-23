@@ -45,6 +45,12 @@ func newRootCmd() *cobra.Command {
 	root.AddCommand(newSupplierCmd())
 	root.AddCommand(newImpersonateCmd())
 	root.AddCommand(newModeCmd())
+	// Dynamic (manifest-driven) commands mount last so manual commands always
+	// win name collisions. A manifest load failure disables them; `lk version`
+	// surfaces the manifest state.
+	if m, err := loadManifest(); err == nil {
+		registerDynamic(root, m)
+	}
 	return root
 }
 
