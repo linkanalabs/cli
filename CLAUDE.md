@@ -115,6 +115,26 @@ expõe `identity show` e `settings email-message list|show|update`.
 - Igualdade com o manifest real do backend é sobre `endpoints` apenas —
   `generated_at`/`source` são voláteis.
 
+### Checklist ao expor/alterar um comando (processo obrigatório)
+
+Todo comando novo (ou mudança de superfície/params) segue este ciclo completo —
+não termina no merge dos repos `linkana`/`cli`:
+
+1. **Fonte de verdade é o Rails** (`../linkana`): antes de qualquer coisa, leia o
+   controller exposto e confirme os strong params reais que a action aceita
+   (`params.expect`) — o manifest/YAML documenta, mas o contrato vive lá.
+2. **Params de referência**: identifique params que são IDs/refs de outros models
+   (ex.: `supplier_id`, `template`). Para cada um, defina qual comando `lk`
+   resolve a referência primeiro (ex.: `lk supplier list` → id; `settings
+   email-message list` → template) — isso vira instrução da skill (passo 4).
+3. **Refresh aqui**: `make update-manifest` + `SURFACE.txt` regenerado no mesmo PR.
+4. **Atualizar a skill `lk` no lk-stack** (`lk-stack/lk-tools/skills/lk/` —
+   `SKILL.md` e/ou `references/command-catalog.md`): todo comando novo/alterado
+   precisa ser ensinado pro agente LLM que consome a CLI — sintaxe, flags, e
+   principalmente o **encadeamento de referências** do passo 2 (qual comando
+   chamar antes pra obter o ID que este comando pede). Mudança no lk-stack é
+   SEMPRE uma PR nova criada a partir da `main` mais recente do lk-stack.
+
 ## Impersonação / buyer-scope (LIN-5921)
 
 Comandos SRM são **buyer-scoped** (dependem de `current_user.buyer`). O agente não
