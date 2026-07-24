@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"text/tabwriter"
+	"unicode"
 )
 
 // genericStyled renders any JSON-shaped value as human-friendly text: a
@@ -128,13 +129,42 @@ func scalarText(v any) string {
 	case nil:
 		return ""
 	case string:
-		return s
+		return escapeLayout(s)
 	case json.Number:
 		return s.String()
 	default:
 		return fmt.Sprintf("%v", s)
 	}
 }
+
+// escapeLayout makes a backend string safe to place in one table cell or
+// key/value line. Newlines and tabs would otherwise forge extra rows and
+// columns (an e-mail template's multi-line content is enough to do it), and
+// escape sequences would let response data drive the terminal.
+func escapeLayout(s string) string {
+	if strings.IndexFunc(s, needsEscape) < 0 {
+		return s
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		switch {
+		case r == '\n':
+			b.WriteString(`\n`)
+		case r == '\t':
+			b.WriteString(`\t`)
+		case r == '\r':
+			b.WriteString(`\r`)
+		case needsEscape(r):
+			_, _ = fmt.Fprintf(&b, `\x%02x`, r)
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+func needsEscape(r rune) bool { return unicode.IsControl(r) }
 
 // orderedObject is a JSON object that remembers its key order, so styled
 // output shows columns and fields in the order the backend emitted them.

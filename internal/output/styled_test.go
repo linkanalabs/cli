@@ -158,3 +158,46 @@ func TestGenericStyledBooleanScalar(t *testing.T) {
 		t.Errorf("got %q, ok=%v", got, ok)
 	}
 }
+
+func TestScalarTextEscapesLayoutBreakers(t *testing.T) {
+	// A multi-line template body must stay in one cell instead of forging
+	// extra table rows.
+	raw := json.RawMessage(`[{"template":"a","content":"line1\nline2\tcol"},{"template":"b","content":"ok"}]`)
+	got, ok := genericStyled(raw)
+	if !ok {
+		t.Fatal("genericStyled not ok")
+	}
+	lines := strings.Split(strings.TrimRight(got, "\n"), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("expected header + 2 rows, got %d lines: %q", len(lines), got)
+	}
+	if !strings.Contains(lines[1], `line1\nline2\tcol`) {
+		t.Errorf("row 1 should carry the escaped value: %q", lines[1])
+	}
+}
+
+func TestScalarTextEscapesControlSequences(t *testing.T) {
+	raw := json.RawMessage(`{"name": "\u001b[31mred\u001b[0m"}`)
+	got, ok := genericStyled(raw)
+	if !ok {
+		t.Fatal("genericStyled not ok")
+	}
+	if strings.ContainsRune(got, 0x1b) {
+		t.Errorf("escape sequence reached the terminal: %q", got)
+	}
+	if !strings.Contains(got, `\x1b[31mred`) {
+		t.Errorf("expected escaped sequence, got %q", got)
+	}
+}
+
+func TestScalarTextLeavesPlainStringsUntouched(t *testing.T) {
+	if got := scalarText("Acme Ltda — São Paulo"); got != "Acme Ltda — São Paulo" {
+		t.Errorf("plain string altered: %q", got)
+	}
+}
+
+func TestScalarTextEscapesCarriageReturn(t *testing.T) {
+	if got := scalarText("a\rb"); got != `a\rb` {
+		t.Errorf("scalarText = %q", got)
+	}
+}
