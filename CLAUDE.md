@@ -121,25 +121,62 @@ Today the manifest exposes `identity show` and `settings email-message list|show
 - Equality with the real backend manifest is over `endpoints` only —
   `generated_at`/`source` are volatile.
 
-### Checklist when exposing/changing a command (mandatory process)
+### Exposing/changing a command — the deterministic process (mandatory)
 
-Every new command (or surface/param change) follows this full cycle — it does not
-end at the merge of the `linkana`/`cli` repos:
+Every new command (or surface/param change) **spans three repos** and follows the
+same ordered steps. The reference slice is PR #14103 (`settings email-message`):
+`cli_expose` + `config/cli/<x>.yml` + JSON branch/jbuilder + `_cli_test.rb` +
+regenerated manifest. **Done = all of the verification gate below is demonstrable
+with real output** (not "looks right"): Rails tests green (CLI + web untouched),
+`cli:manifest:check` green, `make test|lint|cover` (≥95%) green, `SURFACE.txt`
+golden green, **the real `lk` binary exercised end-to-end against a backend
+(incl. error paths: 401 hint, read-mode block, 4xx/422 on stderr + exit 1)**, and
+the lk-stack skill updated with reference chaining. Nothing merges/publishes
+without explicit approval.
 
-1. **The source of truth is Rails** (`../linkana`): before anything, read the
-   exposed controller and confirm the real strong params the action accepts
-   (`params.expect`) — the manifest/YAML documents it, but the contract lives there.
-2. **Reference params**: identify params that are IDs/refs of other models
-   (e.g. `supplier_id`, `template`). For each one, define which `lk` command
-   resolves the reference first (e.g. `lk supplier list` → id; `settings
-   email-message list` → template) — this becomes skill instruction (step 4).
-3. **Refresh here**: `make update-manifest` + regenerated `SURFACE.txt` in the same PR.
-4. **Update the `lk` skill in lk-stack** (`lk-stack/lk-tools/skills/lk/` —
-   `SKILL.md` and/or `references/command-catalog.md`): every new/changed command
-   must be taught to the LLM agent that consumes the CLI — syntax, flags, and
-   especially the **reference chaining** from step 2 (which command to call first
-   to obtain the ID this command needs). An lk-stack change is ALWAYS a new PR
-   created from the latest `main` of lk-stack.
+**Contract-mapping rules** (the contract lives in the controller's
+`params.expect`/`permit`, not the YAML — read the action first):
+- `path_params` come from the route (`required_parts`), never from YAML.
+- Param nested under a model root (`params.expect(model: [...])`) → `in: body` +
+  `body_root: model` (schema requires body_root iff there are body params).
+- Param read at the top level (`params[:x]`, `params.dig("search","y")`,
+  `params.expect(:x)`) → **`in: query`** (body would need a root the controller
+  doesn't read). GET never declares body.
+- Reserved param names: `format`, `help`, `h`. Command tokens: lowercase
+  `[a-z0-9-]`. Buyer settings group under `settings` (e.g. `settings buyer-document`).
+- Manual commands win name collisions — to make a manual command dynamic, remove
+  the manual one (and mind Go coverage + loss of `--format styled`).
+
+**Reference/dependency rule:** for every param that is an id/ref of another model
+(`*_id`, a template, an identifier), define which `lk` command resolves it first
+(`supplier_id` ← `supplier list`; `user_id` ← `settings company-user list`). If no
+command resolves it yet, **expose that one first (prerequisite) in an earlier
+wave** — never ship a command whose relationship id has no CLI source. This
+chaining becomes skill instruction (Phase C).
+
+**Ordered phases (per plan):**
+1. **linkana** (source of truth): read the action; derive the contract by the
+   rules above; TDD `<...>_cli_test.rb` (success + 401/403/404/422/400, web
+   intact); add `cli_expose`, the `format.json` branch + jbuilders, and
+   `config/cli/<x>.yml`; `bin/rails cli:manifest` (commit the manifest);
+   `bin/rails test` + `cli:manifest:check` green. PR (see stacking below). **The
+   cli step only starts once this PR is merged to `main`** — `make
+   update-manifest` reads `main`.
+2. **cli**: `make update-manifest`; `TestSurfaceGolden -update`; `make
+   test|lint|cover`; **prove it end-to-end with the real binary** against a local
+   backend (`make dev` / `LK_API_URL`), including the error paths. PR with those
+   commands as test instructions.
+3. **lk-stack** (always a new PR from the latest `main`): update the `lk` skill in
+   `lk-stack/lk-tools/skills/lk/` — `SKILL.md` and/or `references/command-catalog.md`
+   — teaching the new/changed command (syntax, flags) and especially the
+   **reference chaining** (which command to run first to obtain each id this
+   command needs).
+
+**Ordering & stacking:** cross-repo order is always linkana (merge to `main`) →
+cli → lk-stack. Dependent plans run in waves (a command that needs another's id
+is a later wave). **Within a repo, stack dependent PRs with `gh-stack`** (base
+first), so each builds on the previous and stays easy to test and commit; request
+review in stack order.
 
 ## Impersonation / buyer-scope (LIN-5921)
 
