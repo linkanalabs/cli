@@ -108,3 +108,53 @@ func TestGenericStyledUnmarshalableNotOK(t *testing.T) {
 		t.Error("unmarshalable value should not be ok")
 	}
 }
+
+func TestDecodeOrderedRejectsTrailingData(t *testing.T) {
+	if _, err := decodeOrdered([]byte(`1 2`)); err == nil {
+		t.Error("expected error for trailing data")
+	}
+}
+
+func TestDecodeOrderedRejectsTruncatedInput(t *testing.T) {
+	for _, raw := range []string{`{`, `{"a":`, `[1,`, `{"a"`, `[`} {
+		if _, err := decodeOrdered([]byte(raw)); err == nil {
+			t.Errorf("expected error for %q", raw)
+		}
+	}
+}
+
+func TestScalarTextBool(t *testing.T) {
+	if got := scalarText(true); got != "true" {
+		t.Errorf("scalarText(true) = %q", got)
+	}
+}
+
+func TestCellTextFallsBackOnUnmarshalableNested(t *testing.T) {
+	// A nested object carrying an unmarshalable value exercises the error
+	// fallback of cellText (unreachable through decodeOrdered output).
+	bad := &orderedObject{keys: []string{"ch"}, vals: map[string]any{"ch": make(chan int)}}
+	if got := cellText(bad); got == "" {
+		t.Error("expected non-empty fallback text")
+	}
+}
+
+func TestOrderedObjectMarshalJSONErrorOnBadValue(t *testing.T) {
+	bad := &orderedObject{keys: []string{"ch"}, vals: map[string]any{"ch": make(chan int)}}
+	if _, err := bad.MarshalJSON(); err == nil {
+		t.Error("expected marshal error")
+	}
+}
+
+func TestGenericStyledArrayOfArraysNotOK(t *testing.T) {
+	// Arrays nested directly in the top-level array have no tabular shape.
+	if _, ok := genericStyled(json.RawMessage(`[[1, 2], [3]]`)); ok {
+		t.Error("array of arrays should not be ok")
+	}
+}
+
+func TestGenericStyledBooleanScalar(t *testing.T) {
+	got, ok := genericStyled(json.RawMessage(`true`))
+	if !ok || got != "true\n" {
+		t.Errorf("got %q, ok=%v", got, ok)
+	}
+}
