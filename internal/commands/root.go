@@ -37,7 +37,15 @@ func newRootCmd() *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 	}
-	root.PersistentFlags().String("format", output.FormatAuto, "output format: auto|json|styled")
+	root.PersistentFlags().String("format", output.FormatAuto, "output format: "+output.FormatList())
+	// Reject an unknown --format before the command runs, so a typo never
+	// costs a request (and never silently downgrades a write to JSON output).
+	root.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
+		if f := formatFlag(cmd); !output.Valid(f) {
+			return fmt.Errorf("unknown --format %q: valid values are %s", f, output.FormatList())
+		}
+		return nil
+	}
 	root.AddCommand(newVersionCmd())
 	root.AddCommand(newDoctorCmd())
 	root.AddCommand(newAuthCmd())

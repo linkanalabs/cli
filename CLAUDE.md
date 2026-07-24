@@ -27,7 +27,11 @@ Inspired by Basecamp's `fizzy-cli` / `fizzy-sdk` — see `docs/references/fizzy-
 
 ## CLI best practices
 
-- **JSON output is a contract**: stable, versioned. `--format styled` is a human bonus.
+- **JSON output is a contract**: stable, versioned. The other `--format` values
+  are projections of the same data, never a different contract:
+  `styled` (human bonus), `markdown` (GFM, paste-ready), `ids` (one id per
+  line, for chaining) and `count` (an integer) — the last two exist to keep an
+  agent's context cheap. An unknown value is rejected before the request runs.
 - **stdout = data, stderr = diagnostics.**
 - **Meaningful exit codes** (0 ok, 1 failure). Commands render their own result
   and signal failure via an error; `run()` translates it into an exit code.
@@ -42,7 +46,8 @@ internal/commands/ cobra tree: root, version, doctor, auth, whoami
 internal/client/   thin HTTP (format.json) + mockable API interface (Get, GetIdentity)
 internal/config/   base_url via YAML (XDG) + env LK_API_URL; default = production
 internal/auth/     PAT storage: keychain (go-keyring) + atomic file fallback, per origin
-internal/output/   render JSON (default) / styled
+internal/output/   render JSON (default) / styled / markdown / ids / count
+                   (shape.go = ordered JSON tree shared by the renderers)
 ```
 
 ## Common commands

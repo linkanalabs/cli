@@ -69,6 +69,65 @@ func TestRenderAutoNonTerminalIsJSON(t *testing.T) {
 	}
 }
 
+func TestRenderMarkdownIgnoresStyler(t *testing.T) {
+	// Styled() is ANSI/bespoke terminal output; markdown must come from the
+	// generic renderer instead.
+	var buf bytes.Buffer
+	if err := Render(&buf, FormatMarkdown, styledData{Name: "y"}); err != nil {
+		t.Fatalf("Render error: %v", err)
+	}
+	if buf.String() != "**name:** y\n" {
+		t.Errorf("output = %q", buf.String())
+	}
+}
+
+func TestRenderMarkdownFallsBackToJSONOnMixedArray(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Render(&buf, FormatMarkdown, []any{plainData{Name: "z"}, "loose"}); err != nil {
+		t.Fatalf("Render error: %v", err)
+	}
+	if !strings.Contains(buf.String(), `"name": "z"`) {
+		t.Errorf("expected JSON fallback, got %q", buf.String())
+	}
+}
+
+func TestRenderIDsFormat(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Render(&buf, FormatIDs, []any{map[string]any{"id": "s_1"}}); err != nil {
+		t.Fatalf("Render error: %v", err)
+	}
+	if buf.String() != "s_1\n" {
+		t.Errorf("output = %q", buf.String())
+	}
+}
+
+func TestRenderCountFormat(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Render(&buf, FormatCount, []any{1, 2, 3}); err != nil {
+		t.Fatalf("Render error: %v", err)
+	}
+	if buf.String() != "3\n" {
+		t.Errorf("output = %q", buf.String())
+	}
+}
+
+func TestValid(t *testing.T) {
+	for _, f := range Formats {
+		if !Valid(f) {
+			t.Errorf("Valid(%q) = false", f)
+		}
+	}
+	if Valid("markdwon") {
+		t.Error("Valid should reject an unknown format")
+	}
+}
+
+func TestFormatList(t *testing.T) {
+	if got := FormatList(); got != "auto|json|styled|markdown|ids|count" {
+		t.Errorf("FormatList() = %q", got)
+	}
+}
+
 func TestResolveFormatExplicit(t *testing.T) {
 	var buf bytes.Buffer
 	if got := resolveFormat(FormatJSON, &buf); got != FormatJSON {
