@@ -20,6 +20,11 @@ func genericMarkdown(data any) (string, bool) {
 	case nil:
 		return noResults, true
 	case *orderedObject:
+		if len(v.keys) == 0 {
+			// A keyless object would render as a blank page: say it out loud,
+			// like null and [] do.
+			return noResults, true
+		}
 		return markdownDetail(v), true
 	case []any:
 		return markdownArray(v)

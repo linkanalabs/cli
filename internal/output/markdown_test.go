@@ -184,6 +184,14 @@ func TestGenericMarkdownNull(t *testing.T) {
 	}
 }
 
+func TestGenericMarkdownEmptyObject(t *testing.T) {
+	// An empty record would otherwise render as a blank page with exit 0.
+	got, ok := genericMarkdown(json.RawMessage(`{}`))
+	if !ok || got != "_(no results)_\n" {
+		t.Errorf("got %q, ok=%v", got, ok)
+	}
+}
+
 func TestGenericMarkdownScalarArrayIsBulletList(t *testing.T) {
 	got, ok := genericMarkdown(json.RawMessage(`["a", "b", null]`))
 	if !ok || got != "- a\n- b\n-\n" {
