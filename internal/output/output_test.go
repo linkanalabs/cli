@@ -37,9 +37,20 @@ func TestRenderStyledUsesStyler(t *testing.T) {
 	}
 }
 
-func TestRenderStyledFallsBackToJSON(t *testing.T) {
+func TestRenderStyledObjectIsKeyValueBlock(t *testing.T) {
 	var buf bytes.Buffer
 	if err := Render(&buf, FormatStyled, plainData{Name: "z"}); err != nil {
+		t.Fatalf("Render error: %v", err)
+	}
+	if !strings.Contains(buf.String(), "name:") || !strings.Contains(buf.String(), "z") {
+		t.Errorf("expected key/value block, got %q", buf.String())
+	}
+}
+
+func TestRenderStyledFallsBackToJSONOnMixedArray(t *testing.T) {
+	var buf bytes.Buffer
+	// A mix of object and scalar has no tabular shape; falls back to JSON.
+	if err := Render(&buf, FormatStyled, []any{plainData{Name: "z"}, "loose"}); err != nil {
 		t.Fatalf("Render error: %v", err)
 	}
 	if !strings.Contains(buf.String(), `"name": "z"`) {
