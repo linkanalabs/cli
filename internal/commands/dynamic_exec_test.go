@@ -91,6 +91,99 @@ func TestDynamicExecStyledRendersTable(t *testing.T) {
 	}
 }
 
+// The manifest-driven path is the one that risks losing a persistent flag, so
+// the new formats are exercised on a nested dynamic command, not only on the
+// manual ones.
+func TestDynamicExecMarkdownRendersGFMTable(t *testing.T) {
+	swapFixtureManifest(t)
+	authEnv(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`[{"id":"w_1","name":"Widget One"},{"id":"w_2","name":"Widget Two"}]`))
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("LK_API_URL", srv.URL)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+
+	var out, errOut bytes.Buffer
+	code := run([]string{"widget", "list", "--format", "markdown"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	want := "| id | name |\n| --- | --- |\n| w_1 | Widget One |\n| w_2 | Widget Two |\n"
+	if out.String() != want {
+		t.Errorf("got %q, want %q", out.String(), want)
+	}
+}
+
+func TestDynamicExecIDsAndCount(t *testing.T) {
+	swapFixtureManifest(t)
+	authEnv(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`[{"id":"w_1","name":"Widget One"},{"id":"w_2","name":"Widget Two"}]`))
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("LK_API_URL", srv.URL)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+
+	for format, want := range map[string]string{"ids": "w_1\nw_2\n", "count": "2\n"} {
+		var out, errOut bytes.Buffer
+		if code := run([]string{"widget", "list", "--format", format}, &out, &errOut); code != 0 {
+			t.Fatalf("--format %s: exit = %d, stderr = %q", format, code, errOut.String())
+		}
+		if out.String() != want {
+			t.Errorf("--format %s = %q, want %q", format, out.String(), want)
+		}
+	}
+}
+
+// A resource keyed by something other than "id" (the SRM e-mail templates are
+// keyed by "template") must fail loudly: an empty stdout with exit 0 reads to
+// an agent exactly like an empty list.
+func TestDynamicExecIDsFailsWhenResourceHasNoID(t *testing.T) {
+	swapFixtureManifest(t)
+	authEnv(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`[{"template":"supplier_invite"},{"template":"qualification_approved"}]`))
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("LK_API_URL", srv.URL)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+
+	var out, errOut bytes.Buffer
+	code := run([]string{"widget", "list", "--format", "ids"}, &out, &errOut)
+	if code != 1 {
+		t.Fatalf("exit = %d, want 1 (stdout = %q)", code, out.String())
+	}
+	if out.String() != "" {
+		t.Errorf("stdout should stay empty, got %q", out.String())
+	}
+	if !strings.Contains(errOut.String(), "--format json") {
+		t.Errorf("stderr should point at the usable format, got %q", errOut.String())
+	}
+}
+
+// A 2xx with no body still owes an integer to --format count, so a caller
+// doing n=$(lk ... --format count) never gets an empty string.
+func TestDynamicExecCountOnEmptyBodyIsZero(t *testing.T) {
+	swapFixtureManifest(t)
+	authEnv(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("LK_API_URL", srv.URL)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+
+	var out, errOut bytes.Buffer
+	code := run([]string{"widget", "list", "--format", "count"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	if out.String() != "0\n" {
+		t.Errorf("got %q, want %q", out.String(), "0\n")
+	}
+}
+
 func TestDynamicExecUnchangedFlagsSendNoQuery(t *testing.T) {
 	swapFixtureManifest(t)
 	authEnv(t)

@@ -76,7 +76,7 @@ func TestRenderMarkdownIgnoresStyler(t *testing.T) {
 	if err := Render(&buf, FormatMarkdown, styledData{Name: "y"}); err != nil {
 		t.Fatalf("Render error: %v", err)
 	}
-	if buf.String() != "**name:** y\n" {
+	if buf.String() != "- **name:** y\n" {
 		t.Errorf("output = %q", buf.String())
 	}
 }

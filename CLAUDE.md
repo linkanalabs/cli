@@ -28,10 +28,29 @@ Inspired by Basecamp's `fizzy-cli` / `fizzy-sdk` — see `docs/references/fizzy-
 ## CLI best practices
 
 - **JSON output is a contract**: stable, versioned. The other `--format` values
-  are projections of the same data, never a different contract:
-  `styled` (human bonus), `markdown` (GFM, paste-ready), `ids` (one id per
-  line, for chaining) and `count` (an integer) — the last two exist to keep an
-  agent's context cheap. An unknown value is rejected before the request runs.
+  are projections of the same data, never a different contract. An unknown
+  value is rejected while pflag parses it (`formatValue` in `root.go`), so a
+  typo costs no request — do NOT move that check into a `PersistentPreRunE`, a
+  hook on a subcommand would shadow it.
+  - `styled` — human bonus. Uses the result's own `Styler` when it has one.
+  - `markdown` — GFM. **Always** the generic renderer, never `Styler`: a
+    `Styled()` paints a terminal, it is not a document. Nested values go into
+    a code span so their compact JSON survives; scalars get `\`, `|`, `[`, `]`
+    escaped (a supplier-supplied name must not render as a clickable link).
+    Markdown carries backend text — review before pasting anywhere public.
+  - `ids` — one id per line, for chaining. A response carrying records with no
+    usable `id` **fails with exit 1** instead of printing nothing: silence
+    would read to an agent as an empty list. Real case today: the SRM e-mail
+    messages are keyed by `template`. An actually empty response prints
+    nothing and exits 0.
+  - `count` — an integer, and always one (a 2xx with an empty body prints
+    `0`). It counts **what this response carried, not what exists**:
+    `supplier list` is paginated at 10 with no pagination metadata in the
+    JSON, so `count` there never exceeds 10. Never answer "how many suppliers
+    does this buyer have" with it.
+  - `ids` and `count` exist to keep an agent's context cheap. `--jq` was
+    deliberately rejected: piping to the shell's `jq` costs the model no
+    tokens either, and gojq would buy a dependency plus a flag-conflict matrix.
 - **stdout = data, stderr = diagnostics.**
 - **Meaningful exit codes** (0 ok, 1 failure). Commands render their own result
   and signal failure via an error; `run()` translates it into an exit code.

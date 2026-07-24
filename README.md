@@ -54,11 +54,34 @@ make build        # gera ./lk
 ```
 
 Saída é JSON por padrão fora de terminal (machine-readable) e texto legível em
-TTY; `--format json|styled|auto` força o formato em qualquer comando, dinâmico
-ou não. O styled é **genérico**, derivado do shape da resposta: array de
-objetos vira tabela alinhada (colunas na ordem em que o backend emite as
-chaves), objeto vira bloco chave/valor, e shapes sem forma tabular caem no
-JSON. Comandos de diagnóstico (`doctor`, `version`, …) mantêm styled próprio.
+TTY. O `--format` força o formato em qualquer comando, dinâmico ou não, e um
+valor desconhecido é rejeitado no parse (nenhuma requisição é gasta num typo):
+
+| `--format` | Saída |
+|---|---|
+| `auto` | styled em TTY, `json` em pipe (default) |
+| `json` | o contrato estável: a resposta, indentada |
+| `styled` | tabela alinhada ou bloco chave/valor, para humano |
+| `markdown` | tabela GFM ou lista `- **chave:** valor`, para colar em documento |
+| `ids` | um `id` por linha, para encadear no próximo comando |
+| `count` | quantos registros **esta resposta** carrega |
+
+`styled` e `markdown` são **genéricos**, derivados do shape da resposta: array
+de objetos vira tabela (colunas na ordem em que o backend emite as chaves),
+objeto vira chave/valor, e shapes sem forma caem no JSON. Comandos de
+diagnóstico (`doctor`, `version`, …) mantêm styled próprio — `markdown` sempre
+usa o genérico, porque `Styled()` é saída de terminal, não documento.
+
+Duas ressalvas que valem para quem automatiza:
+
+- `count` conta o que voltou, **não o total no buyer**. `supplier list` é
+  paginado (10 por página, e o JSON não traz metadado de paginação), então
+  `count` ali nunca passa de 10.
+- `ids` exige que o recurso seja chaveado por `id`. Num recurso que não é
+  (as mensagens de e-mail do SRM são chaveadas por `template`), o comando
+  **falha com exit 1** apontando o `--format json` — em vez de imprimir nada e
+  deixar o agente concluir que a lista está vazia. Lista de verdade vazia
+  imprime nada e sai 0.
 
 ## Configuração
 

@@ -19,14 +19,48 @@ func TestRenderIDsArrayOfObjects(t *testing.T) {
 	}
 }
 
-func TestRenderIDsSkipsObjectsWithoutID(t *testing.T) {
+func TestRenderIDsSkipsRecordsWithoutUsableID(t *testing.T) {
+	// A missing, null, empty or non-scalar id is not addressable: emitting a
+	// blank line would feed an empty argument into the next command.
 	var buf bytes.Buffer
-	raw := json.RawMessage(`[{"id":"s_1"},{"name":"no id here"},{"id":"s_3"}]`)
+	raw := json.RawMessage(`[{"id":"s_1"},{"name":"none"},{"id":null},{"id":""},{"id":{"x":1}},{"id":"s_6"}]`)
 	if err := renderIDs(&buf, raw); err != nil {
 		t.Fatalf("renderIDs error: %v", err)
 	}
-	if buf.String() != "s_1\ns_3\n" {
+	if buf.String() != "s_1\ns_6\n" {
 		t.Errorf("got %q", buf.String())
+	}
+}
+
+func TestRenderIDsFailsWhenNoRecordHasAnID(t *testing.T) {
+	// The SRM e-mail templates are keyed by "template". Silence here would
+	// read to an agent exactly like an empty list.
+	var buf bytes.Buffer
+	raw := json.RawMessage(`[{"template":"supplier_invite"},{"template":"qualification_approved"}]`)
+	err := renderIDs(&buf, raw)
+	if err == nil {
+		t.Fatal("expected an error instead of silent empty output")
+	}
+	for _, want := range []string{"2 record", `"id"`, "--format json"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q should mention %q", err, want)
+		}
+	}
+	if buf.String() != "" {
+		t.Errorf("stdout should stay empty, got %q", buf.String())
+	}
+}
+
+func TestRenderIDsEmptyResponseIsNotAnError(t *testing.T) {
+	// No records is a legitimate answer; no id field is not.
+	for _, raw := range []string{`[]`, `null`} {
+		var buf bytes.Buffer
+		if err := renderIDs(&buf, json.RawMessage(raw)); err != nil {
+			t.Fatalf("renderIDs(%s) error: %v", raw, err)
+		}
+		if buf.String() != "" {
+			t.Errorf("renderIDs(%s) = %q, want empty", raw, buf.String())
+		}
 	}
 }
 
@@ -40,6 +74,13 @@ func TestRenderIDsSingleObject(t *testing.T) {
 	}
 }
 
+func TestRenderIDsSingleObjectWithoutIDFails(t *testing.T) {
+	var buf bytes.Buffer
+	if err := renderIDs(&buf, json.RawMessage(`{"template":"supplier_invite"}`)); err == nil {
+		t.Error("expected an error for a record with no id")
+	}
+}
+
 func TestRenderIDsKeepsLargeIntegerPrecision(t *testing.T) {
 	var buf bytes.Buffer
 	if err := renderIDs(&buf, json.RawMessage(`[{"id":12345678901234567890}]`)); err != nil {
@@ -50,24 +91,32 @@ func TestRenderIDsKeepsLargeIntegerPrecision(t *testing.T) {
 	}
 }
 
-func TestRenderIDsScalarShapesEmitNothing(t *testing.T) {
-	for _, raw := range []string{`["a","b"]`, `42`, `null`, `[]`} {
-		var buf bytes.Buffer
-		if err := renderIDs(&buf, json.RawMessage(raw)); err != nil {
-			t.Fatalf("renderIDs(%s) error: %v", raw, err)
-		}
-		if buf.String() != "" {
-			t.Errorf("renderIDs(%s) = %q, want empty", raw, buf.String())
-		}
+func TestRenderIDsScalarArrayFailsInsteadOfPrintingNothing(t *testing.T) {
+	var buf bytes.Buffer
+	if err := renderIDs(&buf, json.RawMessage(`["a","b"]`)); err == nil {
+		t.Error("expected an error: the response has records but no ids")
 	}
 }
 
 func TestRenderIDsFallsBackToJSONOnUndecodableData(t *testing.T) {
-	// A Styler-only value still marshals; anything that does not decode as
-	// JSON falls back to the JSON renderer, which surfaces the real error.
 	var buf bytes.Buffer
 	if err := renderIDs(&buf, make(chan int)); err == nil {
-		t.Error("expected error for unmarshalable value")
+		t.Error("expected the JSON renderer's error to surface")
+	}
+}
+
+func TestRenderIDsFallsBackToJSONWhenTheTreeCannotBeDecoded(t *testing.T) {
+	// The fallback must actually render JSON, not just avoid crashing.
+	orig := decodeShape
+	defer func() { decodeShape = orig }()
+	decodeShape = func([]byte) (any, error) { return nil, errors.New("boom") }
+
+	var buf bytes.Buffer
+	if err := renderIDs(&buf, map[string]any{"id": "s_1"}); err != nil {
+		t.Fatalf("renderIDs error: %v", err)
+	}
+	if !strings.Contains(buf.String(), `"id": "s_1"`) {
+		t.Errorf("expected JSON fallback, got %q", buf.String())
 	}
 }
 
@@ -117,7 +166,14 @@ func TestRenderCountShapes(t *testing.T) {
 func TestRenderCountFallsBackToJSONOnUndecodableData(t *testing.T) {
 	var buf bytes.Buffer
 	if err := renderCount(&buf, make(chan int)); err == nil {
-		t.Error("expected error for unmarshalable value")
+		t.Error("expected the JSON renderer's error to surface")
+	}
+}
+
+func TestRenderCountPropagatesWriteError(t *testing.T) {
+	w := &failingWriter{writes: 1}
+	if err := renderCount(w, json.RawMessage(`[]`)); err == nil {
+		t.Error("expected the write error to surface")
 	}
 }
 
