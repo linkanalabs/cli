@@ -57,6 +57,40 @@ func TestDynamicExecGetWithQuery(t *testing.T) {
 	}
 }
 
+// TestDynamicExecStyledRendersTable covers the generic styled rendering for
+// dynamic commands: an array of objects becomes an aligned table with a
+// header row, key order as emitted by the backend.
+func TestDynamicExecStyledRendersTable(t *testing.T) {
+	swapFixtureManifest(t)
+	authEnv(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`[{"id":"w_1","name":"Widget One"},{"id":"w_2","name":"Widget Two"}]`))
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("LK_API_URL", srv.URL)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+
+	var out, errOut bytes.Buffer
+	code := run([]string{"widget", "list", "--format", "styled"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	lines := strings.Split(strings.TrimRight(out.String(), "\n"), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("expected header + 2 rows, got %q", out.String())
+	}
+	if !strings.HasPrefix(lines[0], "id") || !strings.Contains(lines[0], "name") {
+		t.Errorf("header = %q", lines[0])
+	}
+	if !strings.Contains(lines[1], "Widget One") || !strings.Contains(lines[2], "Widget Two") {
+		t.Errorf("rows = %q", out.String())
+	}
+	if strings.Contains(out.String(), "{") {
+		t.Errorf("styled output should not be JSON: %q", out.String())
+	}
+}
+
 func TestDynamicExecUnchangedFlagsSendNoQuery(t *testing.T) {
 	swapFixtureManifest(t)
 	authEnv(t)

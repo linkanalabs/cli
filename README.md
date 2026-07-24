@@ -53,8 +53,12 @@ make build        # gera ./lk
 ./lk doctor
 ```
 
-Saída é JSON por padrão (machine-readable). Use `--format styled` para texto
-legível no terminal.
+Saída é JSON por padrão fora de terminal (machine-readable) e texto legível em
+TTY; `--format json|styled|auto` força o formato em qualquer comando, dinâmico
+ou não. O styled é **genérico**, derivado do shape da resposta: array de
+objetos vira tabela alinhada (colunas na ordem em que o backend emite as
+chaves), objeto vira bloco chave/valor, e shapes sem forma tabular caem no
+JSON. Comandos de diagnóstico (`doctor`, `version`, …) mantêm styled próprio.
 
 ## Configuração
 

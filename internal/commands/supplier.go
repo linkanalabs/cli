@@ -3,8 +3,6 @@ package commands
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -12,8 +10,9 @@ import (
 	"github.com/linkanalabs/cli/internal/output"
 )
 
-// supplierListView wraps a supplier slice. JSON renders as a bare array (the
-// contract); styled renders one line per supplier.
+// supplierListView wraps a supplier slice so JSON renders as a bare array
+// (the contract) even when the slice is nil. Styled output is the generic
+// renderer's, same as dynamic commands.
 type supplierListView struct {
 	Suppliers []client.Supplier
 }
@@ -25,39 +24,6 @@ func (v supplierListView) MarshalJSON() ([]byte, error) {
 		suppliers = []client.Supplier{}
 	}
 	return json.Marshal(suppliers)
-}
-
-// Styled renders one line per supplier with id/name/identifier/state.
-func (v supplierListView) Styled() string {
-	if len(v.Suppliers) == 0 {
-		return "No suppliers found.\n"
-	}
-	var b strings.Builder
-	for _, s := range v.Suppliers {
-		fmt.Fprintf(&b, "%s\t%s\t%s\t%s\n", s.ID, s.Name, s.Identifier, s.State)
-	}
-	return b.String()
-}
-
-// supplierView wraps a single supplier for human-friendly styled output.
-type supplierView struct {
-	*client.Supplier
-}
-
-// Styled renders the supplier as a key/value block.
-func (v supplierView) Styled() string {
-	tags := "(none)"
-	if len(v.Tags) > 0 {
-		names := make([]string, len(v.Tags))
-		for i, t := range v.Tags {
-			names[i] = t.DisplayName
-		}
-		tags = strings.Join(names, ", ")
-	}
-	return fmt.Sprintf(
-		"%s\n  id:           %s\n  identifier:   %s\n  legal_entity: %s\n  state:        %s\n  tags:         %s\n",
-		v.Name, v.ID, v.Identifier, v.LegalEntity, v.State, tags,
-	)
 }
 
 func newSupplierCmd() *cobra.Command {
@@ -110,7 +76,7 @@ func newSupplierShowCmd() *cobra.Command {
 				}
 				return err
 			}
-			return output.Render(cmd.OutOrStdout(), formatFlag(cmd), supplierView{Supplier: s})
+			return output.Render(cmd.OutOrStdout(), formatFlag(cmd), s)
 		},
 	}
 }

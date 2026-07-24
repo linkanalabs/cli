@@ -20,19 +20,27 @@ const (
 	FormatStyled = "styled"
 )
 
-// Styler is implemented by results that can render themselves as styled text.
+// Styler is implemented by results that render themselves as styled text
+// (diagnostic commands with bespoke layouts, e.g. doctor). Resource-shaped
+// results should NOT implement it: they get the generic styled rendering.
 type Styler interface {
 	Styled() string
 }
 
 // Render writes data to w in the requested format. FormatAuto resolves to
-// styled on a terminal and JSON otherwise. Styled falls back to JSON when the
-// data does not implement Styler.
+// styled on a terminal and JSON otherwise. Styled uses the data's own Styler
+// when implemented, then the generic renderer (table for an array of
+// objects, key/value block for an object), and falls back to JSON when the
+// data has no JSON-friendly shape.
 func Render(w io.Writer, format string, data any) error {
 	switch resolveFormat(format, w) {
 	case FormatStyled:
 		if s, ok := data.(Styler); ok {
 			_, err := fmt.Fprint(w, s.Styled())
+			return err
+		}
+		if s, ok := genericStyled(data); ok {
+			_, err := fmt.Fprint(w, s)
 			return err
 		}
 		fallthrough

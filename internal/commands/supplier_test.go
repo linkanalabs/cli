@@ -77,7 +77,7 @@ func TestSupplierListEmptyStyled(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit = %d", code)
 	}
-	if !strings.Contains(out.String(), "No suppliers") {
+	if !strings.Contains(out.String(), "(no results)") {
 		t.Errorf("expected empty hint, got %q", out.String())
 	}
 }
