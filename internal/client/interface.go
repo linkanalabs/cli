@@ -26,8 +26,6 @@ type API interface {
 	Get(ctx context.Context, path string) (*Response, error)
 	Do(ctx context.Context, method, path string, query url.Values, payload any) (*Response, error)
 	GetIdentity(ctx context.Context) (*Identity, error)
-	ListSuppliers(ctx context.Context) ([]Supplier, error)
-	GetSupplier(ctx context.Context, id string) (*Supplier, error)
 	StartImpersonation(ctx context.Context, userRef string, ttl time.Duration) (*Impersonation, error)
 	StopImpersonation(ctx context.Context) error
 }

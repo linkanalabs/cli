@@ -141,9 +141,9 @@ func TestDynamicCollisionManualWins(t *testing.T) {
 	swapFixtureManifest(t)
 	root := newRootCmd()
 
-	// Leaf collision: manual `supplier list` keeps its manual Short.
-	if got := findCommand(root, "supplier", "list"); got == nil || !strings.Contains(got.Short, "GET /srm/suppliers") {
-		t.Errorf("supplier list should stay manual, got %+v", got)
+	// Leaf collision: manual `auth login` keeps its manual Short.
+	if got := findCommand(root, "auth", "login"); got == nil || got.Short != "Store a Personal Access Token for the active backend" {
+		t.Errorf("auth login should stay manual, got %+v", got)
 	}
 	// Single-level collision: manual `whoami` keeps its manual Short and stays a leaf.
 	whoami := findCommand(root, "whoami")

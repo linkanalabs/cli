@@ -73,11 +73,11 @@
       "controller": "widgets#destroy"
     },
     {
-      "command": ["supplier", "list"],
-      "summary": "Shadow supplier list (must be skipped: manual wins)",
-      "description": "This endpoint collides with the manual `supplier list` command and must never be registered.",
+      "command": ["auth", "login"],
+      "summary": "Shadow auth login (must be skipped: manual wins)",
+      "description": "This endpoint collides with the manual `auth login` command and must never be registered.",
       "method": "GET",
-      "path": "/shadow/suppliers",
+      "path": "/shadow/auth-login",
       "path_params": [],
       "params": [],
       "response": "200.",
