@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-07-23T18:27:35Z",
-  "source": "linkanalabs/linkana@53d09346ec",
+  "generated_at": "2026-07-27T18:11:14Z",
+  "source": "linkanalabs/linkana@f046576c9d",
   "endpoints": [
     {
       "command": [
@@ -17,6 +17,346 @@
       "response": "200 with {id, email, name, role, buyer_id, is_staff}.",
       "auth": "pat",
       "controller": "my/identity#show"
+    },
+    {
+      "command": [
+        "settings",
+        "buyer-document",
+        "create"
+      ],
+      "summary": "Create a document field",
+      "description": "Creates a new document field for the buyer. field_type must be one of: currency, select, text_input, upload, multi_select. When field_type is select or multi_select, options must contain at least 2 entries. level must be one of: supplier, qualification (default supplier). display_name is required; name is auto-generated from display_name when omitted.",
+      "method": "POST",
+      "path": "/srm_settings/buyer_documents",
+      "path_params": [],
+      "body_root": "setting_buyer_document",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": true,
+          "desc": "Human-readable label of the field (required, unique per buyer among enabled fields).",
+          "in": "body"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false,
+          "desc": "Internal identifier (unique per buyer). Auto-generated from display_name when omitted.",
+          "in": "body"
+        },
+        {
+          "name": "hint",
+          "type": "string",
+          "required": false,
+          "desc": "Optional helper text shown alongside the field.",
+          "in": "body"
+        },
+        {
+          "name": "field_type",
+          "type": "string",
+          "required": false,
+          "desc": "Field type. One of: currency, select, text_input, upload, multi_select. select and multi_select require options with at least 2 entries.",
+          "in": "body"
+        },
+        {
+          "name": "level",
+          "type": "string",
+          "required": false,
+          "desc": "Scope of the field. One of: supplier, qualification. Defaults to supplier.",
+          "in": "body"
+        },
+        {
+          "name": "national_pf",
+          "type": "boolean",
+          "required": false,
+          "desc": "Available for national individual (PF) suppliers. Defaults to true.",
+          "in": "body"
+        },
+        {
+          "name": "national_pj",
+          "type": "boolean",
+          "required": false,
+          "desc": "Available for national company (PJ) suppliers. Defaults to true.",
+          "in": "body"
+        },
+        {
+          "name": "international",
+          "type": "boolean",
+          "required": false,
+          "desc": "Available for international suppliers. Defaults to true.",
+          "in": "body"
+        },
+        {
+          "name": "availability_on_request",
+          "type": "string",
+          "required": false,
+          "desc": "Visibility in supplier requests. One of: hidden, optional, required. Defaults to hidden.",
+          "in": "body"
+        },
+        {
+          "name": "availability_on_qualification",
+          "type": "string",
+          "required": false,
+          "desc": "Visibility during qualification. One of: hidden, optional, required. Defaults to hidden.",
+          "in": "body"
+        },
+        {
+          "name": "options",
+          "type": "array",
+          "required": false,
+          "desc": "Array of string options. Required (at least 2) when field_type is select or multi_select.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with {id, name, display_name, field_type, level, disabled, order}. 422 {errors} on validation (e.g. missing display_name, or select/multi_select without at least 2 options); 400 Rails default {status, error} when the setting_buyer_document body root is missing; 403 {error} when the policy denies access (requires admin or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/buyer_documents#create"
+    },
+    {
+      "command": [
+        "settings",
+        "buyer-document",
+        "disable"
+      ],
+      "summary": "Disable (archive) a buyer document field",
+      "description": "Disables an enabled buyer document field for the buyer, archiving the setting. When `disable_buyer_documents` is true, the associated buyer documents are archived as well. The `id` identifies the enabled SettingBuyerDocument to disable — resolve it from `settings buyer-document list` (pending, plan P1). A write command, subject to the read/write gate.",
+      "method": "DELETE",
+      "path": "/srm_settings/buyer_documents_enabling/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [
+        {
+          "name": "disable_buyer_documents",
+          "type": "boolean",
+          "required": true,
+          "desc": "When true, also archives the buyer documents associated with the field",
+          "in": "query"
+        }
+      ],
+      "response": "200 with the disabled document {id, name, display_name, field_type, level, disabled, order}. 404 Rails default {status, error} if no enabled document matches the id; 400 Rails default {status, error} when disable_buyer_documents is missing; 403 {error} when the policy denies access (caller below admin); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/buyer_documents_enabling#destroy"
+    },
+    {
+      "command": [
+        "settings",
+        "buyer-document",
+        "enable"
+      ],
+      "summary": "Enable (unarchive) a buyer document field",
+      "description": "Enables a previously disabled buyer document field for the buyer, unarchiving the setting and its associated buyer documents. The `id` identifies the disabled SettingBuyerDocument to enable — resolve it from `settings buyer-document list` (pending, plan P1; use the disabled/archived listing). A write command, subject to the read/write gate.",
+      "method": "POST",
+      "path": "/srm_settings/buyer_documents_enabling",
+      "path_params": [],
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "desc": "The id of the disabled SettingBuyerDocument to enable (from `settings buyer-document list`)",
+          "in": "query"
+        }
+      ],
+      "response": "200 with the enabled document {id, name, display_name, field_type, level, disabled, order}. 404 Rails default {status, error} if no disabled document matches the id; 403 {error} when the policy denies access (caller below admin); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/buyer_documents_enabling#create"
+    },
+    {
+      "command": [
+        "settings",
+        "buyer-document",
+        "list"
+      ],
+      "summary": "List the buyer's document fields",
+      "description": "Lists the buyer's supplier/qualification document fields (SettingBuyerDocument), ordered by their display order. By default returns the enabled fields; pass --tab disabled to list the archived (disabled) ones instead. This command is the source of the <id> consumed by `settings buyer-document show` and `settings buyer-document update`.",
+      "method": "GET",
+      "path": "/srm_settings/buyer_documents",
+      "path_params": [],
+      "params": [
+        {
+          "name": "tab",
+          "type": "string",
+          "required": false,
+          "desc": "Which set to list: omit (or any value other than 'disabled') for enabled fields, or 'disabled' for archived ones.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with an array of {id, name, display_name, field_type, level, disabled, order}. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "auth": "pat",
+      "controller": "srm_settings/buyer_documents#index"
+    },
+    {
+      "command": [
+        "settings",
+        "buyer-document",
+        "reorder"
+      ],
+      "summary": "Reorder the buyer document fields",
+      "description": "Sets the display order of the buyer's enabled document fields. `identifiers` is a comma-separated list of SettingBuyerDocument ids in the desired final order; ids not belonging to the buyer are ignored. Resolve the ids from `settings buyer-document list` (pending, plan P1) and pass them in the order you want. A write command, subject to the read/write gate.",
+      "method": "PATCH",
+      "path": "/srm_settings/buyer_documents_reordering",
+      "path_params": [],
+      "params": [
+        {
+          "name": "identifiers",
+          "type": "string",
+          "required": true,
+          "desc": "Comma-separated SettingBuyerDocument ids in the desired final order (e.g. \"id1,id2,id3\")",
+          "in": "query"
+        }
+      ],
+      "response": "200 with the reordered enabled documents as an array of {id, name, display_name, field_type, level, disabled, order}. 403 {error} when the policy denies access (caller below admin); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/buyer_documents_reorderings#update"
+    },
+    {
+      "command": [
+        "settings",
+        "buyer-document",
+        "show"
+      ],
+      "summary": "Show one document field",
+      "description": "Shows a single document field by its id (get the id from `settings buyer-document list`). Scoped to the current buyer — an id from another buyer returns 404.",
+      "method": "GET",
+      "path": "/srm_settings/buyer_documents/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with {id, name, display_name, field_type, level, disabled, order}. 404 Rails default {status, error} if the id is unknown or belongs to another buyer; 401 (empty body) when unauthenticated; 403 {error} when the policy denies access.",
+      "auth": "pat",
+      "controller": "srm_settings/buyer_documents#show"
+    },
+    {
+      "command": [
+        "settings",
+        "buyer-document",
+        "update"
+      ],
+      "summary": "Update a document field",
+      "description": "Updates an existing (enabled) document field by its id (get the id from `settings buyer-document list`). Disabled fields cannot be updated (404). Scoped to the current buyer — an id from another buyer returns 404. When field_type is select or multi_select, options must contain at least 2 entries.",
+      "method": "PATCH",
+      "path": "/srm_settings/buyer_documents/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_buyer_document",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": false,
+          "desc": "Human-readable label of the field (unique per buyer among enabled fields).",
+          "in": "body"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false,
+          "desc": "Internal identifier (unique per buyer).",
+          "in": "body"
+        },
+        {
+          "name": "hint",
+          "type": "string",
+          "required": false,
+          "desc": "Optional helper text shown alongside the field.",
+          "in": "body"
+        },
+        {
+          "name": "field_type",
+          "type": "string",
+          "required": false,
+          "desc": "Field type. One of: currency, select, text_input, upload, multi_select. select and multi_select require options with at least 2 entries.",
+          "in": "body"
+        },
+        {
+          "name": "level",
+          "type": "string",
+          "required": false,
+          "desc": "Scope of the field. One of: supplier, qualification.",
+          "in": "body"
+        },
+        {
+          "name": "national_pf",
+          "type": "boolean",
+          "required": false,
+          "desc": "Available for national individual (PF) suppliers.",
+          "in": "body"
+        },
+        {
+          "name": "national_pj",
+          "type": "boolean",
+          "required": false,
+          "desc": "Available for national company (PJ) suppliers.",
+          "in": "body"
+        },
+        {
+          "name": "international",
+          "type": "boolean",
+          "required": false,
+          "desc": "Available for international suppliers.",
+          "in": "body"
+        },
+        {
+          "name": "availability_on_request",
+          "type": "string",
+          "required": false,
+          "desc": "Visibility in supplier requests. One of: hidden, optional, required.",
+          "in": "body"
+        },
+        {
+          "name": "availability_on_qualification",
+          "type": "string",
+          "required": false,
+          "desc": "Visibility during qualification. One of: hidden, optional, required.",
+          "in": "body"
+        },
+        {
+          "name": "options",
+          "type": "array",
+          "required": false,
+          "desc": "Array of string options. Required (at least 2) when field_type is select or multi_select.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with {id, name, display_name, field_type, level, disabled, order}. 422 {errors} on validation (e.g. select/multi_select without at least 2 options); 404 Rails default {status, error} if the id is unknown, disabled, or belongs to another buyer; 403 {error} when the policy denies access (requires admin or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/buyer_documents#update"
+    },
+    {
+      "command": [
+        "settings",
+        "category",
+        "list"
+      ],
+      "summary": "List the buyer's supplier categories",
+      "description": "Lists the buyer's supplier categories (both enabled and disabled). Each category carries the `id` used as `category_id` when creating a supplier (see `supplier create`). v1 returns every category unfiltered — filter over the JSON on the client side. Future query filters: tab (disabled), search[display_name], search[legal_entity], page.",
+      "method": "GET",
+      "path": "/srm_settings/categories",
+      "path_params": [],
+      "params": [],
+      "response": "200 with an array of {id, display_name, legal_entity, disabled}. `legal_entity` is one of PJ, PF, INTERNATIONAL. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires the manager role or above).",
+      "auth": "pat",
+      "controller": "srm_settings/categories#index"
+    },
+    {
+      "command": [
+        "settings",
+        "company-user",
+        "list"
+      ],
+      "summary": "List the buyer's users",
+      "description": "Lists the active users of the current buyer with id, name, email, role and active flag, ordered by name. Use it to resolve a user_id needed by other commands (e.g. adding a user to a review group). Requires an admin (or above) credential.",
+      "method": "GET",
+      "path": "/srm_settings/company_users",
+      "path_params": [],
+      "params": [],
+      "response": "200 with array of {id, name, email, role, active}. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (caller below admin).",
+      "auth": "pat",
+      "controller": "srm_settings/company_users#index"
     },
     {
       "command": [
@@ -78,6 +418,172 @@
       "response": "200 with {template, content, updated_at}. 422 {errors} on validation (e.g. content over 280 chars); 400 Rails default {status, error} when content is missing; 404 Rails default {status, error} if the template is unknown; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/email_messages#update"
+    },
+    {
+      "command": [
+        "settings",
+        "notification",
+        "show"
+      ],
+      "summary": "Show the current user's notification preferences",
+      "description": "Shows the notification preferences of the authenticated user: a master `enabled` switch plus per-event alert and pending-action flags. Run this before `settings notification update` to avoid overwriting flags blindly. Independent command (no reference chaining).",
+      "method": "GET",
+      "path": "/srm_settings/notifications/edit",
+      "path_params": [],
+      "params": [],
+      "response": "200 with {enabled, alert_rating, alert_invites, alert_reviews, alert_documents, alert_suppliers, alert_qualifications, alert_rule_added_suppliers, action_pending_user_grouper_review, alert_rule_added_suppliers_by_others, action_pending_user_approval_steps_review, action_pending_user_performance_evaluation_review} (all booleans). 401 (empty body) when unauthenticated; 403 {error} when the policy denies access.",
+      "auth": "pat",
+      "controller": "srm_settings/notifications#edit"
+    },
+    {
+      "command": [
+        "settings",
+        "notification",
+        "update"
+      ],
+      "summary": "Update the current user's notification preferences",
+      "description": "Updates the authenticated user's notification preferences. Only the flags you send are changed; omit a flag to leave it untouched. Run `settings notification show` first to read the current state and avoid blind overwrites. Sensitive write — requires write mode.",
+      "method": "PATCH",
+      "path": "/srm_settings/notifications",
+      "path_params": [],
+      "body_root": "user_notification",
+      "params": [
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "required": false,
+          "desc": "Master switch; when false, no notifications are sent regardless of the other flags",
+          "in": "body"
+        },
+        {
+          "name": "alert_rating",
+          "type": "boolean",
+          "required": false,
+          "desc": "Alert when a supplier rating changes",
+          "in": "body"
+        },
+        {
+          "name": "alert_invites",
+          "type": "boolean",
+          "required": false,
+          "desc": "Alert about supplier invitations",
+          "in": "body"
+        },
+        {
+          "name": "alert_reviews",
+          "type": "boolean",
+          "required": false,
+          "desc": "Alert about reviews",
+          "in": "body"
+        },
+        {
+          "name": "alert_documents",
+          "type": "boolean",
+          "required": false,
+          "desc": "Alert about documents",
+          "in": "body"
+        },
+        {
+          "name": "alert_suppliers",
+          "type": "boolean",
+          "required": false,
+          "desc": "Alert about suppliers",
+          "in": "body"
+        },
+        {
+          "name": "alert_qualifications",
+          "type": "boolean",
+          "required": false,
+          "desc": "Alert about qualifications",
+          "in": "body"
+        },
+        {
+          "name": "alert_rule_added_suppliers",
+          "type": "boolean",
+          "required": false,
+          "desc": "Alert when suppliers are added to a rule you own",
+          "in": "body"
+        },
+        {
+          "name": "action_pending_user_grouper_review",
+          "type": "boolean",
+          "required": false,
+          "desc": "Pending-action alert for grouper reviews assigned to you",
+          "in": "body"
+        },
+        {
+          "name": "alert_rule_added_suppliers_by_others",
+          "type": "boolean",
+          "required": false,
+          "desc": "Alert when suppliers are added to a rule by other users",
+          "in": "body"
+        },
+        {
+          "name": "action_pending_user_approval_steps_review",
+          "type": "boolean",
+          "required": false,
+          "desc": "Pending-action alert for approval-step reviews assigned to you",
+          "in": "body"
+        },
+        {
+          "name": "action_pending_user_performance_evaluation_review",
+          "type": "boolean",
+          "required": false,
+          "desc": "Pending-action alert for performance-evaluation reviews assigned to you",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the full notification object (same shape as `settings notification show`) echoing the new state. 422 {errors} on validation failure; 400 Rails default {status, error} when the user_notification body is missing; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/notifications#update"
+    },
+    {
+      "command": [
+        "settings",
+        "tag",
+        "list"
+      ],
+      "summary": "List the buyer's setting tags",
+      "description": "Lists the buyer's setting tags (marcadores) as {id, display_name}, ordered by display_name. This is the source of the `setting_tag_ids` accepted by `supplier create`: resolve the id of each tag here before assigning tags to a supplier.",
+      "method": "GET",
+      "path": "/srm_settings/setting_tags",
+      "path_params": [],
+      "params": [],
+      "response": "200 with array of {id, display_name}. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires operator role or above).",
+      "auth": "pat",
+      "controller": "srm_settings/setting_tags#index"
+    },
+    {
+      "command": [
+        "supplier",
+        "list"
+      ],
+      "summary": "List the buyer's suppliers",
+      "description": "Lists every supplier of the current buyer. Each entry is identified by its id (use it with `supplier show`). No filters in this version.",
+      "method": "GET",
+      "path": "/srm/suppliers",
+      "path_params": [],
+      "params": [],
+      "response": "200 with an array of {id, name, identifier, legal_entity, state, tags:[{id, display_name}]}. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access.",
+      "auth": "pat",
+      "controller": "srm/suppliers#index"
+    },
+    {
+      "command": [
+        "supplier",
+        "show"
+      ],
+      "summary": "Show a single supplier",
+      "description": "Shows one supplier of the current buyer by its id, taken from the :supplier_id path segment (get the id from `supplier list`). Returns the supplier panel.",
+      "method": "GET",
+      "path": "/srm/suppliers/:supplier_id/panel",
+      "path_params": [
+        "supplier_id"
+      ],
+      "params": [],
+      "response": "200 with {id, name, identifier, legal_entity, state, tags:[{id, display_name}]}. 404 Rails default {status, error} when the supplier is unknown; 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (e.g. the supplier belongs to another buyer).",
+      "auth": "pat",
+      "controller": "srm/suppliers/panels#show"
     }
   ]
 }

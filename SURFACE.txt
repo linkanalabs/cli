@@ -15,10 +15,27 @@ lk mode
 lk mode read
 lk mode write
 lk settings
+lk settings buyer-document
+lk settings buyer-document create
+lk settings buyer-document disable
+lk settings buyer-document enable
+lk settings buyer-document list
+lk settings buyer-document reorder
+lk settings buyer-document show
+lk settings buyer-document update
+lk settings category
+lk settings category list
+lk settings company-user
+lk settings company-user list
 lk settings email-message
 lk settings email-message list
 lk settings email-message show
 lk settings email-message update
+lk settings notification
+lk settings notification show
+lk settings notification update
+lk settings tag
+lk settings tag list
 lk supplier
 lk supplier list
 lk supplier show

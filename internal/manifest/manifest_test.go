@@ -16,10 +16,13 @@ func TestLoadEmbeddedManifest(t *testing.T) {
 	if m.GeneratedAt == "" || m.Source == "" {
 		t.Errorf("GeneratedAt/Source must be set: %q / %q", m.GeneratedAt, m.Source)
 	}
-	if len(m.Endpoints) != 4 {
-		t.Fatalf("len(Endpoints) = %d, want 4", len(m.Endpoints))
+	if len(m.Endpoints) == 0 {
+		t.Fatal("embedded manifest carries no endpoints")
 	}
 
+	// The embedded manifest grows as the backend exposes commands; pin only the
+	// stable invariants (identity show is always first) and look the rest up by
+	// command so this test does not churn on every added endpoint.
 	first := m.Endpoints[0]
 	if got := strings.Join(first.Command, " "); got != "identity show" {
 		t.Errorf("first command = %q, want %q", got, "identity show")
@@ -28,10 +31,7 @@ func TestLoadEmbeddedManifest(t *testing.T) {
 		t.Errorf("first endpoint = %s %s", first.Method, first.Path)
 	}
 
-	update := m.Endpoints[3]
-	if got := strings.Join(update.Command, " "); got != "settings email-message update" {
-		t.Errorf("update command = %q", got)
-	}
+	update := findCommand(t, m, "settings email-message update")
 	if update.Method != "PATCH" || update.BodyRoot != "setting_email_message" {
 		t.Errorf("update endpoint = %s body_root=%q", update.Method, update.BodyRoot)
 	}
@@ -41,6 +41,19 @@ func TestLoadEmbeddedManifest(t *testing.T) {
 	if len(update.Params) != 1 || update.Params[0].Name != "content" || !update.Params[0].Required || update.Params[0].In != InBody {
 		t.Errorf("update params = %+v", update.Params)
 	}
+}
+
+// findCommand returns the endpoint whose joined command equals want, failing
+// the test if none matches.
+func findCommand(t *testing.T, m *Manifest, want string) Endpoint {
+	t.Helper()
+	for _, e := range m.Endpoints {
+		if strings.Join(e.Command, " ") == want {
+			return e
+		}
+	}
+	t.Fatalf("command %q not found in embedded manifest", want)
+	return Endpoint{}
 }
 
 func TestParseInvalidJSON(t *testing.T) {
