@@ -30,14 +30,21 @@ func SetVersion(v string) {
 // global) keeps tests isolated from each other.
 func newRootCmd() *cobra.Command {
 	root := &cobra.Command{
-		Use:           "lk",
-		Short:         "Linkana CLI",
-		Long:          "lk is the command-line interface for Linkana.",
+		Use:   "lk",
+		Short: "Linkana CLI",
+		Long: "lk is the command-line interface for Linkana.\n\n" +
+			"Output formats (--format):\n" +
+			"  auto      styled on a terminal, json when piped (default)\n" +
+			"  json      the stable contract: the response, pretty-printed\n" +
+			"  styled    aligned table or key/value block, for a human\n" +
+			"  markdown  GFM table or bold labels, to paste into a document\n" +
+			"  ids       one id per line, to feed the next command\n" +
+			"  count     how many records this response carries",
 		Version:       version,
 		SilenceErrors: true,
 		SilenceUsage:  true,
 	}
-	root.PersistentFlags().String("format", output.FormatAuto, "output format: auto|json|styled")
+	root.PersistentFlags().Var(&formatValue{value: output.FormatAuto}, "format", "output format: "+output.FormatList())
 	root.AddCommand(newVersionCmd())
 	root.AddCommand(newDoctorCmd())
 	root.AddCommand(newAuthCmd())
@@ -89,3 +96,24 @@ func formatFlag(cmd *cobra.Command) string {
 	f, _ := cmd.Flags().GetString("format")
 	return f
 }
+
+// formatValue validates --format while pflag parses it, so an unknown value
+// fails before any command body runs: no request is spent on a typo, and no
+// write happens only to fail at render time. Validating at parse time (rather
+// than in a PersistentPreRunE) also covers `lk --format x` with no subcommand
+// and cannot be shadowed by a hook on a future subcommand.
+type formatValue struct{ value string }
+
+func (f *formatValue) String() string { return f.value }
+
+func (f *formatValue) Set(v string) error {
+	if !output.Valid(v) {
+		return fmt.Errorf("unknown format %q: valid values are %s", v, output.FormatList())
+	}
+	f.value = v
+	return nil
+}
+
+// Type reports "string" so cmd.Flags().GetString("format") keeps working and
+// the help still reads `--format string`.
+func (f *formatValue) Type() string { return "string" }

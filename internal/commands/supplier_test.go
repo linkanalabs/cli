@@ -66,6 +66,64 @@ func TestSupplierListStyled(t *testing.T) {
 	}
 }
 
+func TestSupplierListMarkdown(t *testing.T) {
+	authEnv(t)
+	srv := supplierServer(t, http.StatusOK, "["+supplierJSON+"]", http.StatusOK, supplierJSON)
+	t.Setenv("LK_API_URL", srv.URL)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+
+	var out, errOut bytes.Buffer
+	code := run([]string{"supplier", "list", "--format", "markdown"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	lines := strings.Split(strings.TrimRight(out.String(), "\n"), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("expected header + separator + 1 row, got %d lines: %q", len(lines), out.String())
+	}
+	if !strings.HasPrefix(lines[0], "| id | name |") {
+		t.Errorf("header = %q", lines[0])
+	}
+	if lines[1] != "| --- | --- | --- | --- | --- | --- |" {
+		t.Errorf("separator = %q", lines[1])
+	}
+	if !strings.Contains(lines[2], "| Acme |") || !strings.Contains(lines[2], "Critical") {
+		t.Errorf("row = %q", lines[2])
+	}
+}
+
+func TestSupplierListIDs(t *testing.T) {
+	authEnv(t)
+	srv := supplierServer(t, http.StatusOK, "["+supplierJSON+"]", http.StatusOK, supplierJSON)
+	t.Setenv("LK_API_URL", srv.URL)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+
+	var out, errOut bytes.Buffer
+	code := run([]string{"supplier", "list", "--format", "ids"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	if out.String() != "s_1\n" {
+		t.Errorf("output = %q", out.String())
+	}
+}
+
+func TestSupplierListCount(t *testing.T) {
+	authEnv(t)
+	srv := supplierServer(t, http.StatusOK, "["+supplierJSON+","+supplierJSON+"]", http.StatusOK, supplierJSON)
+	t.Setenv("LK_API_URL", srv.URL)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+
+	var out, errOut bytes.Buffer
+	code := run([]string{"supplier", "list", "--format", "count"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	if out.String() != "2\n" {
+		t.Errorf("output = %q", out.String())
+	}
+}
+
 func TestSupplierListEmptyStyled(t *testing.T) {
 	authEnv(t)
 	srv := supplierServer(t, http.StatusOK, "[]", http.StatusOK, supplierJSON)

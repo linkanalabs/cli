@@ -51,6 +51,13 @@ func runDynamic(e *manifest.Endpoint) func(*cobra.Command, []string) error {
 			return fmt.Errorf("%s %s returned %d", e.Method, e.Path, resp.StatusCode)
 		}
 		if len(resp.Body) == 0 {
+			// A 2xx with no body carries no record. The counting projection
+			// still owes its integer — a caller doing `n=$(lk ... --format
+			// count)` must never get an empty string — while every other
+			// format stays silent.
+			if formatFlag(cmd) == output.FormatCount {
+				return output.Render(cmd.OutOrStdout(), output.FormatCount, nil)
+			}
 			return nil
 		}
 		return output.Render(cmd.OutOrStdout(), formatFlag(cmd), json.RawMessage(resp.Body))

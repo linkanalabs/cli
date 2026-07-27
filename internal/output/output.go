@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
+	"strings"
 
 	"github.com/mattn/go-isatty"
 )
@@ -15,10 +17,24 @@ var isTerminal = isatty.IsTerminal
 
 // Format selects how results are rendered.
 const (
-	FormatAuto   = "auto"
-	FormatJSON   = "json"
-	FormatStyled = "styled"
+	FormatAuto     = "auto"
+	FormatJSON     = "json"
+	FormatStyled   = "styled"
+	FormatMarkdown = "markdown"
+	FormatIDs      = "ids"
+	FormatCount    = "count"
 )
+
+// Formats lists every accepted --format value, in help order.
+var Formats = []string{FormatAuto, FormatJSON, FormatStyled, FormatMarkdown, FormatIDs, FormatCount}
+
+// Valid reports whether format is an accepted --format value.
+func Valid(format string) bool {
+	return slices.Contains(Formats, format)
+}
+
+// FormatList renders the accepted values for flag help and error messages.
+func FormatList() string { return strings.Join(Formats, "|") }
 
 // Styler is implemented by results that render themselves as styled text
 // (diagnostic commands with bespoke layouts, e.g. doctor). Resource-shaped
@@ -30,8 +46,11 @@ type Styler interface {
 // Render writes data to w in the requested format. FormatAuto resolves to
 // styled on a terminal and JSON otherwise. Styled uses the data's own Styler
 // when implemented, then the generic renderer (table for an array of
-// objects, key/value block for an object), and falls back to JSON when the
-// data has no JSON-friendly shape.
+// objects, key/value block for an object). Markdown always uses the generic
+// renderer — a Styler paints the terminal, not a document. Both fall back to
+// JSON when the data has no JSON-friendly shape. Ids and count read the JSON
+// shape directly. An unrecognized format renders JSON; the CLI rejects one
+// up front (see the root command) so no request is spent on a typo.
 func Render(w io.Writer, format string, data any) error {
 	switch resolveFormat(format, w) {
 	case FormatStyled:
@@ -43,7 +62,17 @@ func Render(w io.Writer, format string, data any) error {
 			_, err := fmt.Fprint(w, s)
 			return err
 		}
-		fallthrough
+		return renderJSON(w, data)
+	case FormatMarkdown:
+		if s, ok := genericMarkdown(data); ok {
+			_, err := fmt.Fprint(w, s)
+			return err
+		}
+		return renderJSON(w, data)
+	case FormatIDs:
+		return renderIDs(w, data)
+	case FormatCount:
+		return renderCount(w, data)
 	default:
 		return renderJSON(w, data)
 	}
