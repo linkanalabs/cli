@@ -49,7 +49,6 @@ func newRootCmd() *cobra.Command {
 	root.AddCommand(newDoctorCmd())
 	root.AddCommand(newAuthCmd())
 	root.AddCommand(newWhoamiCmd())
-	root.AddCommand(newSupplierCmd())
 	root.AddCommand(newImpersonateCmd())
 	root.AddCommand(newModeCmd())
 	root.AddCommand(newConfigCmd())
