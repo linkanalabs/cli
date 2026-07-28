@@ -14,7 +14,7 @@ Esqueleto + `doctor` + autenticação via PAT (`auth`, `whoami`) + suppliers
 
 ## Instalação
 
-Via [Homebrew](https://brew.sh) (macOS; cask no tap da linkanalabs):
+**macOS** — via [Homebrew](https://brew.sh) (cask no tap da linkanalabs):
 
 ```bash
 brew install linkanalabs/tap/lk
@@ -24,14 +24,22 @@ lk doctor
 O cask é atualizado automaticamente pelo [GoReleaser](https://goreleaser.com) a
 cada release. Para atualizar: `brew upgrade lk`.
 
-<details>
-<summary>Outras formas (Linux ou sem brew)</summary>
+**Linux** — via script instalador (detecta OS/arch, baixa do último release,
+verifica checksum, instala em `~/.local/bin/lk`):
 
 ```bash
-# Instalador (detecta OS/arch, baixa do último release, verifica checksum,
-# instala em ~/.local/bin/lk — override com LK_BIN_DIR)
-git clone https://github.com/linkanalabs/cli && cd cli && ./scripts/install.sh
+curl -fsSL https://raw.githubusercontent.com/linkanalabs/cli/main/scripts/install.sh | sh
+lk doctor
+```
 
+Override o diretório com `LK_BIN_DIR` e a versão com `LK_VERSION` (ex:
+`LK_VERSION=v0.6.0`). Para atualizar, rode o mesmo comando. O script também
+funciona em macOS (fallback sem brew).
+
+<details>
+<summary>Outras formas</summary>
+
+```bash
 # Build a partir do código (precisa de Go 1.26+)
 git clone https://github.com/linkanalabs/cli && cd cli && make build && ./lk doctor
 
