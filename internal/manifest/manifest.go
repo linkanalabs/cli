@@ -141,6 +141,26 @@ func (e *Endpoint) validate() error {
 			return fmt.Errorf("param %q: %w", p.Name, err)
 		}
 	}
+	// A spread param carries the whole request body under body_root, so it
+	// cannot coexist with other body params: the executor would otherwise
+	// build an order-dependent, silently-incomplete payload (the spread
+	// assignment discards earlier fields while later fields mutate the spread
+	// value). Enforce it here so a malformed manifest fails fast at load.
+	bodyParams, spreadParams := 0, 0
+	for i := range e.Params {
+		if e.Params[i].In == InBody {
+			bodyParams++
+		}
+		if e.Params[i].Spread {
+			spreadParams++
+		}
+	}
+	if spreadParams > 1 {
+		return fmt.Errorf("at most one spread param allowed, found %d", spreadParams)
+	}
+	if spreadParams == 1 && bodyParams > 1 {
+		return fmt.Errorf("a spread param must be the only body param, found %d body params", bodyParams)
+	}
 	return nil
 }
 

@@ -180,6 +180,18 @@ func TestParseSpreadValidationErrors(t *testing.T) {
 				"params":[{"name":"weights","type":"object","in":"query","spread":true}]}]}`,
 			want: "spread requires in body",
 		},
+		"spread combined with another body param": {
+			body: `{"manifest_version":1,"endpoints":[{"command":["a"],"method":"PUT","path":"/x","body_root":"root",
+				"params":[{"name":"weights","type":"object","in":"body","spread":true},
+					{"name":"note","type":"string","in":"body"}]}]}`,
+			want: "must be the only body param",
+		},
+		"more than one spread param": {
+			body: `{"manifest_version":1,"endpoints":[{"command":["a"],"method":"PUT","path":"/x","body_root":"root",
+				"params":[{"name":"weights","type":"object","in":"body","spread":true},
+					{"name":"scores","type":"object","in":"body","spread":true}]}]}`,
+			want: "at most one spread param",
+		},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
