@@ -147,6 +147,15 @@ Today the manifest exposes `identity show` and `settings email-message list|show
 
 ### Exposing/changing a command — the deterministic process (mandatory)
 
+**How to request (trigger).** Requests like "expose/add/promote/make-dynamic the
+command X on the CLI", "expose `<controller#action>` on lk", "I want `<resource>`
+on lk" (PT or EN — "expõe/adiciona/dinamiza o comando X", "quero X no lk") trigger
+THIS process in full. The default scope is ALWAYS the three repos (linkana → cli →
+lk-stack) — a delivery that stops at Phase 1 or 2 is incomplete. Only do a partial
+scope if the request explicitly says so ("just the backend" / "cli only"). When
+unsure whether it's one command or several, or about id dependencies
+(reference-chaining), ask before starting.
+
 Every new command (or surface/param change) **spans three repos** and follows the
 same ordered steps. The reference slice is PR #14103 (`settings email-message`):
 `cli_expose` + `config/cli/<x>.yml` + JSON branch/jbuilder + `_cli_test.rb` +
