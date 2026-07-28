@@ -34,9 +34,18 @@ lk settings email-message update
 lk settings notification
 lk settings notification show
 lk settings notification update
+lk settings setting-grouper
+lk settings setting-grouper create
+lk settings setting-grouper destroy
+lk settings setting-grouper list
+lk settings setting-grouper show
+lk settings setting-grouper update
+lk settings setting-grouper users
+lk settings setting-grouper users list
 lk settings tag
 lk settings tag list
 lk supplier
+lk supplier create
 lk supplier list
 lk supplier show
 lk version
