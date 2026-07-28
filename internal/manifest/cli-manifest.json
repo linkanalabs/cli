@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-07-27T18:11:14Z",
-  "source": "linkanalabs/linkana@f046576c9d",
+  "generated_at": "2026-07-28T18:05:30Z",
+  "source": "linkanalabs/linkana@8b3e32cead",
   "endpoints": [
     {
       "command": [
@@ -540,6 +540,161 @@
     {
       "command": [
         "settings",
+        "setting-grouper",
+        "create"
+      ],
+      "summary": "Create a review group",
+      "description": "Creates a review group for the buyer, optionally with members. Members are set via setting_grouper_users_attributes, whose user_id comes from `settings company-user list`. Requires write mode.",
+      "method": "POST",
+      "path": "/srm_settings/setting_groupers",
+      "path_params": [],
+      "body_root": "setting_grouper",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": true,
+          "desc": "Display name of the review group (unique per buyer)",
+          "in": "body"
+        },
+        {
+          "name": "setting_grouper_users_attributes",
+          "type": "array",
+          "required": false,
+          "desc": "JSON array of member objects [{\"user_id\":\"<uuid>\"}]; user_id comes from `settings company-user list`. On update, pass {\"id\":\"<join_id>\",\"_destroy\":true} to remove an existing member.",
+          "in": "body",
+          "item": "object"
+        },
+        {
+          "name": "setting_documents_attributes",
+          "type": "array",
+          "required": false,
+          "desc": "JSON array of document association objects [{\"id\":\"<setting_document_id>\"}]. No CLI command exposes setting_document ids yet — this param is documented for completeness and optional.",
+          "in": "body",
+          "item": "object"
+        }
+      ],
+      "response": "200 with {id, display_name, documents_count, users:[{id, user_id, name, email}]}. 422 {errors} on validation (e.g. blank or duplicate display_name, or when the display_name is missing); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_groupers#create"
+    },
+    {
+      "command": [
+        "settings",
+        "setting-grouper",
+        "destroy"
+      ],
+      "summary": "Delete a review group",
+      "description": "Deletes an empty review group by its id (see `settings setting-grouper list`). A group with attached documents cannot be deleted (403). Requires write mode.",
+      "method": "DELETE",
+      "path": "/srm_settings/setting_groupers/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with the deleted {id, display_name, documents_count, users}. 403 {error} when the group still has attached documents, belongs to another buyer, or the policy denies access; 404 Rails default {status, error} if the id is unknown; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_groupers#destroy"
+    },
+    {
+      "command": [
+        "settings",
+        "setting-grouper",
+        "list"
+      ],
+      "summary": "List review groups (setting groupers)",
+      "description": "Lists the buyer's review groups (setting groupers) with their members. Each entry carries its members and the count of documents attached to the group. Use the returned id with `settings setting-grouper show|update|destroy`.",
+      "method": "GET",
+      "path": "/srm_settings/setting_groupers",
+      "path_params": [],
+      "params": [],
+      "response": "200 with an array of {id, display_name, documents_count, users:[{id, user_id, name, email}]}. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_groupers#index"
+    },
+    {
+      "command": [
+        "settings",
+        "setting-grouper",
+        "show"
+      ],
+      "summary": "Show a review group",
+      "description": "Shows one review group by its id (see `settings setting-grouper list` for available ids), including its members.",
+      "method": "GET",
+      "path": "/srm_settings/setting_groupers/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with {id, display_name, documents_count, users:[{id, user_id, name, email}]}. 404 Rails default {status, error} if the id is unknown; 403 {error} when the group belongs to another buyer or the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_groupers#show"
+    },
+    {
+      "command": [
+        "settings",
+        "setting-grouper",
+        "update"
+      ],
+      "summary": "Update a review group",
+      "description": "Updates a review group by its id (see `settings setting-grouper list`). Rename via display_name; add members via setting_grouper_users_attributes (user_id from `settings company-user list`); remove a member by passing {\"id\":\"<join_id>\",\"_destroy\":true}. Requires write mode.",
+      "method": "PATCH",
+      "path": "/srm_settings/setting_groupers/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_grouper",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": false,
+          "desc": "New display name of the review group (unique per buyer)",
+          "in": "body"
+        },
+        {
+          "name": "setting_grouper_users_attributes",
+          "type": "array",
+          "required": false,
+          "desc": "JSON array of member objects; add with [{\"user_id\":\"<uuid>\"}] (user_id from `settings company-user list`), remove with [{\"id\":\"<join_id>\",\"_destroy\":true}].",
+          "in": "body",
+          "item": "object"
+        },
+        {
+          "name": "setting_documents_attributes",
+          "type": "array",
+          "required": false,
+          "desc": "JSON array of document association objects [{\"id\":\"<setting_document_id>\"}]. No CLI command exposes setting_document ids yet — documented for completeness and optional.",
+          "in": "body",
+          "item": "object"
+        }
+      ],
+      "response": "200 with {id, display_name, documents_count, users:[{id, user_id, name, email}]}. 422 {errors} on validation (e.g. blank or duplicate display_name); 404 Rails default {status, error} if the id is unknown; 403 {error} when the group belongs to another buyer or the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_groupers#update"
+    },
+    {
+      "command": [
+        "settings",
+        "setting-grouper",
+        "users",
+        "list"
+      ],
+      "summary": "List the members of a review group",
+      "description": "Lists the users (members) of one review group (setting grouper). The setting_grouper_id path argument comes from `settings setting-grouper list`.",
+      "method": "GET",
+      "path": "/srm_settings/setting_groupers/:setting_grouper_id/setting_grouper_users",
+      "path_params": [
+        "setting_grouper_id"
+      ],
+      "params": [],
+      "response": "200 with an array of {id, user_id, name, email} — id is the membership (join) id, user_id/name/email identify the member. Empty array when the group has no members. 404 Rails default {status, error} when the setting_grouper_id is unknown or belongs to another buyer (buyer-scoped); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_groupers/setting_grouper_users#index"
+    },
+    {
+      "command": [
+        "settings",
         "tag",
         "list"
       ],
@@ -552,6 +707,86 @@
       "response": "200 with array of {id, display_name}. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires operator role or above).",
       "auth": "pat",
       "controller": "srm_settings/setting_tags#index"
+    },
+    {
+      "command": [
+        "supplier",
+        "create"
+      ],
+      "summary": "Register a supplier (start a qualification)",
+      "description": "Registers a supplier under one category of the current buyer, starting its qualification (homologação). legal_entity must be one of: PJ (national company), PF (national individual), INTERNATIONAL. identifier is the CNPJ (PJ) or CPF (PF); masked or unmasked is accepted. category_id is required.\n\nReference chaining (resolve each id BEFORE calling this command):\n  * --category-id ← `settings category list` (required).\n  * --setting_tag_ids[] ← `settings tag list` (repeat the flag per tag).\n  * --buyer-document-fields ← names from `settings buyer-document list`. Pass a JSON object mapping each document field name to its value, e.g. '{\"cnpj_certificate\":\"12345\"}'. When the chosen category has qualification-required document fields for the supplier's legal_entity, those field names must be present here or the create fails (422).\n",
+      "method": "POST",
+      "path": "/srm/suppliers",
+      "path_params": [],
+      "body_root": "supplier",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "required": false,
+          "desc": "Supplier name. When omitted for a PJ with a known CNPJ, it is filled from the CNPJ record (razão social).",
+          "in": "body"
+        },
+        {
+          "name": "legal_entity",
+          "type": "string",
+          "required": true,
+          "desc": "Legal entity type. One of: PJ (national company), PF (national individual), INTERNATIONAL.",
+          "in": "body"
+        },
+        {
+          "name": "country_code",
+          "type": "string",
+          "required": false,
+          "desc": "ISO country code of the supplier (e.g. BR).",
+          "in": "body"
+        },
+        {
+          "name": "identifier",
+          "type": "string",
+          "required": true,
+          "desc": "CNPJ (PJ) or CPF (PF) of the supplier; masked or unmasked is accepted. Ignored for INTERNATIONAL.",
+          "in": "body"
+        },
+        {
+          "name": "contact_email",
+          "type": "string",
+          "required": false,
+          "desc": "Contact email; when present, an invite is sent to this address.",
+          "in": "body"
+        },
+        {
+          "name": "category_id",
+          "type": "string",
+          "required": true,
+          "desc": "Category the supplier is registered under (id from `settings category list`).",
+          "in": "query"
+        },
+        {
+          "name": "setting_tag_ids",
+          "type": "array",
+          "required": false,
+          "desc": "Tag ids to apply to the supplier (id from `settings tag list`). Repeat the flag once per tag.",
+          "in": "query"
+        },
+        {
+          "name": "locale",
+          "type": "string",
+          "required": false,
+          "desc": "Locale used for the qualification/invite copy (defaults to pt-BR).",
+          "in": "query"
+        },
+        {
+          "name": "buyer_document_fields",
+          "type": "object",
+          "required": false,
+          "desc": "JSON object mapping document field names (from `settings buyer-document list`) to their values. Required when the category has qualification-required document fields for the supplier's legal_entity.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with {id, name, identifier, legal_entity, state, tags:[{id, display_name}], supplier_category_id}. 422 {errors} on validation (e.g. invalid identifier/contact_email, or missing required qualification document fields); 404 Rails default {status, error} when category_id is unknown or belongs to another buyer; 403 {error} when the policy denies access (requires member or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm/suppliers#create"
     },
     {
       "command": [
