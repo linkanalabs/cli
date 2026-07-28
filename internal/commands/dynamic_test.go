@@ -219,6 +219,19 @@ func TestDynamicHelpIsLLMFirst(t *testing.T) {
 	}
 }
 
+// A spread param's help must spell out the hash-by-id shape, since the flag
+// itself is just a generic JSON-object string flag otherwise.
+func TestDynamicHelpMentionsSpreadShape(t *testing.T) {
+	swapFixtureManifest(t)
+	var out, errOut bytes.Buffer
+	if code := run([]string{"widget", "calibrate", "--help"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	if !strings.Contains(out.String(), `{"<id>":{"weight":N}}`) {
+		t.Errorf("help should describe the spread shape:\n%s", out.String())
+	}
+}
+
 func TestDynamicHelpListsPositionalArgs(t *testing.T) {
 	swapFixtureManifest(t)
 	var out, errOut bytes.Buffer

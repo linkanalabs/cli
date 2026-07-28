@@ -164,3 +164,44 @@ func TestParseValidMinimal(t *testing.T) {
 		t.Errorf("manifest = %+v", m)
 	}
 }
+
+func TestParseSpreadValidationErrors(t *testing.T) {
+	cases := map[string]struct {
+		body string
+		want string
+	}{
+		"spread on a non-object type": {
+			body: `{"manifest_version":1,"endpoints":[{"command":["a"],"method":"PUT","path":"/x","body_root":"root",
+				"params":[{"name":"weights","type":"string","in":"body","spread":true}]}]}`,
+			want: "spread requires type object",
+		},
+		"spread on a query param": {
+			body: `{"manifest_version":1,"endpoints":[{"command":["a"],"method":"PUT","path":"/x","body_root":"root",
+				"params":[{"name":"weights","type":"object","in":"query","spread":true}]}]}`,
+			want: "spread requires in body",
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, err := Parse([]byte(tc.body))
+			if err == nil {
+				t.Fatal("expected validation error")
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("error = %q, want it to contain %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestParseSpreadValid(t *testing.T) {
+	body := `{"manifest_version":1,"endpoints":[{"command":["a"],"method":"PUT","path":"/x","body_root":"root",
+		"params":[{"name":"weights","type":"object","required":true,"desc":"Weights","in":"body","spread":true}]}]}`
+	m, err := Parse([]byte(body))
+	if err != nil {
+		t.Fatalf("Parse() error: %v", err)
+	}
+	if !m.Endpoints[0].Params[0].Spread {
+		t.Errorf("Spread = false, want true")
+	}
+}

@@ -61,6 +61,7 @@ type Param struct {
 	Enum     []string `json:"enum"`
 	In       string   `json:"in"`
 	Item     string   `json:"item"`
+	Spread   bool     `json:"spread"`
 }
 
 // CommandPath renders the endpoint's command as a space-separated path.
@@ -162,6 +163,14 @@ func (p *Param) validate() error {
 	}
 	if p.Item != "" && !validTypes[p.Item] {
 		return fmt.Errorf("unknown item type %q", p.Item)
+	}
+	if p.Spread {
+		if p.Type != TypeObject {
+			return errors.New("spread requires type object")
+		}
+		if p.In != InBody {
+			return errors.New("spread requires in body")
+		}
 	}
 	return nil
 }

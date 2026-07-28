@@ -306,6 +306,48 @@ func TestDynamicExecPostBodyWithRoot(t *testing.T) {
 	}
 }
 
+// TestDynamicExecSpreadParamIsBodyItself proves the P0 infra: a param
+// declared with `spread: true` becomes the request body itself (still
+// wrapped in body_root), not nested one level deeper under its own name.
+// This is the shape calibration needs: {body_root: {"<id>": {"weight":50}}}.
+func TestDynamicExecSpreadParamIsBodyItself(t *testing.T) {
+	swapFixtureManifest(t)
+	authEnv(t)
+	var gotBody []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotBody, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"id":"p_1"}`))
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("LK_API_URL", srv.URL)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+	enableWrite(t, srv.URL)
+
+	var out, errOut bytes.Buffer
+	code := run([]string{
+		"widget", "calibrate", "--format", "json",
+		"--weights", `{"pillar_1":{"weight":50}}`,
+	}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+
+	want := `{"setting_performance_pillar":{"pillar_1":{"weight":50}}}`
+	var gotJSON, wantJSON any
+	if err := json.Unmarshal(gotBody, &gotJSON); err != nil {
+		t.Fatalf("body not JSON: %v (%q)", err, gotBody)
+	}
+	if err := json.Unmarshal([]byte(want), &wantJSON); err != nil {
+		t.Fatalf("want not JSON: %v", err)
+	}
+	gotCompact, _ := json.Marshal(gotJSON)
+	wantCompact, _ := json.Marshal(wantJSON)
+	if string(gotCompact) != string(wantCompact) {
+		t.Errorf("body = %s, want %s", gotCompact, wantCompact)
+	}
+}
+
 func TestDynamicExecWriteBlockedInReadMode(t *testing.T) {
 	swapFixtureManifest(t)
 	authEnv(t)
