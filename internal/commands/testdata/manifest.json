@@ -47,6 +47,21 @@
       "controller": "widgets#create"
     },
     {
+      "command": ["widget", "calibrate"],
+      "summary": "Calibrate widget weights",
+      "description": "Sets weights for a hash of widgets keyed by id.",
+      "method": "PUT",
+      "path": "/widgets/calibrate",
+      "path_params": [],
+      "body_root": "setting_performance_pillar",
+      "params": [
+        {"name": "weights", "type": "object", "required": true, "desc": "Weights by id", "in": "body", "spread": true}
+      ],
+      "response": "200 with the updated pillars.",
+      "auth": "pat",
+      "controller": "widgets#calibrate"
+    },
+    {
       "command": ["widget", "note", "show"],
       "summary": "Show a widget note",
       "description": "Shows one note of a widget.",

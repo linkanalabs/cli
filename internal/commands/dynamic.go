@@ -95,7 +95,11 @@ func addDynamicFlag(cmd *cobra.Command, p *manifest.Param) {
 	case manifest.TypeBoolean:
 		flags.Bool(p.Name, false, usage)
 	case manifest.TypeObject:
-		flags.String(p.Name, "", usage+" (JSON object)")
+		if p.Spread {
+			flags.String(p.Name, "", usage+` (JSON object, e.g. {"<id>":{"weight":N}})`)
+		} else {
+			flags.String(p.Name, "", usage+" (JSON object)")
+		}
 	case manifest.TypeArray:
 		if p.Item == manifest.TypeObject {
 			flags.String(p.Name, "", usage+" (JSON array)")

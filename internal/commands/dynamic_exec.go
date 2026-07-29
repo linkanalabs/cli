@@ -94,12 +94,20 @@ func collectParams(cmd *cobra.Command, e *manifest.Endpoint) (url.Values, map[st
 		if err != nil {
 			return nil, nil, err
 		}
-		if p.In == manifest.InQuery {
+		switch {
+		case p.In == manifest.InQuery:
 			if query == nil {
 				query = url.Values{}
 			}
 			addQueryValue(query, p.Name, val)
-		} else {
+		case p.Spread:
+			// spread: the param's own value becomes the request body itself,
+			// instead of nesting one level deeper under p.Name. The manifest
+			// validates spread => type object, so dynamicFlagValue always
+			// resolves this through jsonFlagValue(..., "object"), which
+			// guarantees a map[string]any.
+			body = val.(map[string]any)
+		default:
 			if body == nil {
 				body = map[string]any{}
 			}
