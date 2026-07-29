@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-07-28T18:05:30Z",
-  "source": "linkanalabs/linkana@8b3e32cead",
+  "generated_at": "2026-07-29T14:17:37Z",
+  "source": "linkanalabs/linkana@6da2dfa883",
   "endpoints": [
     {
       "command": [
@@ -536,6 +536,288 @@
       "response": "200 with the full notification object (same shape as `settings notification show`) echoing the new state. 422 {errors} on validation failure; 400 Rails default {status, error} when the user_notification body is missing; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/notifications#update"
+    },
+    {
+      "command": [
+        "settings",
+        "performance-evaluation",
+        "create"
+      ],
+      "summary": "Create a performance evaluation",
+      "description": "Creates a performance evaluation for the buyer. It starts disabled (not yet in use) with no pillars — use `settings performance-evaluation enable` (once exposed) to move it to the enabled tab, and `settings performance-pillar create <evaluation_id>` (once exposed) to add pillars. Requires write mode.",
+      "method": "POST",
+      "path": "/srm_settings/performance_evaluations",
+      "path_params": [],
+      "body_root": "setting_performance_evaluation",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": true,
+          "desc": "Display name of the evaluation (unique per buyer)",
+          "in": "body"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "desc": "Free-text description of the evaluation. Omit for an empty description (the model rejects null, not blank).",
+          "in": "body"
+        }
+      ],
+      "response": "200 with {id, display_name, description, disabled, pillars:[]}. 422 {errors} on validation (e.g. missing or duplicated display_name); 403 {error} when the policy denies access (requires admin or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/performance_evaluations#create"
+    },
+    {
+      "command": [
+        "settings",
+        "performance-evaluation",
+        "disable"
+      ],
+      "summary": "Disable a performance evaluation (move it to \"Não utilizado\")",
+      "description": "Disables a performance evaluation for the buyer, moving it from the enabled tab to the disabled/archived one. The evaluation and its pillars/asks are not deleted — it can be re-enabled later with `settings performance-evaluation enable`. The `<id>` identifies the evaluation to disable — resolve it from `settings performance-evaluation list`. Requires write mode.",
+      "method": "DELETE",
+      "path": "/srm_settings/performance_evaluations_enabling/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with the evaluation {id, display_name, description, disabled, pillars_count}. 404 Rails default {status, error} if the id is unknown or belongs to another buyer; 403 {error} when the policy denies access (requires admin or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/performance_evaluations_enabling#destroy"
+    },
+    {
+      "command": [
+        "settings",
+        "performance-evaluation",
+        "enable"
+      ],
+      "summary": "Enable a performance evaluation (move it to \"Em uso\")",
+      "description": "Enables a performance evaluation for the buyer, moving it from the disabled/archived tab to the enabled one. A performance evaluation is created disabled by default (see `settings performance-evaluation create`), so this is the command that puts a freshly created evaluation into use. The `id` identifies the evaluation to enable — resolve it from `settings performance-evaluation list --tab disabled` (or the default `list` if it is already enabled; enabling an already-enabled evaluation is a no-op success). Requires write mode.",
+      "method": "POST",
+      "path": "/srm_settings/performance_evaluations_enabling",
+      "path_params": [],
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "desc": "The id of the SettingPerformanceEvaluation to enable (from `settings performance-evaluation list`)",
+          "in": "query"
+        }
+      ],
+      "response": "200 with the evaluation {id, display_name, description, disabled, pillars_count}. 400 Rails default {status, error} when id is missing; 404 Rails default {status, error} if the id is unknown or belongs to another buyer; 403 {error} when the policy denies access (requires admin or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/performance_evaluations_enabling#create"
+    },
+    {
+      "command": [
+        "settings",
+        "performance-evaluation",
+        "list"
+      ],
+      "summary": "List performance evaluations",
+      "description": "Lists the buyer's performance evaluations (Avaliação → Pilares → Perguntas hierarchy root). By default returns the enabled evaluations; pass --tab disabled to list the archived (disabled) ones instead. Each item is a lean summary (pillars_count only) — use the returned id with `settings performance-evaluation show` to get the full tree of pillars and asks.",
+      "method": "GET",
+      "path": "/srm_settings/performance_evaluations",
+      "path_params": [],
+      "params": [
+        {
+          "name": "tab",
+          "type": "string",
+          "required": false,
+          "desc": "Which set to list: omit (or any value other than 'disabled') for enabled evaluations, or 'disabled' for archived ones.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with an array of {id, display_name, description, disabled, pillars_count}. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "auth": "pat",
+      "controller": "srm_settings/performance_evaluations#index"
+    },
+    {
+      "command": [
+        "settings",
+        "performance-evaluation",
+        "show"
+      ],
+      "summary": "Show one performance evaluation with its full tree",
+      "description": "Shows a single performance evaluation by its id (get the id from `settings performance-evaluation list`), embedding its full tree of pillars and, per pillar, its asks — this is the equivalent of the evaluation's web page in one call. Pillar and ask ids returned here are the ones consumed by `settings performance-pillar show|update|destroy` and `settings performance-ask update|destroy`.",
+      "method": "GET",
+      "path": "/srm_settings/performance_evaluations/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with {id, display_name, description, disabled, pillars:[{id, display_name, description, weight, require_comment_per_answer, require_evidence_per_answer, asks:[{id, display_name, description, criterion, weight}]}]}. 404 Rails default {status, error} if the id is unknown or belongs to another buyer; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/performance_evaluations#show"
+    },
+    {
+      "command": [
+        "settings",
+        "performance-evaluation",
+        "update"
+      ],
+      "summary": "Update a performance evaluation",
+      "description": "Updates a performance evaluation by its id (see `settings performance-evaluation list`). Rename via display_name and/or change description. Does not touch disabled — use the enable/disable commands (once exposed) to move it between tabs. Requires write mode.",
+      "method": "PATCH",
+      "path": "/srm_settings/performance_evaluations/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_performance_evaluation",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": false,
+          "desc": "New display name of the evaluation (unique per buyer)",
+          "in": "body"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "desc": "New free-text description of the evaluation.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with {id, display_name, description, disabled, pillars:[...]}. 422 {errors} on validation (e.g. duplicated display_name); 404 Rails default {status, error} if the id is unknown or belongs to another buyer; 403 {error} when the policy denies access (requires admin or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/performance_evaluations#update"
+    },
+    {
+      "command": [
+        "settings",
+        "performance-pillar",
+        "create"
+      ],
+      "summary": "Create a pillar under an evaluation",
+      "description": "Creates a pillar under a performance evaluation. The evaluation_id path argument comes from `settings performance-evaluation list` or `settings performance-evaluation show`. display_name is required and must be unique within the evaluation. weight is not settable here — it starts at 1 and only changes via `settings performance-pillar calibrate` (once exposed). Blocked (403) while the buyer has an active performance cycle. Requires write mode.",
+      "method": "POST",
+      "path": "/srm_settings/performance_evaluations/:performance_evaluation_id/pillars",
+      "path_params": [
+        "performance_evaluation_id"
+      ],
+      "body_root": "setting_performance_pillar",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": true,
+          "desc": "Display name of the pillar (unique per evaluation).",
+          "in": "body"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "desc": "Free-text description of the pillar.",
+          "in": "body"
+        },
+        {
+          "name": "require_comment_per_answer",
+          "type": "boolean",
+          "required": false,
+          "desc": "Whether a comment is required on every answer under this pillar. Defaults to false.",
+          "in": "body"
+        },
+        {
+          "name": "require_evidence_per_answer",
+          "type": "boolean",
+          "required": false,
+          "desc": "Whether evidence (attachment) is required on every answer under this pillar. Defaults to false.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with {id, evaluation_id, display_name, description, weight, require_comment_per_answer, require_evidence_per_answer, asks:[]}. 422 {errors} on validation (e.g. missing or duplicated display_name); 404 Rails default {status, error} if performance_evaluation_id is unknown or belongs to another buyer; 403 {error} when the policy denies access (requires admin or above, or an active performance cycle blocks the edit); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/performance_pillars#create"
+    },
+    {
+      "command": [
+        "settings",
+        "performance-pillar",
+        "destroy"
+      ],
+      "summary": "Delete a pillar",
+      "description": "Deletes a pillar by its id (see `settings performance-evaluation show <evaluation_id>` for the pillars tree). Also deletes all of its asks. Blocked (403) while the buyer has an active performance cycle. Requires write mode.",
+      "method": "DELETE",
+      "path": "/srm_settings/pillars/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with the deleted {id, evaluation_id, display_name, description, weight, require_comment_per_answer, require_evidence_per_answer, asks}. 404 Rails default {status, error} if the id is unknown or belongs to another buyer; 403 {error} when the policy denies access (requires admin or above, or an active performance cycle blocks the edit); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/performance_pillars#destroy"
+    },
+    {
+      "command": [
+        "settings",
+        "performance-pillar",
+        "show"
+      ],
+      "summary": "Show one pillar with its asks",
+      "description": "Shows a single pillar by its id, embedding its asks ordered by creation — get the id from the pillars tree returned by `settings performance-evaluation show <evaluation_id>` (there is no pillar list/index). Ask ids returned here are the ones consumed by `settings performance-ask update|destroy` (once exposed).",
+      "method": "GET",
+      "path": "/srm_settings/pillars/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with {id, evaluation_id, display_name, description, weight, require_comment_per_answer, require_evidence_per_answer, asks:[{id, display_name, description, criterion, weight}]}. 404 Rails default {status, error} if the id is unknown or belongs to another buyer; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/performance_pillars#show"
+    },
+    {
+      "command": [
+        "settings",
+        "performance-pillar",
+        "update"
+      ],
+      "summary": "Update a pillar",
+      "description": "Updates a pillar by its id (see `settings performance-evaluation show <evaluation_id>` for the pillars tree). Rename via display_name, change description, and/or toggle require_comment_per_answer / require_evidence_per_answer. Does not touch weight — use `settings performance-pillar calibrate` (once exposed). Unlike create/destroy, update is NOT blocked by an active performance cycle. Requires write mode.",
+      "method": "PATCH",
+      "path": "/srm_settings/pillars/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_performance_pillar",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": false,
+          "desc": "New display name of the pillar (unique per evaluation).",
+          "in": "body"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "desc": "New free-text description of the pillar.",
+          "in": "body"
+        },
+        {
+          "name": "require_comment_per_answer",
+          "type": "boolean",
+          "required": false,
+          "desc": "Whether a comment is required on every answer under this pillar.",
+          "in": "body"
+        },
+        {
+          "name": "require_evidence_per_answer",
+          "type": "boolean",
+          "required": false,
+          "desc": "Whether evidence (attachment) is required on every answer under this pillar.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with {id, evaluation_id, display_name, description, weight, require_comment_per_answer, require_evidence_per_answer, asks:[...]}. 422 {errors} on validation (e.g. duplicated display_name); 404 Rails default {status, error} if the id is unknown or belongs to another buyer; 403 {error} when the policy denies access (requires admin or above — update is NOT gated by an active performance cycle, unlike create/destroy); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/performance_pillars#update"
     },
     {
       "command": [
