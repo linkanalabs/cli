@@ -34,6 +34,10 @@ lk settings email-message update
 lk settings notification
 lk settings notification show
 lk settings notification update
+lk settings performance-ask
+lk settings performance-ask create
+lk settings performance-ask destroy
+lk settings performance-ask update
 lk settings performance-evaluation
 lk settings performance-evaluation create
 lk settings performance-evaluation disable
@@ -42,6 +46,7 @@ lk settings performance-evaluation list
 lk settings performance-evaluation show
 lk settings performance-evaluation update
 lk settings performance-pillar
+lk settings performance-pillar calibrate
 lk settings performance-pillar create
 lk settings performance-pillar destroy
 lk settings performance-pillar show
