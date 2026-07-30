@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-07-29T14:17:37Z",
-  "source": "linkanalabs/linkana@6da2dfa883",
+  "generated_at": "2026-07-29T15:34:20Z",
+  "source": "linkanalabs/linkana@0a4768f034",
   "endpoints": [
     {
       "command": [
@@ -540,6 +540,114 @@
     {
       "command": [
         "settings",
+        "performance-ask",
+        "create"
+      ],
+      "summary": "Create an ask under a pillar",
+      "description": "Creates an ask (question) under a pillar. The pillar_id path argument comes from `settings performance-evaluation show <evaluation_id>` (pillars tree) or `settings performance-pillar show <pillar_id>`. display_name is required and must be unique within the pillar. criterion defaults to scale_1_to_5 when omitted. weight is not settable here — it starts at 1 and only changes via `settings performance-ask calibrate` (once exposed). Blocked (403) while the buyer has an active performance cycle. Requires write mode.",
+      "method": "POST",
+      "path": "/srm_settings/pillars/:pillar_id/asks",
+      "path_params": [
+        "pillar_id"
+      ],
+      "body_root": "setting_performance_ask",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": true,
+          "desc": "Display name of the ask (unique per pillar).",
+          "in": "body"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "desc": "Free-text description of the ask.",
+          "in": "body"
+        },
+        {
+          "name": "criterion",
+          "type": "string",
+          "required": false,
+          "desc": "Answer criterion for this ask. Defaults to scale_1_to_5 when omitted.",
+          "in": "body",
+          "enum": [
+            "yes_or_no",
+            "scale_1_to_5"
+          ]
+        }
+      ],
+      "response": "200 with {id, pillar_id, display_name, description, criterion, weight}. 422 {errors} on validation (e.g. missing/duplicated display_name or an invalid criterion); 404 Rails default {status, error} if pillar_id is unknown or belongs to another buyer; 403 {error} when the policy denies access (requires admin or above, or an active performance cycle blocks the edit); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/performance_asks#create"
+    },
+    {
+      "command": [
+        "settings",
+        "performance-ask",
+        "destroy"
+      ],
+      "summary": "Delete an ask",
+      "description": "Deletes an ask by its id (see `settings performance-pillar show <pillar_id>` for the asks of a pillar — there is no ask list/show). Blocked (403) while the buyer has an active performance cycle. Requires write mode.",
+      "method": "DELETE",
+      "path": "/srm_settings/asks/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with the deleted {id, pillar_id, display_name, description, criterion, weight}. 404 Rails default {status, error} if the id is unknown or belongs to another buyer; 403 {error} when the policy denies access (requires admin or above, or an active performance cycle blocks the edit); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/performance_asks#destroy"
+    },
+    {
+      "command": [
+        "settings",
+        "performance-ask",
+        "update"
+      ],
+      "summary": "Update an ask",
+      "description": "Updates an ask by its id (see `settings performance-pillar show <pillar_id>` for the asks of a pillar — there is no ask list/show). Rename via display_name, change description, and/or change criterion. Does not touch weight — use `settings performance-ask calibrate` (once exposed). Unlike create/destroy, update is NOT blocked by an active performance cycle. Requires write mode.",
+      "method": "PATCH",
+      "path": "/srm_settings/asks/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_performance_ask",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": false,
+          "desc": "New display name of the ask (unique per pillar).",
+          "in": "body"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "desc": "New free-text description of the ask.",
+          "in": "body"
+        },
+        {
+          "name": "criterion",
+          "type": "string",
+          "required": false,
+          "desc": "New answer criterion for this ask.",
+          "in": "body",
+          "enum": [
+            "yes_or_no",
+            "scale_1_to_5"
+          ]
+        }
+      ],
+      "response": "200 with {id, pillar_id, display_name, description, criterion, weight}. 422 {errors} on validation (e.g. duplicated display_name or an invalid criterion); 404 Rails default {status, error} if the id is unknown or belongs to another buyer; 403 {error} when the policy denies access (requires admin or above — update is NOT gated by an active performance cycle, unlike create/destroy); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/performance_asks#update"
+    },
+    {
+      "command": [
+        "settings",
         "performance-evaluation",
         "create"
       ],
@@ -686,6 +794,34 @@
       "response": "200 with {id, display_name, description, disabled, pillars:[...]}. 422 {errors} on validation (e.g. duplicated display_name); 404 Rails default {status, error} if the id is unknown or belongs to another buyer; 403 {error} when the policy denies access (requires admin or above); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/performance_evaluations#update"
+    },
+    {
+      "command": [
+        "settings",
+        "performance-pillar",
+        "calibrate"
+      ],
+      "summary": "Set the weight of every pillar of an evaluation in one batch",
+      "description": "Sets the weight (1..100) of one or more pillars of a performance evaluation in a single call. evaluation_id comes from `settings performance-evaluation list` or `settings performance-evaluation show`. The keys of --weights are pillar ids (see `settings performance-evaluation show <evaluation_id>` for the pillars tree) — shape: {\"<pillar_id>\": {\"weight\": 1..100}, ...}. A pillar id that does not belong to this evaluation returns 404. Blocked (403) while the buyer has an active performance cycle. Requires write mode.",
+      "method": "PATCH",
+      "path": "/srm_settings/performance_evaluations/:performance_evaluation_id/pillars_calibrating",
+      "path_params": [
+        "performance_evaluation_id"
+      ],
+      "body_root": "setting_performance_pillar",
+      "params": [
+        {
+          "name": "weights",
+          "type": "object",
+          "required": true,
+          "desc": "Weights by pillar id: {\"<pillar_id>\": {\"weight\": 1..100}, ...}. Every key must be a pillar id belonging to the evaluation.",
+          "in": "body",
+          "spread": true
+        }
+      ],
+      "response": "200 with {id, pillars:[{id, weight}]} (the evaluation with every pillar's current weight, not just the ones just updated). 422 {errors} on validation (e.g. a weight outside 1..100); 404 Rails default {status, error} if evaluation_id is unknown/belongs to another buyer, or if a pillar id in --weights does not belong to this evaluation; 403 {error} when the policy denies access (requires admin or above, or an active performance cycle blocks the edit); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/performance_pillars_calibrating#update"
     },
     {
       "command": [
