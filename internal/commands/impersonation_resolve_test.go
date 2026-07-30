@@ -11,7 +11,7 @@ import (
 func TestResolveAPIUsesOriginalWhenNoImpersonation(t *testing.T) {
 	authEnv(t)
 	t.Setenv("LK_TOKEN", "lkn_original")
-	api, imp, _, err := resolveAPI()
+	api, imp, err := resolveAPI()
 	if err != nil {
 		t.Fatalf("resolveAPI() error: %v", err)
 	}
@@ -37,7 +37,7 @@ func TestResolveAPIUsesImpersonationWhenActive(t *testing.T) {
 		Token: "lkn_imp", TargetEmail: "s@linkana.com", BuyerID: "b1",
 		ExpiresAt: base.Add(time.Hour),
 	})
-	_, imp, _, err := resolveAPI()
+	_, imp, err := resolveAPI()
 	if err != nil {
 		t.Fatalf("resolveAPI() error: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestResolveAPIHardErrorsWhenImpersonationExpired(t *testing.T) {
 		Token: "lkn_imp", TargetEmail: "s@linkana.com", BuyerID: "b1",
 		ExpiresAt: base.Add(-time.Minute), // already expired
 	})
-	_, _, _, err := resolveAPI()
+	_, _, err := resolveAPI()
 	if err == nil {
 		t.Fatal("expected hard error on expired impersonation")
 	}
@@ -96,7 +96,7 @@ func TestResolveAPIImpersonationWinsOverLKToken(t *testing.T) {
 		t.Fatalf("SaveImpersonation: %v", err)
 	}
 
-	_, imp, _, err := resolveAPI()
+	_, imp, err := resolveAPI()
 	if err != nil {
 		t.Fatalf("resolveAPI() error: %v", err)
 	}

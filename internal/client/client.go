@@ -4,18 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/linkanalabs/cli/internal/mode"
 )
-
-// ErrReadOnly is returned for a mutating request while the origin is in read mode.
-var ErrReadOnly = errors.New("CLI is in read mode")
 
 const defaultTimeout = 30 * time.Second
 
@@ -23,7 +17,6 @@ const defaultTimeout = 30 * time.Second
 type Client struct {
 	BaseURL    string
 	Token      string
-	Mode       mode.Mode
 	HTTPClient *http.Client
 }
 
@@ -62,12 +55,9 @@ func ensureJSON(path string) string {
 	return path + query
 }
 
-// do is the central HTTP dispatcher. It enforces the read/write gate: non-GET
-// requests are rejected with ErrReadOnly unless the client is in write mode.
+// do is the central HTTP dispatcher: it builds the request, sets the Bearer
+// token and reads the full response body.
 func (c *Client) do(ctx context.Context, method, path string, body io.Reader) (*Response, error) {
-	if method != http.MethodGet && c.Mode != mode.Write {
-		return nil, fmt.Errorf("%w: run `lk mode write` to enable writes", ErrReadOnly)
-	}
 	req, err := http.NewRequestWithContext(ctx, method, c.buildURL(path), body)
 	if err != nil {
 		return nil, fmt.Errorf("building request: %w", err)

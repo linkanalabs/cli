@@ -10,7 +10,6 @@ import (
 	"github.com/linkanalabs/cli/internal/auth"
 	"github.com/linkanalabs/cli/internal/client"
 	"github.com/linkanalabs/cli/internal/config"
-	"github.com/linkanalabs/cli/internal/mode"
 	"github.com/linkanalabs/cli/internal/output"
 )
 
@@ -24,16 +23,14 @@ var errImpersonationExpired = errors.New("impersonation expired")
 // timeNow is a seam so tests can control expiry evaluation.
 var timeNow = time.Now
 
-// newAPI is a seam so tests/commands can substitute the backend client.
-var newAPI = func(baseURL, token string, m mode.Mode) client.API {
+// newAPI is a seam so commands can substitute the backend client.
+var newAPI = func(baseURL, token string) client.API {
 	c := client.New(baseURL)
 	c.Token = token
-	c.Mode = m
 	return c
 }
 
-// authedClient resolves the active credential for the configured backend and
-// the origin's read/write mode (injected into the client — see client.do).
+// authedClient resolves the active credential for the configured backend.
 //
 //   - impersonation context present & not expired → use the impersonation token.
 //   - impersonation context present & expired      → errImpersonationExpired
@@ -43,48 +40,44 @@ var newAPI = func(baseURL, token string, m mode.Mode) client.API {
 // Note: auth.LoadImpersonation reads the keychain/file store directly and is
 // NOT affected by LK_TOKEN. LK_TOKEN overrides the original token only; a
 // stored impersonation context always takes precedence over the ambient env var.
-func authedClient() (client.API, string, *auth.Impersonation, mode.Mode, error) {
+func authedClient() (client.API, *auth.Impersonation, error) {
 	cfg, err := config.Load()
 	if err != nil {
-		return nil, "", nil, mode.Read, err
-	}
-	m, err := mode.Load(cfg.BaseURL)
-	if err != nil {
-		return nil, cfg.BaseURL, nil, mode.Read, fmt.Errorf("loading mode: %w", err)
+		return nil, nil, err
 	}
 	imp, err := auth.LoadImpersonation(cfg.BaseURL)
 	if err != nil {
-		return nil, cfg.BaseURL, nil, m, err
+		return nil, nil, err
 	}
 	if imp != nil {
 		if imp.Expired(timeNow()) {
-			return nil, cfg.BaseURL, imp, m, errImpersonationExpired
+			return nil, imp, errImpersonationExpired
 		}
-		return newAPI(cfg.BaseURL, imp.Token, m), cfg.BaseURL, imp, m, nil
+		return newAPI(cfg.BaseURL, imp.Token), imp, nil
 	}
 	token, _, err := authLoad(cfg.BaseURL)
 	if err != nil {
-		return nil, cfg.BaseURL, nil, m, err
+		return nil, nil, err
 	}
 	if token == "" {
-		return nil, cfg.BaseURL, nil, m, errNoToken
+		return nil, nil, errNoToken
 	}
-	return newAPI(cfg.BaseURL, token, m), cfg.BaseURL, nil, m, nil
+	return newAPI(cfg.BaseURL, token), nil, nil
 }
 
 // resolveAPI wraps authedClient and maps known errors to user-facing messages.
-func resolveAPI() (client.API, *auth.Impersonation, mode.Mode, error) {
-	api, _, imp, m, err := authedClient()
+func resolveAPI() (client.API, *auth.Impersonation, error) {
+	api, imp, err := authedClient()
 	if err == nil {
-		return api, imp, m, nil
+		return api, imp, nil
 	}
 	switch {
 	case errors.Is(err, errNoToken):
-		return nil, nil, m, fmt.Errorf("not authenticated; run `lk auth login`")
+		return nil, nil, fmt.Errorf("not authenticated; run `lk auth login`")
 	case errors.Is(err, errImpersonationExpired):
-		return nil, imp, m, impersonationExpiredErr(imp)
+		return nil, imp, impersonationExpiredErr(imp)
 	default:
-		return nil, imp, m, err
+		return nil, imp, err
 	}
 }
 
@@ -111,10 +104,9 @@ func unauthorizedErr(imp *auth.Impersonation) error {
 	return fmt.Errorf("token rejected (401); run `lk auth login` to re-authenticate")
 }
 
-// whoamiView wraps an identity and its resolved mode for output.
+// whoamiView wraps an identity for output.
 type whoamiView struct {
 	*client.Identity
-	Mode mode.Mode `json:"mode"`
 }
 
 // Styled renders the identity as text.
@@ -124,8 +116,8 @@ func (v whoamiView) Styled() string {
 		buyer = *v.BuyerID
 	}
 	return fmt.Sprintf(
-		"%s <%s>\n  id:      %s\n  role:    %s\n  buyer:   %s\n  staff:   %t\n  mode:    %s\n",
-		v.Name, v.Email, v.ID, v.Role, buyer, v.IsStaff, v.Mode,
+		"%s <%s>\n  id:      %s\n  role:    %s\n  buyer:   %s\n  staff:   %t\n",
+		v.Name, v.Email, v.ID, v.Role, buyer, v.IsStaff,
 	)
 }
 
@@ -135,7 +127,7 @@ func newWhoamiCmd() *cobra.Command {
 		Short: "Show the authenticated identity",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			api, imp, m, err := resolveAPI()
+			api, imp, err := resolveAPI()
 			if err != nil {
 				return err
 			}
@@ -151,7 +143,7 @@ func newWhoamiCmd() *cobra.Command {
 					"⚠ impersonando %s (buyer %s, expira %s); original: %s\n",
 					imp.TargetEmail, imp.BuyerID, imp.ExpiresAt.Format(time.RFC3339), imp.ImpersonatorEmail)
 			}
-			return output.Render(cmd.OutOrStdout(), formatFlag(cmd), whoamiView{Identity: id, Mode: m})
+			return output.Render(cmd.OutOrStdout(), formatFlag(cmd), whoamiView{Identity: id})
 		},
 	}
 }

@@ -12,7 +12,6 @@ import (
 
 	"github.com/linkanalabs/cli/internal/auth"
 	"github.com/linkanalabs/cli/internal/config"
-	"github.com/linkanalabs/cli/internal/mode"
 	"github.com/linkanalabs/cli/internal/output"
 )
 
@@ -64,7 +63,6 @@ type statusResult struct {
 	Authenticated bool                 `json:"authenticated"`
 	BaseURL       string               `json:"base_url"`
 	Source        string               `json:"source"`
-	Mode          mode.Mode            `json:"mode"`
 	Impersonation *statusImpersonation `json:"impersonation,omitempty"`
 }
 
@@ -72,7 +70,7 @@ type statusResult struct {
 func (r statusResult) Styled() string {
 	var b strings.Builder
 	if r.Authenticated {
-		fmt.Fprintf(&b, "Authenticated for %s (source: %s, mode: %s)\n", r.BaseURL, r.Source, r.Mode)
+		fmt.Fprintf(&b, "Authenticated for %s (source: %s)\n", r.BaseURL, r.Source)
 	} else {
 		fmt.Fprintf(&b, "Not authenticated for %s\n", r.BaseURL)
 	}
@@ -206,15 +204,10 @@ func newAuthStatusCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			m, err := mode.Load(baseURL)
-			if err != nil {
-				return fmt.Errorf("loading mode: %w", err)
-			}
 			res := statusResult{
 				Authenticated: token != "",
 				BaseURL:       baseURL,
 				Source:        string(src),
-				Mode:          m,
 			}
 
 			// Load impersonation context — warn on error but do not fail.

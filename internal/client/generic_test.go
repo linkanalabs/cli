@@ -3,14 +3,11 @@ package client
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
-
-	"github.com/linkanalabs/cli/internal/mode"
 )
 
 func TestDoGetWithQueryAppendsJSONBeforeQuery(t *testing.T) {
@@ -82,7 +79,6 @@ func TestDoPatchSendsJSONBody(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL)
-	c.Mode = mode.Write
 	payload := map[string]any{"root": map[string]any{"content": "hi"}}
 	if _, err := c.Do(context.Background(), http.MethodPatch, "/things/1", nil, payload); err != nil {
 		t.Fatalf("Do() error: %v", err)
@@ -102,22 +98,8 @@ func TestDoPatchSendsJSONBody(t *testing.T) {
 	}
 }
 
-func TestDoNonGetBlockedInReadMode(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		t.Error("read-mode Do must not reach the network")
-	}))
-	defer srv.Close()
-
-	c := New(srv.URL) // read mode by default
-	_, err := c.Do(context.Background(), http.MethodPost, "/things", nil, map[string]any{"a": 1})
-	if !errors.Is(err, ErrReadOnly) {
-		t.Fatalf("want ErrReadOnly, got %v", err)
-	}
-}
-
 func TestDoPayloadMarshalError(t *testing.T) {
 	c := New("http://example")
-	c.Mode = mode.Write
 	if _, err := c.Do(context.Background(), http.MethodPost, "/things", nil, make(chan int)); err == nil {
 		t.Fatal("expected marshal error for unencodable payload")
 	}

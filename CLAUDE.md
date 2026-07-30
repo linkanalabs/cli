@@ -81,13 +81,13 @@ internal/output/   render JSON (default) / styled / markdown / ids / count
 ## Current state
 
 Skeleton + `doctor` + **auth via PAT (CLI)** + **suppliers (SRM)** +
-**impersonation (LIN-5921)** + **read/write mode (LIN-5985)** + **manifest-driven
-dynamic commands (LIN-6332)** — see the dedicated section. Manual commands:
+**impersonation (LIN-5921)** + **manifest-driven dynamic commands (LIN-6332)**
+— see the dedicated section. Manual commands:
 `version`, `doctor` (version, runtime, config, filesystem, reachability `GET /up`,
 **Authentication** via `GET /my/identity.json` — pass/fail/skip, with a skip-cascade
 when the backend is unreachable), `auth login|status|logout`, `whoami`,
-`supplier list|show`, `impersonate <ref>|stop|status`, `mode`, `mode write`,
-`mode read`, `config`, `config set-url <url>`.
+`supplier list|show`, `impersonate <ref>|stop|status`, `config`,
+`config set-url <url>`.
 
 `base_url` resolves in the order `LK_API_URL` (env) → `config.yml` (XDG) →
 **default `https://app.linkana.com`** (production — a clean install via brew talks
@@ -135,7 +135,7 @@ Today the manifest exposes `identity show` and `settings email-message list|show
 - `internal/commands/dynamic_exec.go` — generic RunE: `resolveAPI()` →
   substitutes `/:param` (PathEscape) → changed flags become query (`in: query`,
   arrays as `name[]`) or body (`in: body`, wrapped in `body_root`) →
-  `client.Do` (inherits the read/write gate, Bearer, `.json`). 2xx → raw JSON on
+  `client.Do` (inherits the Bearer token and the `.json` suffix). 2xx → raw JSON on
   stdout; 401 → login hint; non-2xx → body on stderr + exit 1.
 - `lk version` shows `manifest: <generated_at> (<source>)`.
 - `SURFACE.txt` at the root is the golden of the full command tree; the
@@ -163,9 +163,9 @@ regenerated manifest. **Done = all of the verification gate below is demonstrabl
 with real output** (not "looks right"): Rails tests green (CLI + web untouched),
 `cli:manifest:check` green, `make test|lint|cover` (≥95%) green, `SURFACE.txt`
 golden green, **the real `lk` binary exercised end-to-end against a backend
-(incl. error paths: 401 hint, read-mode block, 4xx/422 on stderr + exit 1)**, and
-the lk-stack skill updated with reference chaining. Nothing merges/publishes
-without explicit approval.
+(incl. error paths: 401 hint, 4xx/422 on stderr + exit 1)**, and the lk-stack
+skill updated with reference chaining. Nothing merges/publishes without
+explicit approval.
 
 **Contract-mapping rules** (the contract lives in the controller's
 `params.expect`/`permit`, not the YAML — read the action first):
@@ -233,26 +233,6 @@ original user — always choose `lk impersonate stop` or re-impersonate.
 keychain/file PAT. `LK_TOKEN` overrides only the **original** token; it does not
 disable or bypass an active impersonation. This was decided intentionally to close
 a security footgun (previously `LK_TOKEN` silently ignored the impersonation).
-
-## Read/write mode (LIN-5985)
-
-Each origin has an independent mode, persisted in `modes.json` (XDG). **Default: read.**
-
-- `lk mode` — shows the current mode of the active origin (JSON or styled).
-- `lk mode write` — enables writes; requires an interactive TTY + literally typing `"write"`. An AI agent cannot enable write without a human at the terminal.
-- `lk mode read` — returns to read mode without confirmation.
-
-**Gate in `client.do`:** any non-GET request in read mode returns `client.ErrReadOnly`
-(`CLI is in read mode`). Read commands (`GET`) always pass.
-
-**Credential:** `authedClient()` injects the mode into `client.Client`; an active
-impersonation inherits the mode — there is no silent bypass. The impersonation verbs
-(`POST/DELETE /impersonation`) also go through the gate: `lk impersonate <ref>`
-requires write mode; `lk impersonate stop` always clears local state, but the remote
-revocation in read mode fails with a warning (best-effort).
-
-**Storage:** `internal/mode/` — `Load(origin)` / `Save(origin, m)`. Atomic file
-(temp+rename, 0o600). Map key = `cfg.BaseURL`.
 
 ## Release / Homebrew (LIN-6287)
 

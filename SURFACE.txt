@@ -11,9 +11,6 @@ lk identity show
 lk impersonate
 lk impersonate status
 lk impersonate stop
-lk mode
-lk mode read
-lk mode write
 lk settings
 lk settings buyer-document
 lk settings buyer-document create

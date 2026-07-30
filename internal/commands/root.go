@@ -50,7 +50,6 @@ func newRootCmd() *cobra.Command {
 	root.AddCommand(newAuthCmd())
 	root.AddCommand(newWhoamiCmd())
 	root.AddCommand(newImpersonateCmd())
-	root.AddCommand(newModeCmd())
 	root.AddCommand(newConfigCmd())
 	// Dynamic (manifest-driven) commands mount last so manual commands always
 	// win name collisions. A manifest load failure disables them; `lk version`
