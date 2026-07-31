@@ -2,9 +2,9 @@
 
 Referenciado por [SKILL.md](SKILL.md). Ler só quando algo falhou.
 
-## `guard` reprovou (nada foi publicado)
+## `guard` ou `ci` reprovou (nada foi publicado)
 
-O job roda antes do GoReleaser, então a release não existe e o cask não mudou.
+Os dois rodam antes do GoReleaser, então a release não existe e o cask não mudou.
 Corrigir a causa na `main` e reaproveitar o mesmo número:
 
 ```bash
@@ -15,8 +15,13 @@ git push origin :refs/tags/vX.Y.Z # apaga remota
 
 Reusar a versão só é seguro aqui, justamente porque nada foi publicado.
 
-Motivos comuns: tag fora de `vX.Y.Z`; tag num commit que não está na `origin/main`
-(branch não mergeado, ou tag criada antes do merge); `make cover` abaixo do mínimo.
+Motivos comuns no `guard`: tag fora de `vX.Y.Z`; tag num commit que não está na
+`origin/main` (branch não mergeado, ou tag criada antes do merge). No `ci`, que é o
+`ci.yml` do repositório reusado: lint, teste/cobertura ou build vermelhos — sinal de
+que a tag pegou um commit que não estava verde.
+
+Job `ci` aparecendo como `skipped` em vez de vermelho também impede a publicação: o
+`release` depende dele, e dependência pulada faz o dependente ser pulado.
 
 ## `verify` reprovou no cask
 
@@ -70,7 +75,7 @@ GITHUB_TOKEN=$(gh auth token) HOMEBREW_TAP_GITHUB_TOKEN=$(gh auth token) \
   goreleaser release --clean
 ```
 
-Isso **pula os jobs `guard` e `verify`**. Rodar `make release-preflight` antes e
+Isso **pula os jobs `guard`, `ci` e `verify`**. Rodar `make release-preflight` antes e
 `make release-verify VERSION=vX.Y.Z LOCAL=1` depois, à mão, para não perder os
 gates que o workflow daria de graça.
 

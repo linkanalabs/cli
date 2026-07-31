@@ -238,7 +238,8 @@ a security footgun (previously `LK_TOKEN` silently ignored the impersonation).
 
 **Never publish a release without explicit approval.** Publishing = tag `vX.Y.Z` on a
 commit that is already on `main`; pushing the tag triggers
-`.github/workflows/release.yml` (`guard` → `goreleaser` → `verify`).
+`.github/workflows/release.yml` (`guard` → `ci` → `goreleaser` → `verify`, com o `ci`
+reusando o `ci.yml` do repositório).
 
 Public installation is `brew install linkanalabs/tap/lk` — **always the
 fully-qualified tap name** (`brew upgrade lk` fails on a clean machine). The cask

@@ -64,9 +64,10 @@ Usar o par que o preflight imprimiu, não uma versão digitada de memória.
 gh run watch $(gh run list --workflow release.yml --limit 1 --json databaseId --jq '.[0].databaseId')
 ```
 
-Três jobs em série: `guard` (semver, tag em commit da `main`, `make cover`) →
-`goreleaser` (publica e commita o cask) → `verify` (artefatos, cask, install.sh).
-`guard` vermelho significa que **nada foi publicado**.
+Quatro jobs em série: `guard` (semver, tag em commit da `main`) → `ci` (o próprio
+`ci.yml` do repositório, reusado: lint, teste com cobertura e build) → `goreleaser`
+(publica e commita o cask) → `verify` (artefatos, cask, install.sh). Reprovou antes
+do `goreleaser`? **Nada foi publicado.**
 
 ## 4. Verificar na máquina
 
@@ -85,7 +86,8 @@ ele, nada é instalado no sistema.
 | Onde | Cobre |
 |------|-------|
 | `make release-preflight` (local, antes da tag) | commit está na `origin/main`, nada pendente, escopo desde a última tag, bump derivado, golden fresco, CI verde no sha exato, `goreleaser check` se a config mudou, `make test`/`cover`/`lint` |
-| job `guard` (servidor, toda tag) | semver, tag em commit da `main`, `make cover` — pega até a tag empurrada sem preflight |
+| job `guard` (servidor, toda tag) | semver e tag em commit da `main` — pega até a tag empurrada sem preflight |
+| job `ci` (servidor, toda tag) | `ci.yml` reusado via `workflow_call`: lint, teste com cobertura e build de todos os pacotes. Definição única de "verde", sem cópia que divirja |
 | job `verify` + `make release-verify` | release não-draft, os 7 assets por nome, é a `latest`, cask na versão certa, sha256 do cask contra o `checksums.txt`, instalação via `install.sh` e (com `LOCAL=1`) via brew |
 
 Faltou cobertura? O lugar de acrescentar é o script, não uma checagem manual solta.
