@@ -120,7 +120,7 @@
         "disable"
       ],
       "summary": "Disable (archive) a buyer document field",
-      "description": "Disables an enabled buyer document field for the buyer, archiving the setting. When `disable_buyer_documents` is true, the associated buyer documents are archived as well. The `id` identifies the enabled SettingBuyerDocument to disable — resolve it from `settings buyer-document list` (pending, plan P1). A write command, subject to the read/write gate.",
+      "description": "Disables an enabled buyer document field for the buyer, archiving the setting. When `disable_buyer_documents` is true, the associated buyer documents are archived as well. The `id` identifies the enabled SettingBuyerDocument to disable — resolve it from `settings buyer-document list` (pending, plan P1).",
       "method": "DELETE",
       "path": "/srm_settings/buyer_documents_enabling/:id",
       "path_params": [
@@ -146,7 +146,7 @@
         "enable"
       ],
       "summary": "Enable (unarchive) a buyer document field",
-      "description": "Enables a previously disabled buyer document field for the buyer, unarchiving the setting and its associated buyer documents. The `id` identifies the disabled SettingBuyerDocument to enable — resolve it from `settings buyer-document list` (pending, plan P1; use the disabled/archived listing). A write command, subject to the read/write gate.",
+      "description": "Enables a previously disabled buyer document field for the buyer, unarchiving the setting and its associated buyer documents. The `id` identifies the disabled SettingBuyerDocument to enable — resolve it from `settings buyer-document list` (pending, plan P1; use the disabled/archived listing).",
       "method": "POST",
       "path": "/srm_settings/buyer_documents_enabling",
       "path_params": [],
@@ -194,7 +194,7 @@
         "reorder"
       ],
       "summary": "Reorder the buyer document fields",
-      "description": "Sets the display order of the buyer's enabled document fields. `identifiers` is a comma-separated list of SettingBuyerDocument ids in the desired final order; ids not belonging to the buyer are ignored. Resolve the ids from `settings buyer-document list` (pending, plan P1) and pass them in the order you want. A write command, subject to the read/write gate.",
+      "description": "Sets the display order of the buyer's enabled document fields. `identifiers` is a comma-separated list of SettingBuyerDocument ids in the desired final order; ids not belonging to the buyer are ignored. Resolve the ids from `settings buyer-document list` (pending, plan P1) and pass them in the order you want.",
       "method": "PATCH",
       "path": "/srm_settings/buyer_documents_reordering",
       "path_params": [],
@@ -442,7 +442,7 @@
         "update"
       ],
       "summary": "Update the current user's notification preferences",
-      "description": "Updates the authenticated user's notification preferences. Only the flags you send are changed; omit a flag to leave it untouched. Run `settings notification show` first to read the current state and avoid blind overwrites. Sensitive write — requires write mode.",
+      "description": "Updates the authenticated user's notification preferences. Only the flags you send are changed; omit a flag to leave it untouched. Run `settings notification show` first to read the current state and avoid blind overwrites.",
       "method": "PATCH",
       "path": "/srm_settings/notifications",
       "path_params": [],
@@ -652,7 +652,7 @@
         "create"
       ],
       "summary": "Create a performance evaluation",
-      "description": "Creates a performance evaluation for the buyer. It starts disabled (not yet in use) with no pillars — use `settings performance-evaluation enable` (once exposed) to move it to the enabled tab, and `settings performance-pillar create <evaluation_id>` (once exposed) to add pillars. Requires write mode.",
+      "description": "Creates a performance evaluation for the buyer. It starts disabled (not yet in use) with no pillars — use `settings performance-evaluation enable` (once exposed) to move it to the enabled tab, and `settings performance-pillar create <evaluation_id>` (once exposed) to add pillars.",
       "method": "POST",
       "path": "/srm_settings/performance_evaluations",
       "path_params": [],
@@ -684,7 +684,7 @@
         "disable"
       ],
       "summary": "Disable a performance evaluation (move it to \"Não utilizado\")",
-      "description": "Disables a performance evaluation for the buyer, moving it from the enabled tab to the disabled/archived one. The evaluation and its pillars/asks are not deleted — it can be re-enabled later with `settings performance-evaluation enable`. The `<id>` identifies the evaluation to disable — resolve it from `settings performance-evaluation list`. Requires write mode.",
+      "description": "Disables a performance evaluation for the buyer, moving it from the enabled tab to the disabled/archived one. The evaluation and its pillars/asks are not deleted — it can be re-enabled later with `settings performance-evaluation enable`. The `<id>` identifies the evaluation to disable — resolve it from `settings performance-evaluation list`.",
       "method": "DELETE",
       "path": "/srm_settings/performance_evaluations_enabling/:id",
       "path_params": [
@@ -702,7 +702,7 @@
         "enable"
       ],
       "summary": "Enable a performance evaluation (move it to \"Em uso\")",
-      "description": "Enables a performance evaluation for the buyer, moving it from the disabled/archived tab to the enabled one. A performance evaluation is created disabled by default (see `settings performance-evaluation create`), so this is the command that puts a freshly created evaluation into use. The `id` identifies the evaluation to enable — resolve it from `settings performance-evaluation list --tab disabled` (or the default `list` if it is already enabled; enabling an already-enabled evaluation is a no-op success). Requires write mode.",
+      "description": "Enables a performance evaluation for the buyer, moving it from the disabled/archived tab to the enabled one. A performance evaluation is created disabled by default (see `settings performance-evaluation create`), so this is the command that puts a freshly created evaluation into use. The `id` identifies the evaluation to enable — resolve it from `settings performance-evaluation list --tab disabled` (or the default `list` if it is already enabled; enabling an already-enabled evaluation is a no-op success).",
       "method": "POST",
       "path": "/srm_settings/performance_evaluations_enabling",
       "path_params": [],
@@ -768,7 +768,7 @@
         "update"
       ],
       "summary": "Update a performance evaluation",
-      "description": "Updates a performance evaluation by its id (see `settings performance-evaluation list`). Rename via display_name and/or change description. Does not touch disabled — use the enable/disable commands (once exposed) to move it between tabs. Requires write mode.",
+      "description": "Updates a performance evaluation by its id (see `settings performance-evaluation list`). Rename via display_name and/or change description. Does not touch disabled — use the enable/disable commands (once exposed) to move it between tabs.",
       "method": "PATCH",
       "path": "/srm_settings/performance_evaluations/:id",
       "path_params": [
@@ -830,7 +830,7 @@
         "create"
       ],
       "summary": "Create a pillar under an evaluation",
-      "description": "Creates a pillar under a performance evaluation. The evaluation_id path argument comes from `settings performance-evaluation list` or `settings performance-evaluation show`. display_name is required and must be unique within the evaluation. weight is not settable here — it starts at 1 and only changes via `settings performance-pillar calibrate` (once exposed). Blocked (403) while the buyer has an active performance cycle. Requires write mode.",
+      "description": "Creates a pillar under a performance evaluation. The evaluation_id path argument comes from `settings performance-evaluation list` or `settings performance-evaluation show`. display_name is required and must be unique within the evaluation. weight is not settable here — it starts at 1 and only changes via `settings performance-pillar calibrate` (once exposed). Blocked (403) while the buyer has an active performance cycle.",
       "method": "POST",
       "path": "/srm_settings/performance_evaluations/:performance_evaluation_id/pillars",
       "path_params": [
@@ -878,7 +878,7 @@
         "destroy"
       ],
       "summary": "Delete a pillar",
-      "description": "Deletes a pillar by its id (see `settings performance-evaluation show <evaluation_id>` for the pillars tree). Also deletes all of its asks. Blocked (403) while the buyer has an active performance cycle. Requires write mode.",
+      "description": "Deletes a pillar by its id (see `settings performance-evaluation show <evaluation_id>` for the pillars tree). Also deletes all of its asks. Blocked (403) while the buyer has an active performance cycle.",
       "method": "DELETE",
       "path": "/srm_settings/pillars/:id",
       "path_params": [
@@ -914,7 +914,7 @@
         "update"
       ],
       "summary": "Update a pillar",
-      "description": "Updates a pillar by its id (see `settings performance-evaluation show <evaluation_id>` for the pillars tree). Rename via display_name, change description, and/or toggle require_comment_per_answer / require_evidence_per_answer. Does not touch weight — use `settings performance-pillar calibrate` (once exposed). Unlike create/destroy, update is NOT blocked by an active performance cycle. Requires write mode.",
+      "description": "Updates a pillar by its id (see `settings performance-evaluation show <evaluation_id>` for the pillars tree). Rename via display_name, change description, and/or toggle require_comment_per_answer / require_evidence_per_answer. Does not touch weight — use `settings performance-pillar calibrate` (once exposed). Unlike create/destroy, update is NOT blocked by an active performance cycle.",
       "method": "PATCH",
       "path": "/srm_settings/pillars/:id",
       "path_params": [
@@ -962,7 +962,7 @@
         "create"
       ],
       "summary": "Create a review group",
-      "description": "Creates a review group for the buyer, optionally with members. Members are set via setting_grouper_users_attributes, whose user_id comes from `settings company-user list`. Requires write mode.",
+      "description": "Creates a review group for the buyer, optionally with members. Members are set via setting_grouper_users_attributes, whose user_id comes from `settings company-user list`.",
       "method": "POST",
       "path": "/srm_settings/setting_groupers",
       "path_params": [],
@@ -1003,7 +1003,7 @@
         "destroy"
       ],
       "summary": "Delete a review group",
-      "description": "Deletes an empty review group by its id (see `settings setting-grouper list`). A group with attached documents cannot be deleted (403). Requires write mode.",
+      "description": "Deletes an empty review group by its id (see `settings setting-grouper list`). A group with attached documents cannot be deleted (403).",
       "method": "DELETE",
       "path": "/srm_settings/setting_groupers/:id",
       "path_params": [
@@ -1055,7 +1055,7 @@
         "update"
       ],
       "summary": "Update a review group",
-      "description": "Updates a review group by its id (see `settings setting-grouper list`). Rename via display_name; add members via setting_grouper_users_attributes (user_id from `settings company-user list`); remove a member by passing {\"id\":\"<join_id>\",\"_destroy\":true}. Requires write mode.",
+      "description": "Updates a review group by its id (see `settings setting-grouper list`). Rename via display_name; add members via setting_grouper_users_attributes (user_id from `settings company-user list`); remove a member by passing {\"id\":\"<join_id>\",\"_destroy\":true}.",
       "method": "PATCH",
       "path": "/srm_settings/setting_groupers/:id",
       "path_params": [

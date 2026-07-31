@@ -246,7 +246,6 @@ func TestDynamicExecPostBodyWithRoot(t *testing.T) {
 	t.Cleanup(srv.Close)
 	t.Setenv("LK_API_URL", srv.URL)
 	t.Setenv("LK_TOKEN", "lkn_abc_def")
-	enableWrite(t, srv.URL)
 
 	var out, errOut bytes.Buffer
 	code := run([]string{
@@ -322,7 +321,6 @@ func TestDynamicExecSpreadParamIsBodyItself(t *testing.T) {
 	t.Cleanup(srv.Close)
 	t.Setenv("LK_API_URL", srv.URL)
 	t.Setenv("LK_TOKEN", "lkn_abc_def")
-	enableWrite(t, srv.URL)
 
 	var out, errOut bytes.Buffer
 	code := run([]string{
@@ -348,26 +346,6 @@ func TestDynamicExecSpreadParamIsBodyItself(t *testing.T) {
 	}
 }
 
-func TestDynamicExecWriteBlockedInReadMode(t *testing.T) {
-	swapFixtureManifest(t)
-	authEnv(t)
-	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		t.Error("read-mode write must not reach the network")
-	}))
-	t.Cleanup(srv.Close)
-	t.Setenv("LK_API_URL", srv.URL)
-	t.Setenv("LK_TOKEN", "lkn_abc_def")
-
-	var out, errOut bytes.Buffer
-	code := run([]string{"widget", "create", "--name", "X"}, &out, &errOut)
-	if code != 1 {
-		t.Fatalf("exit = %d, want 1", code)
-	}
-	if !strings.Contains(errOut.String(), "read mode") {
-		t.Errorf("stderr should mention read mode: %q", errOut.String())
-	}
-}
-
 func TestDynamicExecDelete204(t *testing.T) {
 	swapFixtureManifest(t)
 	authEnv(t)
@@ -381,7 +359,6 @@ func TestDynamicExecDelete204(t *testing.T) {
 	t.Cleanup(srv.Close)
 	t.Setenv("LK_API_URL", srv.URL)
 	t.Setenv("LK_TOKEN", "lkn_abc_def")
-	enableWrite(t, srv.URL)
 
 	var out, errOut bytes.Buffer
 	code := run([]string{"widget", "delete", "w_1", "--force"}, &out, &errOut)
@@ -400,7 +377,6 @@ func TestDynamicExecInvalidJSONFlag(t *testing.T) {
 	swapFixtureManifest(t)
 	authEnv(t)
 	t.Setenv("LK_TOKEN", "lkn_abc_def")
-	enableWrite(t, "http://localhost:3000")
 
 	var out, errOut bytes.Buffer
 	code := run([]string{"widget", "create", "--name", "X", "--metadata", "{bad"}, &out, &errOut)
@@ -427,7 +403,6 @@ func TestDynamicExecJSONFlagWrongShape(t *testing.T) {
 			swapFixtureManifest(t)
 			authEnv(t)
 			t.Setenv("LK_TOKEN", "lkn_abc_def")
-			enableWrite(t, "http://localhost:3000")
 
 			var out, errOut bytes.Buffer
 			code := run(tc.args, &out, &errOut)
@@ -445,7 +420,6 @@ func TestDynamicExecInvalidIntegerArrayItem(t *testing.T) {
 	swapFixtureManifest(t)
 	authEnv(t)
 	t.Setenv("LK_TOKEN", "lkn_abc_def")
-	enableWrite(t, "http://localhost:3000")
 
 	var out, errOut bytes.Buffer
 	code := run([]string{"widget", "create", "--name", "X", "--counts", "abc"}, &out, &errOut)
@@ -461,7 +435,6 @@ func TestDynamicExecInvalidBooleanArrayItem(t *testing.T) {
 	swapFixtureManifest(t)
 	authEnv(t)
 	t.Setenv("LK_TOKEN", "lkn_abc_def")
-	enableWrite(t, "http://localhost:3000")
 
 	var out, errOut bytes.Buffer
 	code := run([]string{"widget", "create", "--name", "X", "--toggles", "maybe"}, &out, &errOut)
@@ -517,7 +490,6 @@ func TestDynamicExecNon2xxWritesBodyToStderr(t *testing.T) {
 	t.Cleanup(srv.Close)
 	t.Setenv("LK_API_URL", srv.URL)
 	t.Setenv("LK_TOKEN", "lkn_abc_def")
-	enableWrite(t, srv.URL)
 
 	var out, errOut bytes.Buffer
 	code := run([]string{"widget", "create", "--name", "X"}, &out, &errOut)

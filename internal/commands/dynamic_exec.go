@@ -21,7 +21,7 @@ import (
 // client and renders the raw JSON response.
 func runDynamic(e *manifest.Endpoint) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		api, imp, _, err := resolveAPI()
+		api, imp, err := resolveAPI()
 		if err != nil {
 			return err
 		}
@@ -39,7 +39,7 @@ func runDynamic(e *manifest.Endpoint) func(*cobra.Command, []string) error {
 		}
 		resp, err := api.Do(cmd.Context(), e.Method, path, query, payload)
 		if err != nil {
-			return err // ErrReadOnly already carries the `lk mode write` hint
+			return err
 		}
 		if resp.StatusCode == http.StatusUnauthorized {
 			return unauthorizedErr(imp)
