@@ -5,12 +5,39 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  # Gate de servidor: o que o `make release-preflight` checa na máquina de quem
+  # publica, aqui vale para qualquer tag — inclusive uma empurrada sem preflight.
+  guard:
+    name: guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Tag em semver
+        run: |
+          echo "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' \
+            || { echo "tag fora do padrão vX.Y.Z: $GITHUB_REF_NAME" >&2; exit 1; }
+      - name: Tag aponta para commit na main
+        run: |
+          git fetch --quiet origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
+            || { echo "$GITHUB_SHA não está na origin/main — release só sai de código mergeado" >&2; exit 1; }
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Testes e cobertura
+        run: make cover
+
   release:
     name: goreleaser
+    needs: guard
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,3 +52,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+
+  # Sem este job, um commit do cask que falha no tap deixa o workflow verde e o
+  # brew servindo a versão antiga em silêncio.
+  verify:
+    name: verify
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Artefatos, cask no tap e instalação
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./scripts/release-verify.sh "$GITHUB_REF_NAME"
