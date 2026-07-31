@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-07-29T15:34:20Z",
-  "source": "linkanalabs/linkana@0a4768f034",
+  "generated_at": "2026-07-31T16:59:46Z",
+  "source": "linkanalabs/linkana@32f92b3735",
   "endpoints": [
     {
       "command": [
@@ -349,12 +349,12 @@
         "list"
       ],
       "summary": "List the buyer's users",
-      "description": "Lists the active users of the current buyer with id, name, email, role and active flag, ordered by name. Use it to resolve a user_id needed by other commands (e.g. adding a user to a review group). Requires an admin (or above) credential.",
+      "description": "Lists the active users of the current buyer with id, name, email, role and soft-delete state, ordered by name. A user is active when discarded_at is null. Use it to resolve a user_id needed by other commands (e.g. adding a user to a review group). Requires an admin (or above) credential.",
       "method": "GET",
       "path": "/srm_settings/company_users",
       "path_params": [],
       "params": [],
-      "response": "200 with array of {id, name, email, role, active}. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (caller below admin).",
+      "response": "200 with array of {id, name, email, role, active, discarded_at}. The active flag is legacy and mirrors discarded_at until it is removed; prefer discarded_at. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (caller below admin).",
       "auth": "pat",
       "controller": "srm_settings/company_users#index"
     },
@@ -541,10 +541,38 @@
       "command": [
         "settings",
         "performance-ask",
+        "calibrate"
+      ],
+      "summary": "Set the weight of every ask of a pillar in one batch",
+      "description": "Sets the weight (1..100) of one or more asks (questions) of a performance pillar in a single call. pillar_id comes from `settings performance-pillar show` (or the pillars tree in `settings performance-evaluation show <evaluation_id>`). The keys of --weights are ask ids (see `settings performance-pillar show <pillar_id>` for the asks tree) — shape: {\"<ask_id>\": {\"weight\": 1..100}, ...}. An ask id that does not belong to this pillar returns 404. Blocked (403) while the buyer has an active performance cycle.",
+      "method": "PATCH",
+      "path": "/srm_settings/pillars/:pillar_id/asks_calibrating",
+      "path_params": [
+        "pillar_id"
+      ],
+      "body_root": "setting_performance_ask",
+      "params": [
+        {
+          "name": "weights",
+          "type": "object",
+          "required": true,
+          "desc": "Weights by ask id: {\"<ask_id>\": {\"weight\": 1..100}, ...}. Every key must be an ask id belonging to the pillar.",
+          "in": "body",
+          "spread": true
+        }
+      ],
+      "response": "200 with {id, asks:[{id, weight}]} (the pillar with every ask's current weight, not just the ones just updated). 422 {errors} on validation (e.g. a weight outside 1..100); 404 Rails default {status, error} if pillar_id is unknown/belongs to another buyer, or if an ask id in --weights does not belong to this pillar; 403 {error} when the policy denies access (requires admin or above, or an active performance cycle blocks the edit); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/performance_asks_calibrating#update"
+    },
+    {
+      "command": [
+        "settings",
+        "performance-ask",
         "create"
       ],
       "summary": "Create an ask under a pillar",
-      "description": "Creates an ask (question) under a pillar. The pillar_id path argument comes from `settings performance-evaluation show <evaluation_id>` (pillars tree) or `settings performance-pillar show <pillar_id>`. display_name is required and must be unique within the pillar. criterion defaults to scale_1_to_5 when omitted. weight is not settable here — it starts at 1 and only changes via `settings performance-ask calibrate` (once exposed). Blocked (403) while the buyer has an active performance cycle. Requires write mode.",
+      "description": "Creates an ask (question) under a pillar. The pillar_id path argument comes from `settings performance-evaluation show <evaluation_id>` (pillars tree) or `settings performance-pillar show <pillar_id>`. display_name is required and must be unique within the pillar. criterion defaults to scale_1_to_5 when omitted. weight is not settable here — it starts at 1 and only changes via `settings performance-ask calibrate` (once exposed). Blocked (403) while the buyer has an active performance cycle.",
       "method": "POST",
       "path": "/srm_settings/pillars/:pillar_id/asks",
       "path_params": [
@@ -589,7 +617,7 @@
         "destroy"
       ],
       "summary": "Delete an ask",
-      "description": "Deletes an ask by its id (see `settings performance-pillar show <pillar_id>` for the asks of a pillar — there is no ask list/show). Blocked (403) while the buyer has an active performance cycle. Requires write mode.",
+      "description": "Deletes an ask by its id (see `settings performance-pillar show <pillar_id>` for the asks of a pillar — there is no ask list/show). Blocked (403) while the buyer has an active performance cycle.",
       "method": "DELETE",
       "path": "/srm_settings/asks/:id",
       "path_params": [
@@ -607,7 +635,7 @@
         "update"
       ],
       "summary": "Update an ask",
-      "description": "Updates an ask by its id (see `settings performance-pillar show <pillar_id>` for the asks of a pillar — there is no ask list/show). Rename via display_name, change description, and/or change criterion. Does not touch weight — use `settings performance-ask calibrate` (once exposed). Unlike create/destroy, update is NOT blocked by an active performance cycle. Requires write mode.",
+      "description": "Updates an ask by its id (see `settings performance-pillar show <pillar_id>` for the asks of a pillar — there is no ask list/show). Rename via display_name, change description, and/or change criterion. Does not touch weight — use `settings performance-ask calibrate` (once exposed). Unlike create/destroy, update is NOT blocked by an active performance cycle.",
       "method": "PATCH",
       "path": "/srm_settings/asks/:id",
       "path_params": [
@@ -802,7 +830,7 @@
         "calibrate"
       ],
       "summary": "Set the weight of every pillar of an evaluation in one batch",
-      "description": "Sets the weight (1..100) of one or more pillars of a performance evaluation in a single call. evaluation_id comes from `settings performance-evaluation list` or `settings performance-evaluation show`. The keys of --weights are pillar ids (see `settings performance-evaluation show <evaluation_id>` for the pillars tree) — shape: {\"<pillar_id>\": {\"weight\": 1..100}, ...}. A pillar id that does not belong to this evaluation returns 404. Blocked (403) while the buyer has an active performance cycle. Requires write mode.",
+      "description": "Sets the weight (1..100) of one or more pillars of a performance evaluation in a single call. evaluation_id comes from `settings performance-evaluation list` or `settings performance-evaluation show`. The keys of --weights are pillar ids (see `settings performance-evaluation show <evaluation_id>` for the pillars tree) — shape: {\"<pillar_id>\": {\"weight\": 1..100}, ...}. A pillar id that does not belong to this evaluation returns 404. Blocked (403) while the buyer has an active performance cycle.",
       "method": "PATCH",
       "path": "/srm_settings/performance_evaluations/:performance_evaluation_id/pillars_calibrating",
       "path_params": [

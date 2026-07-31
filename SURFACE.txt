@@ -32,6 +32,7 @@ lk settings notification
 lk settings notification show
 lk settings notification update
 lk settings performance-ask
+lk settings performance-ask calibrate
 lk settings performance-ask create
 lk settings performance-ask destroy
 lk settings performance-ask update
