@@ -1,0 +1,23 @@
+.claude/skills/release/SKILL.md
+  s_7fc919c78f0bae::t_50ccc665c70d81 1-96
+CLAUDE.md
+  s_7fc919c78f0bae::t_7e4ee1720e3ed2 239-260
+.claude/skills/release/troubleshooting.md
+  s_7fc919c78f0bae::t_65531a1b86fa00 1-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "cecc3bb410e718fc712faf43b613b7eff72ac175",
+  "prompts": {},
+  "sessions": {
+    "s_7fc919c78f0bae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa8222a6-9c8d-4851-88ec-8dde67d2f7cf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Cirdes <cirdes@linkana.com>"
+    }
+  }
+}
