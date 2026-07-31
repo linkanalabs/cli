@@ -1,0 +1,21 @@
+scripts/release-preflight.sh
+  s_7fc919c78f0bae::t_9b50183d4a1c32 120-125
+  s_7fc919c78f0bae::t_55e3d167314820 135-137
+  s_7fc919c78f0bae::t_5756e459916493 152-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "32561f6aa88941adfe67b6cb5671efeccebbbd0c",
+  "prompts": {},
+  "sessions": {
+    "s_7fc919c78f0bae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa8222a6-9c8d-4851-88ec-8dde67d2f7cf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Cirdes <cirdes@linkana.com>"
+    }
+  }
+}
