@@ -256,7 +256,7 @@ if command -v golangci-lint >/dev/null 2>&1; then
     fail 'make lint vermelho (rode `make lint` para ver o motivo)'
   fi
 else
-  skip 'golangci-lint não instalado — o job Lint da CI já cobriu este sha'
+  skip 'golangci-lint não instalado (brew install golangci-lint) — quem cobre o lint é o job Lint da CI, checado acima'
 fi
 
 # --- veredito ---
