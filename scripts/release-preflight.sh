@@ -117,6 +117,12 @@ if [ -n "$BASE_TAG" ] && [ "$BUMP_ONLY" -eq 0 ]; then
   die "--base só vale com --bump-only (o gate sempre usa a última tag)"
 fi
 
+# Antes de olhar para qualquer tag: uma tag publicada por outra pessoa não está no
+# repositório local até o fetch, e a base sairia velha — bump e validação da versão
+# pedida seriam derivados de uma release já superada.
+FETCH_OK=1
+git fetch --tags --quiet origin 2>/dev/null || FETCH_OK=0
+
 if [ -z "$BASE_TAG" ]; then
   BASE_TAG=$(git describe --tags --abbrev=0 2>/dev/null) || die "repositório sem nenhuma tag"
 fi
@@ -126,6 +132,9 @@ derive_bump "$BASE_TAG"
 DERIVED=$(next_version "$BASE_TAG" "$SURFACE_KIND")
 
 if [ "$BUMP_ONLY" -eq 1 ]; then
+  if [ "$FETCH_OK" -eq 0 ]; then
+    printf 'aviso: git fetch da origin falhou, a base pode estar desatualizada\n' >&2
+  fi
   printf 'base=%s\n' "$BASE_TAG"
   printf 'bump=%s (%s)\n' "$SURFACE_KIND" "$SURFACE_NOTE"
   printf 'recommended_version=%s\n' "$DERIVED"
@@ -140,7 +149,11 @@ printf 'preflight de release — base %s\n' "$BASE_TAG"
 
 # --- 1. estado do repositório ---
 step 'Estado do repositório'
-git fetch --tags --quiet origin
+if [ "$FETCH_OK" -eq 1 ]; then
+  pass 'tags e refs atualizados da origin'
+else
+  fail 'git fetch da origin falhou — sem ele a tag base e a comparação com origin/main não valem'
+fi
 
 HEAD_SHA=$(git rev-parse HEAD)
 SHORT_SHA=$(git rev-parse --short HEAD)
