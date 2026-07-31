@@ -8,8 +8,8 @@ permissions:
   contents: read
 
 jobs:
-  # Gate de servidor: o que o `make release-preflight` checa na máquina de quem
-  # publica, aqui vale para qualquer tag — inclusive uma empurrada sem preflight.
+  # Legitimidade da tag. Barato e sem Go, então roda antes de qualquer job pesado:
+  # tag malformada ou fora da main não chega a gastar a CI.
   guard:
     name: guard
     runs-on: ubuntu-latest
@@ -26,15 +26,18 @@ jobs:
           git fetch --quiet origin main
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
             || { echo "$GITHUB_SHA não está na origin/main — release só sai de código mergeado" >&2; exit 1; }
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-      - name: Testes e cobertura
-        run: make cover
+
+  # A mesma CI do dia a dia, reusada: lint, teste com cobertura e build de todos
+  # os pacotes. Reusar em vez de copiar os passos evita que o gate da release
+  # vire um subconjunto silencioso do que "verde" significa no repositório.
+  # Job pulado faz o dependente ser pulado, então a release não sai sem isto.
+  ci:
+    needs: guard
+    uses: ./.github/workflows/ci.yml
 
   release:
     name: goreleaser
-    needs: guard
+    needs: ci
     runs-on: ubuntu-latest
     permissions:
       contents: write
