@@ -1,0 +1,22 @@
+.github/workflows/release.yml
+  s_7fc919c78f0bae::t_e53b139fa31803 11-12,29-36,40
+.github/workflows/ci.yml
+  s_7fc919c78f0bae::t_db1cd3eee31071 8-10
+  s_7fc919c78f0bae::t_9b026e16153656 19,33,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "4ac08444457c7d128cd40aa479f9eaab90269f8d",
+  "prompts": {},
+  "sessions": {
+    "s_7fc919c78f0bae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa8222a6-9c8d-4851-88ec-8dde67d2f7cf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Cirdes <cirdes@linkana.com>"
+    }
+  }
+}
