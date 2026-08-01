@@ -1,0 +1,31 @@
+internal/update/decide.go
+  s_ec7dd0798e919c::t_addcd04a2407c1 68-73
+internal/update/decide_test.go
+  s_ec7dd0798e919c::t_05bd49b85d4b2e 67-70,73-80
+internal/commands/update.go
+  s_ec7dd0798e919c::t_addcd04a2407c1 92-94
+internal/commands/doctor_test.go
+  s_ec7dd0798e919c::t_a64e3d568a9371 251-253
+internal/update/semver.go
+  s_ec7dd0798e919c::t_addcd04a2407c1 97-104,106
+internal/commands/doctor.go
+  s_ec7dd0798e919c::t_addcd04a2407c1 161-165
+internal/commands/update_test.go
+  s_ec7dd0798e919c::t_94915efc0c9144 265-267,278-279,281-285
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "9f9531f8a8826e44f6013db77aa2ffc14eadb04b",
+  "prompts": {},
+  "sessions": {
+    "s_ec7dd0798e919c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11d9a684-922d-4e9f-ad52-11ef8093c074",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Cirdes <cirdes@linkana.com>"
+    }
+  }
+}
