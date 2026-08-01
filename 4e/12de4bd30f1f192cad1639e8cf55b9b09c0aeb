@@ -1,0 +1,29 @@
+internal/update/latest_test.go
+  s_ec7dd0798e919c::t_2000fc5af41a4b 281-295
+CLAUDE.md
+  s_ec7dd0798e919c::t_52fd50bd259fa5 323-328
+internal/update/spawn_unix_test.go
+  s_ec7dd0798e919c::t_52fd50bd259fa5 45-54
+internal/commands/autoupdate.go
+  s_ec7dd0798e919c::t_52fd50bd259fa5 103-111,125
+internal/commands/autoupdate_test.go
+  s_ec7dd0798e919c::t_2000fc5af41a4b 131-150
+internal/update/latest.go
+  s_ec7dd0798e919c::t_52fd50bd259fa5 116-117,119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "4e12de4bd30f1f192cad1639e8cf55b9b09c0aeb",
+  "prompts": {},
+  "sessions": {
+    "s_ec7dd0798e919c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11d9a684-922d-4e9f-ad52-11ef8093c074",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Cirdes <cirdes@linkana.com>"
+    }
+  }
+}
