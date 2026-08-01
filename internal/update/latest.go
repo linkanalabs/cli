@@ -60,6 +60,12 @@ func TapRemote(ctx context.Context, hc *http.Client) (string, error) {
 	if v == "" {
 		return "", fmt.Errorf("no version stanza in the cask at %s", tapCaskURL)
 	}
+	// A version that cannot be ordered is worse than none: Newer would report
+	// false for it, and the caller would announce "up to date" without having
+	// compared anything.
+	if !Comparable(v) {
+		return "", fmt.Errorf("the cask at %s declares %q, which is not a version this CLI can order", tapCaskURL, v)
+	}
 	return v, nil
 }
 
@@ -78,6 +84,9 @@ func TapLocal(caskPath string) (string, error) {
 	v := parseCaskVersion(data)
 	if v == "" {
 		return "", fmt.Errorf("no version stanza in the local cask %s", caskPath)
+	}
+	if !Comparable(v) {
+		return "", fmt.Errorf("the local cask %s declares %q, which is not a version this CLI can order", caskPath, v)
 	}
 	return v, nil
 }

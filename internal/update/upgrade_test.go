@@ -112,8 +112,14 @@ func TestSpawnUpgradeLogsFailure(t *testing.T) {
 	if werr := cmd.Wait(); werr == nil {
 		t.Fatal("expected the background upgrade to report failure")
 	}
-	if _, err := os.Stat(logPath); err != nil {
-		t.Errorf("no log was written: %v", err)
+	// Asserting the file exists proves nothing: O_CREATE makes it before brew
+	// even starts. What matters is that the run left something to read.
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("reading the upgrade log: %v", err)
+	}
+	if !strings.Contains(string(data), "upgrade --cask lk") {
+		t.Errorf("the failed run left no usable trace: %q", string(data))
 	}
 }
 

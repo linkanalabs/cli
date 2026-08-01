@@ -87,7 +87,11 @@ func Decide(in Inputs) Decision {
 	case Prerelease(in.TapRemote) && !Prerelease(in.Current):
 		d.Warning = fmt.Sprintf(
 			"%s is a prerelease; lk will not install it on its own", in.TapRemote)
-		d.Command = BrewUpgradeCommand
+		// Whoever decides to opt in needs a command that works. Right after a
+		// release candidate is published, brew's local metadata is behind by
+		// definition — so this combination is the expected one, not an edge
+		// case, and a plain upgrade would silently do nothing.
+		d.Command = brewCommandFor(in)
 	case Newer(in.TapRemote, in.TapLocal):
 		d.Command = BrewRefreshCommand
 	default:
@@ -95,4 +99,13 @@ func Decide(in Inputs) Decision {
 		d.Command = BrewUpgradeCommand
 	}
 	return d
+}
+
+// brewCommandFor picks between upgrading and refreshing first, by whether
+// brew's own metadata still trails the tap.
+func brewCommandFor(in Inputs) string {
+	if Newer(in.TapRemote, in.TapLocal) {
+		return BrewRefreshCommand
+	}
+	return BrewUpgradeCommand
 }

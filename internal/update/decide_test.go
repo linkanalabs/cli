@@ -134,6 +134,23 @@ func TestDecideNeverSelfUpgradesOntoAPrerelease(t *testing.T) {
 	}
 }
 
+// Right after a release candidate is published, brew's local metadata is behind
+// by definition — so whoever opts in must be given the command that refreshes it
+// first, or it is a silent no-op.
+func TestDecidePrereleaseWithStaleMetadata(t *testing.T) {
+	got := Decide(Inputs{
+		Install: caskInstall(), Current: "0.8.0",
+		TapRemote: "0.9.0-rc.1", TapLocal: "0.8.0",
+	})
+
+	if got.CanSelfUpgrade {
+		t.Error("CanSelfUpgrade = true onto a prerelease")
+	}
+	if got.Command != BrewRefreshCommand {
+		t.Errorf("Command = %q, want the refresh command; a plain upgrade would do nothing", got.Command)
+	}
+}
+
 // Already on a prerelease, moving to the next one is not a surprise.
 func TestDecideSelfUpgradesBetweenPrereleases(t *testing.T) {
 	got := Decide(Inputs{

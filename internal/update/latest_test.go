@@ -124,6 +124,20 @@ func TestTapRemoteErrors(t *testing.T) {
 		}
 	})
 
+	// A version that cannot be ordered must fail here, not sail through and let
+	// the caller report "up to date" without having compared anything.
+	t.Run("unorderable version", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte("cask \"lk\" do\n  version \"not-a-version\"\nend\n"))
+		}))
+		defer srv.Close()
+		stubTapURL(t, srv.URL)
+
+		if _, err := TapRemote(context.Background(), srv.Client()); err == nil {
+			t.Fatal("expected an error for a version the CLI cannot order")
+		}
+	})
+
 	t.Run("unreachable", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 		url := srv.URL
@@ -170,6 +184,15 @@ func TestTapLocalErrors(t *testing.T) {
 		}
 		if _, err := TapLocal(path); err == nil {
 			t.Fatal("expected an error when the cask carries no version")
+		}
+	})
+	t.Run("unorderable version", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "lk.rb")
+		if err := os.WriteFile(path, []byte("  version \"not-a-version\"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := TapLocal(path); err == nil {
+			t.Fatal("expected an error for a version the CLI cannot order")
 		}
 	})
 }
