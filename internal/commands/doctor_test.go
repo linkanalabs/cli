@@ -37,6 +37,11 @@ func baseInput(t *testing.T, baseURL string) doctorInput {
 		configDir:  t.TempDir(),
 		baseURL:    baseURL,
 		httpClient: &http.Client{Timeout: 2 * time.Second},
+		// Unset by default so no test reaches the network; the update check
+		// then reports the same skip a real failed lookup would.
+		latestVersion: func(context.Context) (string, error) {
+			return "", errors.New("not wired in this test")
+		},
 	}
 }
 
@@ -185,5 +190,96 @@ func TestDoctorCommandExitNonZeroOnFailure(t *testing.T) {
 	code := run([]string{"doctor", "--format", "json"}, &out, &errOut)
 	if code != 1 {
 		t.Fatalf("exit code = %d, want 1", code)
+	}
+}
+
+// --- Update check ---
+
+func updateInput(t *testing.T, version string, latest func(context.Context) (string, error)) doctorInput {
+	t.Helper()
+	in := baseInput(t, upServer(t, http.StatusOK).URL)
+	in.version = version
+	if latest != nil {
+		in.latestVersion = latest
+	}
+	return in
+}
+
+func constVersion(v string) func(context.Context) (string, error) {
+	return func(context.Context) (string, error) { return v, nil }
+}
+
+func TestDoctorUpdateUpToDate(t *testing.T) {
+	r := runDoctorChecks(context.Background(), updateInput(t, "0.7.0", constVersion("0.7.0")))
+
+	c := findCheck(r, "Update")
+	if c.Status != StatusPass {
+		t.Errorf("Update = %q (%s), want pass", c.Status, c.Message)
+	}
+}
+
+// Being a version behind is not a broken install: doctor exits non-zero only
+// on failures, so this must warn rather than fail.
+func TestDoctorUpdateAvailableWarns(t *testing.T) {
+	r := runDoctorChecks(context.Background(), updateInput(t, "0.7.0", constVersion("0.8.0")))
+
+	c := findCheck(r, "Update")
+	if c.Status != StatusWarn {
+		t.Fatalf("Update = %q (%s), want warn", c.Status, c.Message)
+	}
+	if !strings.Contains(c.Message, "0.8.0") {
+		t.Errorf("message = %q", c.Message)
+	}
+	if !strings.Contains(c.Hint, "lk update") {
+		t.Errorf("hint = %q", c.Hint)
+	}
+	if r.Failed != 0 {
+		t.Errorf("Failed = %d: an outdated CLI must not make doctor exit 1", r.Failed)
+	}
+}
+
+func TestDoctorUpdateSkips(t *testing.T) {
+	cases := []struct {
+		name    string
+		version string
+		latest  func(context.Context) (string, error)
+	}{
+		{"development build", "dev", constVersion("9.9.9")},
+		{"lookup failed", "0.7.0", func(context.Context) (string, error) {
+			return "", errors.New("dns is down")
+		}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			r := runDoctorChecks(context.Background(), updateInput(t, c.version, c.latest))
+
+			got := findCheck(r, "Update")
+			if got.Status != StatusSkip {
+				t.Errorf("Update = %q (%s), want skip", got.Status, got.Message)
+			}
+			if r.Failed != 0 || r.Warned != 0 {
+				t.Errorf("a skipped update check must not fail or warn: %+v", r)
+			}
+		})
+	}
+}
+
+// The whole command: an outdated CLI still exits 0.
+func TestDoctorExitsZeroWhenOutdated(t *testing.T) {
+	srv := upServer(t, http.StatusOK)
+	t.Setenv("LK_API_URL", srv.URL)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	withVersion(t, "0.7.0")
+
+	prev := fetchTapRemote
+	fetchTapRemote = func(context.Context, *http.Client) (string, error) { return "9.9.9", nil }
+	t.Cleanup(func() { fetchTapRemote = prev })
+
+	var out, errOut bytes.Buffer
+	if code := run([]string{"doctor", "--format", "json"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit code = %d, stderr = %q", code, errOut.String())
+	}
+	if !strings.Contains(out.String(), `"Update"`) {
+		t.Errorf("output has no Update check: %q", out.String())
 	}
 }

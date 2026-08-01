@@ -87,7 +87,7 @@ Skeleton + `doctor` + **auth via PAT (CLI)** + **suppliers (SRM)** +
 **Authentication** via `GET /my/identity.json` — pass/fail/skip, with a skip-cascade
 when the backend is unreachable), `auth login|status|logout`, `whoami`,
 `supplier list|show`, `impersonate <ref>|stop|status`, `config`,
-`config set-url <url>`.
+`config set-url <url>`, `update [--check]`.
 
 `base_url` resolves in the order `LK_API_URL` (env) → `config.yml` (XDG) →
 **default `https://app.linkana.com`** (production — a clean install via brew talks
@@ -268,6 +268,64 @@ version for real. Install/update command — **always the fully-qualified tap na
 
 Local release (contingency, with approval):
 `GITHUB_TOKEN=$(gh auth token) HOMEBREW_TAP_GITHUB_TOKEN=$(gh auth token) goreleaser release --clean`.
+
+## Self-update (`lk update` + automatic check)
+
+`internal/update/` resolves what is installable; `internal/state/` remembers when
+lk last looked. **lk never replaces its own binary** — on a Workbrew fleet the
+Caskroom is owned by another user and `/opt/workbrew/bin/brew` is setuid root, so
+brew is the only process that can write there. Overwriting it would also desync
+`INSTALL_RECEIPT.json`, whose path carries the version (`Caskroom/lk/0.7.0/lk`).
+
+**Four versions, and they are not interchangeable:**
+
+| | Source | Meaning |
+|---|---|---|
+| `current` | ldflag (bare, `0.7.0`) | this binary |
+| `tap_local` | the cask file on disk, from the receipt's `source.path` | what brew can install **now** |
+| `tap_remote` | `raw.githubusercontent.com/.../Casks/lk.rb` | what brew installs once its metadata is fresh |
+| `release` | `Location` header of `github.com/.../releases/latest` | what is published |
+
+`update_available` compares against **`tap_remote`**, not the release: they
+diverge when a release ships and the tap commit fails, and pointing someone at
+`brew upgrade` for a version brew does not have only generates support. That
+divergence becomes the `warning` field.
+
+- **Never `api.github.com`** — 60 req/h *per IP*, shared behind a customer's NAT.
+  Both sources above are CDN reads with no rate limit and no credentials. Never
+  route these through `internal/client`: `buildURL` passes absolute URLs through,
+  but `do()` always stamps `Authorization: Bearer <PAT>`, which would leak the
+  Linkana token to GitHub.
+- **`brew update` is never run.** It has no per-tap scope (`brew update --help`:
+  "all formulae"), and refreshing the tap clone by hand is impossible on the
+  fleet. `tap_local < tap_remote` → lk reports `brew update && brew upgrade
+  --cask lk` and leaves the call to the user.
+- **Cadence:** the automatic check runs from `Execute()` — the process edge, not
+  `runWith()`, which stays the pure testable core so no test reaches the disk or
+  network by accident. It runs *after* the command produced its output (the
+  running process is the old binary either way), at most once per 24h. The
+  timestamp is claimed **before** the request, so a network outage cannot become
+  one attempt per command — the cost is that a blip waits for tomorrow. Guards:
+  `LK_NO_AUTO_UPDATE`, CI env vars, `dev` build, and non-Homebrew install.
+- A command opts out by declaring `Annotations[annotationNoAutoUpdate]` (today
+  only `lk update`, which already did the job synchronously). The guard reads the
+  annotation up the command chain rather than matching names — comparing against
+  `"lk update"` would break silently on a rename and would need a new special
+  case per command.
+- **No TTY gate**, unlike gh and fizzy: lk's primary user is an agent, so gating
+  on a terminal would disable the feature exactly where it was asked for.
+  Isolation comes from the notice being stderr-only.
+- The upgrade is spawned **detached** (`Setsid`, hence `spawn_unix.go` /
+  `spawn_windows.go`) and logged to `<state dir>/upgrade.log`; lk never waits.
+- `internal/update` imports only stdlib. `Detect()` does path arithmetic and no
+  file read — it runs on every invocation; Homebrew's receipt is read lazily by
+  `Install.CaskPath()`, and the log path belongs to `internal/state`, which owns
+  that directory.
+- State holds **one** field (`LastCheckAt`). The daily budget is what bounds
+  retries, so nothing else needs remembering; what brew did is in the log.
+- `lk doctor` reports it as the `Update` check: **warn** when outdated, never
+  fail (`res.Failed > 0` exits 1, and being a version behind is not a broken
+  install); `skip` on a dev build or when the lookup fails.
 
 ## Backend repository (Rails)
 

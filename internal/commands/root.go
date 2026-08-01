@@ -51,6 +51,7 @@ func newRootCmd() *cobra.Command {
 	root.AddCommand(newWhoamiCmd())
 	root.AddCommand(newImpersonateCmd())
 	root.AddCommand(newConfigCmd())
+	root.AddCommand(newUpdateCmd())
 	// Dynamic (manifest-driven) commands mount last so manual commands always
 	// win name collisions. A manifest load failure disables them; `lk version`
 	// surfaces the manifest state.
@@ -63,30 +64,47 @@ func newRootCmd() *cobra.Command {
 // run executes the CLI with the given args and streams, returning an exit code.
 // It is the testable core of Execute.
 func run(args []string, stdout, stderr io.Writer) int {
-	return runWith(os.Stdin, args, stdout, stderr)
+	code, _ := runWith(os.Stdin, args, stdout, stderr)
+	return code
 }
 
 // runWith is like run but with an explicit stdin, so commands that read from
-// stdin (e.g. auth login prompt) stay testable.
-func runWith(stdin io.Reader, args []string, stdout, stderr io.Writer) int {
+// stdin (e.g. auth login prompt) stay testable. It also reports which command
+// cobra actually ran, which Execute needs and run() discards.
+func runWith(stdin io.Reader, args []string, stdout, stderr io.Writer) (int, *cobra.Command) {
 	root := newRootCmd()
 	root.SetArgs(args)
 	root.SetIn(stdin)
 	root.SetOut(stdout)
 	root.SetErr(stderr)
 
-	if err := root.Execute(); err != nil {
+	// ExecuteC (rather than Execute) reports which command actually ran, which
+	// the auto-update guard needs: parsing args would mistake a flag value for
+	// a command name.
+	executed, err := root.ExecuteC()
+
+	if err != nil {
 		if !errors.Is(err, errSilent) {
 			_, _ = fmt.Fprintln(stderr, "error:", err)
 		}
-		return 1
+		return 1, executed
 	}
-	return 0
+	return 0, executed
 }
 
 // Execute runs the CLI and exits the process with the appropriate code.
 func Execute() {
-	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+	code, executed := runWith(os.Stdin, os.Args[1:], os.Stdout, os.Stderr)
+
+	// Last thing before the process exits, and deliberately here rather than in
+	// runWith: reaching the network, writing state and forking a detached brew
+	// are effects of the binary having really run, not of executing the command
+	// tree. Keeping them out of run() means no test trips them by accident. The
+	// output is already written, so a new version can only apply from the next
+	// invocation anyway. A no-op unless a day has passed on a Homebrew install.
+	maybeAutoUpdate(os.Stderr, executed)
+
+	os.Exit(code)
 }
 
 // formatFlag returns the resolved --format value for a command.
