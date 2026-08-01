@@ -1,0 +1,23 @@
+internal/update/decide_test.go
+  s_ec7dd0798e919c::t_e5d9b5f2145f77 101-123
+internal/update/decide.go
+  s_ec7dd0798e919c::t_e5d9b5f2145f77 109-118
+internal/update/spawn_unix_test.go
+  s_ec7dd0798e919c::t_e5d9b5f2145f77 39-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "aa6095185c8e38069d0089fd9aa95d0be402689e",
+  "prompts": {},
+  "sessions": {
+    "s_ec7dd0798e919c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11d9a684-922d-4e9f-ad52-11ef8093c074",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Cirdes <cirdes@linkana.com>"
+    }
+  }
+}
