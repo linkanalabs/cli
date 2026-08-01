@@ -1,0 +1,28 @@
+internal/update/upgrade_test.go
+  s_ec7dd0798e919c::t_f1ad25f6681389 115-122
+internal/update/decide_test.go
+  s_ec7dd0798e919c::t_79a67078138d2d 137-153
+internal/update/latest_test.go
+  s_ec7dd0798e919c::t_79a67078138d2d 127-140,189-197
+internal/update/decide.go
+  s_ec7dd0798e919c::t_f1ad25f6681389 90-94,103-110
+  s_ec7dd0798e919c::t_13825d5b7ab1fe 111
+internal/update/latest.go
+  s_ec7dd0798e919c::t_f1ad25f6681389 63-68,88-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "de297c25ea78251fceea1b965b4e77dfe6a78810",
+  "prompts": {},
+  "sessions": {
+    "s_ec7dd0798e919c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11d9a684-922d-4e9f-ad52-11ef8093c074",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Cirdes <cirdes@linkana.com>"
+    }
+  }
+}
