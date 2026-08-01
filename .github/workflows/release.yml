@@ -19,7 +19,13 @@ jobs:
           fetch-depth: 0
       - name: Tag em semver
         run: |
-          echo "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' \
+          # Mesma forma aceita pelo scripts/release-verify.sh: as duas decidem o
+          # que é tag publicável e têm de concordar, inclusive em prerelease com
+          # hífen no identificador (v1.2.3-rc-1), que o semver permite e o
+          # goreleaser publica (release.prerelease: auto). O release-preflight.sh
+          # é estrito de propósito — ele só deriva X.Y.Z, prerelease é decisão
+          # manual.
+          echo "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$' \
             || { echo "tag fora do padrão vX.Y.Z: $GITHUB_REF_NAME" >&2; exit 1; }
       - name: Tag aponta para commit na main
         run: |

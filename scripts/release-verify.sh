@@ -50,6 +50,8 @@ while [ $# -gt 0 ]; do
 done
 
 [ -n "$VERSION" ] || die "uso: scripts/release-verify.sh vX.Y.Z [--local]"
+# Mesma forma do passo "Tag em semver" do job guard no release.yml — mudou aqui,
+# muda lá: as duas decidem o que é tag publicável.
 printf '%s' "$VERSION" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$' ||
   die "versão fora do padrão vX.Y.Z: $VERSION"
 command -v gh >/dev/null 2>&1 || die 'gh é obrigatório para consultar release e tap'
