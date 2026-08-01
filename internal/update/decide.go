@@ -106,6 +106,16 @@ func Decide(in Inputs) (d Decision) {
 		d.Command = brewCommandFor(in)
 	case Newer(in.TapRemote, in.TapLocal):
 		d.Command = BrewRefreshCommand
+	// Brew's local cask is *ahead* of the tap: the tap was rolled back, or the
+	// clone still carries something since removed. `brew upgrade` installs what
+	// the clone has, not the Latest just reported — so self-upgrading here would
+	// install a version nobody vouched for, and could resurrect exactly the
+	// prerelease or yanked release the cases above exist to refuse.
+	case Newer(in.TapLocal, in.TapRemote):
+		warnings = append(warnings, fmt.Sprintf(
+			"brew's local cask is %s, ahead of the tap's %s; refresh before upgrading",
+			in.TapLocal, in.TapRemote))
+		d.Command = BrewRefreshCommand
 	default:
 		d.CanSelfUpgrade = true
 		d.Command = BrewUpgradeCommand

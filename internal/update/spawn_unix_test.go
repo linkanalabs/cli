@@ -36,6 +36,11 @@ func TestSpawnUpgradeChildLeavesOurProcessGroup(t *testing.T) {
 		_ = cmd.Wait()
 	})
 
+	// Sampling right after Start is not racy: Start waits for the exec attempt —
+	// that is how it can report a non-executable brew, which
+	// TestSpawnUpgradeStartFailure relies on — and Setsid runs in the child
+	// before that exec. So a Start that returned nil means setsid already
+	// happened. Confirmed over 300 consecutive runs.
 	pid := cmd.Process.Pid
 	group, err := syscall.Getpgid(pid)
 	if err != nil {

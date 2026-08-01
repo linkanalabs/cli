@@ -98,6 +98,29 @@ func TestDecideNonHomebrewIsManual(t *testing.T) {
 	}
 }
 
+// The tap was rolled back, or the local clone kept something since removed.
+// brew would install what the clone has, not the version just reported — which
+// is how a yanked release or a refused prerelease could come back.
+func TestDecideLocalCaskAheadOfTapIsNotSelfUpgraded(t *testing.T) {
+	got := Decide(Inputs{
+		Install: caskInstall(), Current: "0.7.0",
+		TapRemote: "0.8.0", TapLocal: "0.9.0",
+	})
+
+	if !got.UpdateAvailable {
+		t.Fatal("UpdateAvailable = false; the tap does serve something newer than the install")
+	}
+	if got.CanSelfUpgrade {
+		t.Error("CanSelfUpgrade = true with brew holding a version ahead of the tap")
+	}
+	if got.Command != BrewRefreshCommand {
+		t.Errorf("Command = %q, want the refresh command", got.Command)
+	}
+	if !strings.Contains(got.Warning, "ahead of the tap") {
+		t.Errorf("Warning = %q", got.Warning)
+	}
+}
+
 // Anything brew did not install as a cask cannot be self-upgraded: the upgrade
 // runs `brew upgrade --cask lk`, which would fail against it.
 func TestDecideOnlyCasksSelfUpgrade(t *testing.T) {
