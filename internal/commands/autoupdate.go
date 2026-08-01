@@ -151,6 +151,9 @@ func launchUpgrade(stderr io.Writer, latest string) {
 // quietly reaching the network and starting a background brew upgrade would
 // break it — however throttled. Unlike a command that merely failed, these
 // paths never execute a command body at all.
+//
+// Commands that are themselves reads opt out through the annotation instead
+// (see newVersionCmd), so `lk version` and `lk --version` behave identically.
 func informational(c *cobra.Command) bool {
 	if c == nil {
 		return false

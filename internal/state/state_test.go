@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -123,9 +124,9 @@ func TestSavePermissions(t *testing.T) {
 	}
 }
 
-// Two lk processes can exit at the same time; a half-written state file must
-// never be observable, and no temp files may pile up.
-func TestSaveIsAtomic(t *testing.T) {
+// The temp file is a means, not a leftover: repeated saves must not litter the
+// state directory.
+func TestSaveLeavesNoTempFiles(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("XDG_STATE_HOME", root)
 
@@ -245,6 +246,57 @@ func TestSaveRenameFailure(t *testing.T) {
 	if err := (&State{}).Save(); err == nil {
 		t.Fatal("expected an error when the rename fails")
 	}
+}
+
+// The atomicity claim, actually exercised: two lk processes can be writing and
+// reading at the same time, and a reader must observe either the previous file
+// or the next one — never a truncated one. A plain WriteFile would fail this.
+func TestConcurrentReadsNeverSeeAPartialFile(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+
+	// Seed one, so a reader finding nothing is itself a failure.
+	if err := (&State{LastCheckAt: time.Now()}).Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	var wg sync.WaitGroup
+	done := make(chan struct{})
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer close(done)
+		for i := 0; i < 300; i++ {
+			if err := (&State{LastCheckAt: time.Now()}).Save(); err != nil {
+				t.Errorf("Save: %v", err)
+				return
+			}
+		}
+	}()
+
+	for r := 0; r < 4; r++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-done:
+					return
+				default:
+				}
+				got, err := Load()
+				if err != nil {
+					t.Errorf("a concurrent read observed an unusable state file: %v", err)
+					return
+				}
+				if got.LastCheckAt.IsZero() {
+					t.Error("a concurrent read observed a state file with no timestamp")
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 // An unreadable state file is an error, not an empty state: treating it as

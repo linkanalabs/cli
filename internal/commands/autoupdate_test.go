@@ -251,6 +251,8 @@ func TestAutoUpdateSkipsInformationalRuns(t *testing.T) {
 		{"version flag", []string{"--version"}},
 		{"help flag on a subcommand", []string{"doctor", "--help"}},
 		{"help command", []string{"help", "doctor"}},
+		// The version command must behave exactly like the --version flag.
+		{"version command", []string{"version"}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

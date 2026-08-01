@@ -33,6 +33,9 @@ func newVersionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Print the CLI version",
 		Args:  cobra.NoArgs,
+		// Reporting the version is a read, and must behave exactly like the
+		// `--version` flag that prints the same thing: no network, no upgrade.
+		Annotations: map[string]string{annotationNoAutoUpdate: "true"},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			info := versionInfo{Version: version}
 			if m, err := loadManifest(); err == nil {
