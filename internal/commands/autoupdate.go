@@ -80,12 +80,18 @@ func maybeAutoUpdate(stderr io.Writer, executed *cobra.Command) {
 		return
 	}
 
-	// Claim the day's budget *before* the network call, not after. That is
-	// what makes "at most one check per day" literally true: a second lk
-	// exiting a moment later reads the fresh stamp and stands down, and a
-	// network outage cannot turn into a request on every single command. The
-	// cost is that a transient failure waits for tomorrow, which is the right
-	// trade for something nobody asked to run.
+	// Claim the day's budget *before* the network call, not after: a second lk
+	// exiting afterwards reads the fresh stamp and stands down, and a network
+	// outage cannot turn into a request on every single command. The cost is
+	// that a transient failure waits for tomorrow, which is the right trade for
+	// something nobody asked to run.
+	//
+	// Load-check-save is not atomic across processes, so two lk instances
+	// exiting within the same few hundred microseconds can both claim it. That
+	// is left alone deliberately: the window is tiny, the worst case is one
+	// redundant fetch and a second `brew upgrade` that brew itself serialises on
+	// its own lock, and an interprocess lock would trade that for stale-lock
+	// recovery on every run.
 	st.LastCheckAt = timeNow()
 	if err := saveState(st); err != nil {
 		return // cannot promise the throttle, so do not proceed

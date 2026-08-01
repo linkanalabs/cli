@@ -29,8 +29,13 @@ func parse(v string) (parsed, bool) {
 	if v == "" {
 		return p, false
 	}
-	// Build metadata is ignored for precedence (semver §10).
+	// Build metadata is ignored for precedence (semver §10) but still has to be
+	// well formed: this package refuses what it cannot read rather than ordering
+	// it anyway.
 	if i := strings.IndexByte(v, '+'); i >= 0 {
+		if !validIdentifiers(v[i+1:]) {
+			return p, false
+		}
 		v = v[:i]
 	}
 
@@ -40,12 +45,10 @@ func parse(v string) (parsed, bool) {
 		if v == "" {
 			return p, false
 		}
-		p.pre = strings.Split(v, ".")
-		for _, id := range p.pre {
-			if id == "" {
-				return p, false
-			}
+		if !validIdentifiers(v) {
+			return p, false
 		}
+		p.pre = strings.Split(v, ".")
 	}
 
 	fields := strings.Split(core, ".")
@@ -60,6 +63,31 @@ func parse(v string) (parsed, bool) {
 		p.nums[i] = n
 	}
 	return p, true
+}
+
+// validIdentifiers reports whether a dot-separated identifier list is well
+// formed: each part non-empty, restricted to [0-9A-Za-z-], and — when it is
+// all digits — free of a leading zero (semver §9).
+func validIdentifiers(list string) bool {
+	for _, id := range strings.Split(list, ".") {
+		if id == "" {
+			return false
+		}
+		numeric := true
+		for i := 0; i < len(id); i++ {
+			switch c := id[i]; {
+			case c >= '0' && c <= '9':
+			case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c == '-':
+				numeric = false
+			default:
+				return false
+			}
+		}
+		if numeric && len(id) > 1 && id[0] == '0' {
+			return false
+		}
+	}
+	return true
 }
 
 // numericID parses a semver numeric identifier: digits only, and no leading

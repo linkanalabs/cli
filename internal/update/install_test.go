@@ -159,7 +159,10 @@ func TestDetectCaskWithoutUsableReceipt(t *testing.T) {
 	}
 }
 
-func TestDetectHomebrewFormula(t *testing.T) {
+// A Cellar path is a formula install, which lk never publishes — and which
+// `brew upgrade --cask lk` could not act on anyway. It must not be reported as
+// something brew can upgrade.
+func TestDetectFormulaIsNotUpgradable(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, "Cellar", "lk", "0.7.0", "bin")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -175,8 +178,8 @@ func TestDetectHomebrewFormula(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Detect() error = %v", err)
 	}
-	if got.Method != MethodHomebrewFormula {
-		t.Errorf("Method = %q, want %q", got.Method, MethodHomebrewFormula)
+	if got.Homebrew() {
+		t.Errorf("Homebrew() = true for a formula install (%q)", got.Method)
 	}
 }
 

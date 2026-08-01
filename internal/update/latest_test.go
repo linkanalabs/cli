@@ -281,16 +281,18 @@ func TestReleaseErrors(t *testing.T) {
 }
 
 // A hostile or broken tap must not be able to make lk read an unbounded body.
+// The version stanza sits *past* the limit, so the read stopping is the only
+// thing that can make this fail — remove the LimitReader and the test goes green
+// for the wrong reason.
 func TestTapRemoteBodyIsBounded(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(strings.Repeat("x", maxBodyBytes+1024)))
+		_, _ = w.Write([]byte(strings.Repeat("x", maxBodyBytes)))
+		_, _ = w.Write([]byte("\n  version \"9.9.9\"\n"))
 	}))
 	defer srv.Close()
 	stubTapURL(t, srv.URL)
 
-	// No version in that payload, so this must fail rather than hang or
-	// allocate without bound.
 	if _, err := TapRemote(context.Background(), srv.Client()); err == nil {
-		t.Fatal("expected an error for a body with no version stanza")
+		t.Fatal("read past the limit: the version beyond maxBodyBytes was parsed")
 	}
 }

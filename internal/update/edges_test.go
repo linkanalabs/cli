@@ -37,6 +37,27 @@ func TestVersionEdgeCases(t *testing.T) {
 	if Comparable("1.0.0-rc..1") {
 		t.Error("an empty prerelease identifier was accepted")
 	}
+
+	// Refusing beats guessing: a version this package cannot read must not be
+	// ordered, or garbage from the tap would be announced as an update.
+	for _, v := range []string{
+		"1.0.0-rc!1",  // illegal character in a prerelease identifier
+		"1.0.0-01",    // numeric prerelease identifier with a leading zero
+		"1.0.0+meta!", // illegal character in build metadata
+		"1.0.0+",      // empty build metadata
+		"1.0.0-rc.1+a..b",
+	} {
+		if Comparable(v) {
+			t.Errorf("%q was accepted as a version", v)
+		}
+	}
+
+	// ...while the legal shapes still are.
+	for _, v := range []string{"1.0.0-rc.1", "1.0.0-alpha-2", "1.0.0+build.5", "1.0.0-rc.1+build.5"} {
+		if !Comparable(v) {
+			t.Errorf("%q was refused", v)
+		}
+	}
 }
 
 // A path whose Caskroom segment has nothing above it yields no metadata

@@ -88,13 +88,16 @@ func TestDecideNonHomebrewIsManual(t *testing.T) {
 	}
 }
 
-// A formula install is not how lk ships, but brew is still the right tool.
-func TestDecideFormulaUsesBrew(t *testing.T) {
-	in := &Install{Method: MethodHomebrewFormula}
-	got := Decide(Inputs{Install: in, Current: "0.7.0", TapRemote: "0.8.0", TapLocal: "0.8.0"})
+// Anything brew did not install as a cask cannot be self-upgraded: the upgrade
+// runs `brew upgrade --cask lk`, which would fail against it.
+func TestDecideOnlyCasksSelfUpgrade(t *testing.T) {
+	got := Decide(Inputs{Install: otherInstall(), Current: "0.7.0", TapRemote: "0.8.0", TapLocal: "0.8.0"})
 
-	if !got.CanSelfUpgrade {
-		t.Error("CanSelfUpgrade = false on a formula install")
+	if got.CanSelfUpgrade {
+		t.Error("CanSelfUpgrade = true outside a cask install")
+	}
+	if got.Command != InstallScriptCommand {
+		t.Errorf("Command = %q", got.Command)
 	}
 }
 
