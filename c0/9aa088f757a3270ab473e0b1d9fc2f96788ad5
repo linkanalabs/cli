@@ -1,0 +1,27 @@
+internal/update/decide.go
+  s_ec7dd0798e919c::t_a99145e88b9f68 52-66,82-89
+  s_ec7dd0798e919c::t_2944441c29c39e 90
+internal/update/semver.go
+  s_ec7dd0798e919c::t_a99145e88b9f68 178-185
+internal/update/decide_test.go
+  s_ec7dd0798e919c::t_8317b61a74833f 3-6,114-163
+  s_ec7dd0798e919c::t_d90def8fbdbcf5 164
+CLAUDE.md
+  s_ec7dd0798e919c::t_5098dff91d7500 291-301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "c09aa088f757a3270ab473e0b1d9fc2f96788ad5",
+  "prompts": {},
+  "sessions": {
+    "s_ec7dd0798e919c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11d9a684-922d-4e9f-ad52-11ef8093c074",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Cirdes <cirdes@linkana.com>"
+    }
+  }
+}
