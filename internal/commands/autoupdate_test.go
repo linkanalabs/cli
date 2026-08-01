@@ -185,6 +185,26 @@ func TestAutoUpdateStopsWhenStateCannotBeSaved(t *testing.T) {
 	}
 }
 
+// A stamp in the future — a clock correction, or an edited state file — must
+// read as due. Throttling on it would disable updates until the clock caught
+// up, possibly for years.
+func TestAutoUpdateFutureStampIsDue(t *testing.T) {
+	withVersion(t, "0.7.0")
+	s := upgradableStubs()
+	s.loaded = &state.State{LastCheckAt: s.now.Add(72 * time.Hour)}
+	s.apply(t)
+
+	var errOut bytes.Buffer
+	maybeAutoUpdate(&errOut, nil)
+
+	if s.fetches != 1 {
+		t.Errorf("made %d checks with a future stamp, want 1", s.fetches)
+	}
+	if s.spawns != 1 {
+		t.Errorf("spawned %d upgrades, want 1", s.spawns)
+	}
+}
+
 func TestAutoUpdateSilentWhenCurrent(t *testing.T) {
 	withVersion(t, "0.8.0")
 	s := upgradableStubs()

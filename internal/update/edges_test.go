@@ -52,6 +52,30 @@ func TestVersionEdgeCases(t *testing.T) {
 		}
 	}
 
+	// Semver puts no ceiling on a numeric component, so a value far past what
+	// an int holds must still order — and order correctly.
+	huge := "1.0.99999999999999999999"      // 20 digits, beyond int64
+	bigger := "1.0.99999999999999999999999" // 25 digits
+	for _, v := range []string{huge, bigger} {
+		if !Comparable(v) {
+			t.Errorf("%q was refused; semver bounds no numeric component", v)
+		}
+	}
+	if !Newer(bigger, huge) {
+		t.Errorf("%q did not order above %q", bigger, huge)
+	}
+	if !Newer(huge, "1.0.9") {
+		t.Errorf("%q did not order above 1.0.9", huge)
+	}
+	if Newer("1.0.9", huge) {
+		t.Errorf("1.0.9 ordered above %q", huge)
+	}
+	// Same for a prerelease identifier, which must stay numeric rather than
+	// falling back to lexical order.
+	if !Newer("1.0.0-rc.99999999999999999999", "1.0.0-rc.9") {
+		t.Error("a large numeric prerelease identifier compared lexically")
+	}
+
 	// ...while the legal shapes still are. Build metadata carries no
 	// leading-zero rule (semver §10), unlike a prerelease identifier (§9), so
 	// 1.0.0+001 must stay orderable.

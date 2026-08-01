@@ -144,11 +144,15 @@ func newUpdateCmd() *cobra.Command {
 
 			if d.CanSelfUpgrade {
 				// brew's own output belongs on stderr; stdout stays the contract.
-				if err := runUpgrade(ctx, cmd.ErrOrStderr()); err != nil {
+				upgradeErr := runUpgrade(ctx, cmd.ErrOrStderr())
+				res.Upgraded = upgradeErr == nil
+				// Render either way: what was available and what was attempted is
+				// worth the same to a caller whether or not brew succeeded, and
+				// an empty stdout would be indistinguishable from no response.
+				if err := render(); err != nil {
 					return err
 				}
-				res.Upgraded = true
-				return render()
+				return upgradeErr
 			}
 
 			// Stale brew metadata or a non-Homebrew install: lk cannot do it.

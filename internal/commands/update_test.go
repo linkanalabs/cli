@@ -144,6 +144,16 @@ func TestUpdateUpgradeFailureExitsOne(t *testing.T) {
 	if !strings.Contains(errOut.String(), "brew blew up") {
 		t.Errorf("stderr = %q", errOut.String())
 	}
+	// What was available and what was attempted is worth the same whether or
+	// not brew succeeded; an empty stdout would be indistinguishable from a
+	// command that produced no response at all.
+	var got updateResult
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatalf("no structured result on a failed upgrade: %v (%q)", err, out.String())
+	}
+	if !got.UpdateAvailable || got.Upgraded {
+		t.Errorf("result = %+v, want update_available true and upgraded false", got)
+	}
 }
 
 // Brew's metadata trails the tap, so upgrading would silently do nothing.

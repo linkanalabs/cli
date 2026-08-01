@@ -76,7 +76,10 @@ func maybeAutoUpdate(stderr io.Writer, executed *cobra.Command) {
 	if err != nil {
 		return
 	}
-	if timeNow().Sub(st.LastCheckAt) < autoUpdateInterval {
+	// A negative elapsed means the stamp is in the future — a clock correction,
+	// or an edited state file. Treat that as due: the alternative is silently
+	// disabling updates until the clock catches up, possibly for years.
+	if elapsed := timeNow().Sub(st.LastCheckAt); elapsed >= 0 && elapsed < autoUpdateInterval {
 		return
 	}
 

@@ -12,9 +12,13 @@ import "strings"
 // rejected gojq — and the shapes are narrow because our own release workflow
 // validates every tag against ^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$.
 
-// parsed is a version broken into the parts that determine precedence.
+// parsed is a version broken into the parts that determine precedence. The
+// numeric components stay as validated digit strings rather than ints: semver
+// puts no ceiling on them, and converting would force a choice between
+// overflowing on a large one and refusing a version that is perfectly legal.
+// Comparing digit strings is exact at any size.
 type parsed struct {
-	nums [3]int
+	nums [3]string
 	pre  []string // prerelease identifiers; empty for a final release
 }
 
@@ -56,11 +60,10 @@ func parse(v string) (parsed, bool) {
 		return p, false
 	}
 	for i, f := range fields {
-		n, ok := numericID(f)
-		if !ok {
+		if !isNumericID(f) {
 			return p, false
 		}
-		p.nums[i] = n
+		p.nums[i] = f
 	}
 	return p, true
 }
@@ -94,26 +97,29 @@ func validIdentifiers(list string, rejectLeadingZero bool) bool {
 	return true
 }
 
-// maxNumericDigits bounds a numeric identifier so accumulating it cannot
-// overflow int. 18 digits always fits in a 64-bit int, and a real version
-// component never comes close — a value past this is garbage, and garbage must
-// be refused rather than silently wrapped into a wrong ordering.
-const maxNumericDigits = 18
-
-// numericID parses a semver numeric identifier: digits only, no leading zero
-// unless the whole identifier is "0", and short enough to represent.
-func numericID(s string) (int, bool) {
-	if s == "" || len(s) > maxNumericDigits || (len(s) > 1 && s[0] == '0') {
-		return 0, false
+// isNumericID reports whether s is a semver numeric identifier: digits only,
+// and no leading zero unless the whole identifier is "0".
+func isNumericID(s string) bool {
+	if s == "" || (len(s) > 1 && s[0] == '0') {
+		return false
 	}
-	n := 0
 	for i := 0; i < len(s); i++ {
 		if s[i] < '0' || s[i] > '9' {
-			return 0, false
+			return false
 		}
-		n = n*10 + int(s[i]-'0')
 	}
-	return n, true
+	return true
+}
+
+// compareNumeric orders two numeric identifiers of any length. With leading
+// zeros ruled out, more digits always means a larger number, and equal lengths
+// compare correctly byte by byte — so this is exact where converting to int
+// would overflow.
+func compareNumeric(a, b string) int {
+	if len(a) != len(b) {
+		return sign(len(a) - len(b))
+	}
+	return strings.Compare(a, b)
 }
 
 // Comparable reports whether v is a version this CLI can order. Development
@@ -128,8 +134,8 @@ func Comparable(v string) bool {
 // after b.
 func compare(a, b parsed) int {
 	for i := range a.nums {
-		if a.nums[i] != b.nums[i] {
-			return sign(a.nums[i] - b.nums[i])
+		if c := compareNumeric(a.nums[i], b.nums[i]); c != 0 {
+			return c
 		}
 	}
 	return comparePre(a.pre, b.pre)
@@ -156,11 +162,10 @@ func comparePre(a, b []string) int {
 }
 
 func comparePreID(a, b string) int {
-	na, aNum := numericID(a)
-	nb, bNum := numericID(b)
+	aNum, bNum := isNumericID(a), isNumericID(b)
 	switch {
 	case aNum && bNum:
-		return sign(na - nb)
+		return compareNumeric(a, b)
 	case aNum:
 		return -1 // numeric identifiers rank below alphanumeric
 	case bNum:
