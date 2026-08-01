@@ -100,6 +100,15 @@ func maybeAutoUpdate(stderr io.Writer, executed *cobra.Command) {
 		return // cannot promise the throttle, so do not proceed
 	}
 
+	// Confirm Homebrew's receipt before spending the request. Detection so far
+	// is path shape only, which a copied binary can imitate; without a readable
+	// local cask nothing here could self-upgrade anyway, so the network call
+	// would buy nothing but a daily hit from an install lk cannot manage.
+	tapLocal := tapLocalFor(in)
+	if tapLocal == "" {
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), autoUpdateTimeout)
 	defer cancel()
 
@@ -113,7 +122,7 @@ func maybeAutoUpdate(stderr io.Writer, executed *cobra.Command) {
 		Install:   in,
 		Current:   version,
 		TapRemote: tapRemote,
-		TapLocal:  tapLocalFor(in),
+		TapLocal:  tapLocal,
 	})
 	if !d.UpdateAvailable {
 		return

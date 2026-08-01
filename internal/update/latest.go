@@ -113,8 +113,10 @@ func Release(ctx context.Context, hc *http.Client) (string, error) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
+	// Require the redirect itself, not just the header: a proxy or error page
+	// answering 200 with a Location must not be read as a published release.
 	loc := resp.Header.Get("Location")
-	if loc == "" {
+	if resp.StatusCode < http.StatusMultipleChoices || resp.StatusCode >= http.StatusBadRequest || loc == "" {
 		return "", fmt.Errorf("%s did not redirect (status %d)", releasesLatestURL, resp.StatusCode)
 	}
 	tag := tagFromLocation(loc)

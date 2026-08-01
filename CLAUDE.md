@@ -320,11 +320,12 @@ prereleases is allowed, since that install already opted in.
   have no side effects". A command that merely *failed* still checks: gating on
   success would mean a broken install — the one most in need of a fix — never
   updates.
-- A command opts out by declaring `Annotations[annotationNoAutoUpdate]` (today
-  only `lk update`, which already did the job synchronously). The guard reads the
-  annotation up the command chain rather than matching names — comparing against
-  `"lk update"` would break silently on a rename and would need a new special
-  case per command.
+- A command opts out by declaring `Annotations[annotationNoAutoUpdate]`: today
+  `lk update`, which already did the job synchronously, and `lk version`, which
+  is a read and must behave exactly like the `--version` flag. The guard reads
+  the annotation up the command chain rather than matching names — comparing
+  against `"lk update"` would break silently on a rename, and `Name() ==
+  "update"` would also match `lk settings ... update`.
 - **No TTY gate**, unlike gh and fizzy: lk's primary user is an agent, so gating
   on a terminal would disable the feature exactly where it was asked for.
   Isolation comes from the notice being stderr-only.

@@ -128,6 +128,26 @@ func TestAutoUpdateNoticeGoesToStderrOnly(t *testing.T) {
 	}
 }
 
+// Detection is path shape only, which a copied binary can imitate. Without a
+// readable local cask the receipt is unconfirmed, nothing could be
+// self-upgraded, and the request would buy nothing — so it is not made.
+func TestAutoUpdateSkipsUnconfirmedInstallBeforeFetching(t *testing.T) {
+	withVersion(t, "0.7.0")
+	s := upgradableStubs()
+	s.tapLocal = ""
+	s.apply(t)
+
+	var errOut bytes.Buffer
+	maybeAutoUpdate(&errOut, nil)
+
+	if s.fetches != 0 {
+		t.Errorf("made %d network checks for an unconfirmed install, want 0", s.fetches)
+	}
+	if s.spawns != 0 {
+		t.Errorf("spawned %d upgrades", s.spawns)
+	}
+}
+
 // The cadence promise: at most one network check per day, whatever happens.
 func TestAutoUpdateThrottledWithinADay(t *testing.T) {
 	withVersion(t, "0.7.0")

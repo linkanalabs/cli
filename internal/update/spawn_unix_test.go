@@ -39,8 +39,17 @@ func TestSpawnUpgradeChildLeavesOurProcessGroup(t *testing.T) {
 	if group == syscall.Getpgrp() {
 		t.Error("the upgrade runs in lk's own process group; it would die with lk")
 	}
-	// Setsid makes the child lead a new session, so it is its own group leader.
 	if group != pid {
 		t.Errorf("child process group = %d, want its own pid %d", group, pid)
+	}
+	// The session is the property that matters, and the one only Setsid gives:
+	// swapping it for Setpgid would keep the group assertions green while the
+	// child kept lk's controlling terminal.
+	session, err := syscall.Getsid(pid)
+	if err != nil {
+		t.Fatalf("reading the child's session: %v", err)
+	}
+	if session != pid {
+		t.Errorf("child session = %d, want its own pid %d (Setsid was not applied)", session, pid)
 	}
 }

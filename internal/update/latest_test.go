@@ -278,6 +278,21 @@ func TestReleaseErrors(t *testing.T) {
 		}
 	})
 
+	// A captive portal or proxy answering 200 with a Location must not be read
+	// as a published release.
+	t.Run("location on a non-redirect", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Location", "https://github.com/linkanalabs/cli/releases/tag/v9.9.9")
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer srv.Close()
+		stubReleasesURL(t, srv.URL)
+
+		if _, err := Release(context.Background(), srv.Client()); err == nil {
+			t.Fatal("a 200 with a Location header was accepted as a release")
+		}
+	})
+
 	t.Run("location without a tag", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Location", "https://github.com/linkanalabs/cli/releases")
