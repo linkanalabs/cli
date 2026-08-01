@@ -1,0 +1,26 @@
+internal/commands/autoupdate.go
+  s_ec7dd0798e919c::t_75e9cce12993fe 154-156
+internal/commands/version.go
+  s_ec7dd0798e919c::t_75e9cce12993fe 36-38
+internal/state/state_test.go
+  s_ec7dd0798e919c::t_f2ac2121155085 9,127-129,251-299
+  s_ec7dd0798e919c::t_9dee9fb759e835 300-301
+internal/commands/autoupdate_test.go
+  s_ec7dd0798e919c::t_f2ac2121155085 254-255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "2cf3fa9f19c8612ef974fb77550116bfd40cbee3",
+  "prompts": {},
+  "sessions": {
+    "s_ec7dd0798e919c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11d9a684-922d-4e9f-ad52-11ef8093c074",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Cirdes <cirdes@linkana.com>"
+    }
+  }
+}
