@@ -1,0 +1,21 @@
+.github/workflows/release.yml
+  s_7fc919c78f0bae::t_26451437f45aed 22-28
+scripts/release-verify.sh
+  s_7fc919c78f0bae::t_fe3e4169b3a63d 53-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "4e5f8fd6a9fcbbb82ad4abd705350f2d2e2e939a",
+  "prompts": {},
+  "sessions": {
+    "s_7fc919c78f0bae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa8222a6-9c8d-4851-88ec-8dde67d2f7cf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Cirdes <cirdes@linkana.com>"
+    }
+  }
+}
