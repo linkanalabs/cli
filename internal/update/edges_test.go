@@ -52,31 +52,59 @@ func TestVersionEdgeCases(t *testing.T) {
 		}
 	}
 
-	// ...while the legal shapes still are.
-	for _, v := range []string{"1.0.0-rc.1", "1.0.0-alpha-2", "1.0.0+build.5", "1.0.0-rc.1+build.5"} {
+	// ...while the legal shapes still are. Build metadata carries no
+	// leading-zero rule (semver §10), unlike a prerelease identifier (§9), so
+	// 1.0.0+001 must stay orderable.
+	for _, v := range []string{"1.0.0-rc.1", "1.0.0-alpha-2", "1.0.0+build.5", "1.0.0-rc.1+build.5", "1.0.0+001", "1.0.0-rc.1+007"} {
 		if !Comparable(v) {
 			t.Errorf("%q was refused", v)
 		}
 	}
 }
 
-// A path whose Caskroom segment has nothing above it yields no metadata
-// directory, and detection must simply carry on without receipt data.
-func TestCaskDirWithoutAParent(t *testing.T) {
+// Only Homebrew's actual layout counts. A binary sitting in any directory that
+// happens to be called Caskroom must not be able to authorise brew replacing
+// something — nor a cask that is not ours.
+func TestDetectRequiresTheCaskLayout(t *testing.T) {
 	if got := caskDir(string(filepath.Separator) + "Caskroom"); got != "" {
 		t.Errorf("caskDir = %q, want empty", got)
 	}
 
-	stubExecutable(t, string(filepath.Separator)+"Caskroom", nil)
+	cases := []struct {
+		name string
+		path []string
+	}{
+		{"caskroom with nothing under it", []string{"Caskroom"}},
+		{"binary dropped straight into a Caskroom", []string{"Caskroom", "lk"}},
+		{"a different cask", []string{"Caskroom", "ripgrep", "14.1.0", "lk"}},
+		{"a directory that merely shares the name", []string{"Downloads", "Caskroom", "lk"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			p := string(filepath.Separator) + filepath.Join(c.path...)
+			stubExecutable(t, p, nil)
+
+			in, err := Detect()
+			if err != nil {
+				t.Fatalf("Detect() error = %v", err)
+			}
+			if in.Homebrew() {
+				t.Errorf("%q was treated as brew-managed", p)
+			}
+		})
+	}
+}
+
+// The real layout still is a cask, at any depth below Caskroom/lk.
+func TestDetectAcceptsTheRealCaskLayout(t *testing.T) {
+	stubExecutable(t, filepath.Join(string(filepath.Separator)+"opt", "homebrew", "Caskroom", "lk", "0.7.0", "lk"), nil)
+
 	in, err := Detect()
 	if err != nil {
 		t.Fatalf("Detect() error = %v", err)
 	}
-	if in.Method != MethodHomebrewCask {
-		t.Errorf("Method = %q", in.Method)
-	}
-	if in.CaskPath() != "" {
-		t.Errorf("CaskPath() = %q, want empty", in.CaskPath())
+	if !in.Homebrew() {
+		t.Error("the real Caskroom layout was not recognised")
 	}
 }
 

@@ -33,7 +33,7 @@ func parse(v string) (parsed, bool) {
 	// well formed: this package refuses what it cannot read rather than ordering
 	// it anyway.
 	if i := strings.IndexByte(v, '+'); i >= 0 {
-		if !validIdentifiers(v[i+1:]) {
+		if !validIdentifiers(v[i+1:], false) {
 			return p, false
 		}
 		v = v[:i]
@@ -45,7 +45,7 @@ func parse(v string) (parsed, bool) {
 		if v == "" {
 			return p, false
 		}
-		if !validIdentifiers(v) {
+		if !validIdentifiers(v, true) {
 			return p, false
 		}
 		p.pre = strings.Split(v, ".")
@@ -66,9 +66,13 @@ func parse(v string) (parsed, bool) {
 }
 
 // validIdentifiers reports whether a dot-separated identifier list is well
-// formed: each part non-empty, restricted to [0-9A-Za-z-], and — when it is
-// all digits — free of a leading zero (semver §9).
-func validIdentifiers(list string) bool {
+// formed: each part non-empty and restricted to [0-9A-Za-z-].
+//
+// rejectLeadingZero applies the extra rule that only prerelease identifiers
+// carry: an all-digit identifier must not start with 0 (semver §9). Build
+// metadata has no such rule (§10), so `1.2.3+001` is a perfectly good version
+// and must stay orderable.
+func validIdentifiers(list string, rejectLeadingZero bool) bool {
 	for _, id := range strings.Split(list, ".") {
 		if id == "" {
 			return false
@@ -83,7 +87,7 @@ func validIdentifiers(list string) bool {
 				return false
 			}
 		}
-		if numeric && len(id) > 1 && id[0] == '0' {
+		if rejectLeadingZero && numeric && len(id) > 1 && id[0] == '0' {
 			return false
 		}
 	}

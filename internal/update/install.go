@@ -5,11 +5,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 // EnvNoAutoUpdate turns the automatic update check off entirely.
 const EnvNoAutoUpdate = "LK_NO_AUTO_UPDATE"
+
+// caskName is the cask this binary is published as, and the one the upgrade
+// command names. Only a binary living under <prefix>/Caskroom/<caskName>/ may
+// authorise `brew upgrade --cask lk`.
+const caskName = "lk"
 
 // Method is how this binary got onto the machine.
 type Method string
@@ -58,8 +62,8 @@ var (
 // `brew --prefix` and test for a <prefix>/bin/ prefix. That approach breaks on
 // Linux: os.Executable resolves symlinks there (via /proc/self/exe) but not on
 // macOS, so on Linux the result is already the Cellar path, which never carries
-// the /bin/ prefix. Matching the Caskroom path segment after resolving symlinks
-// works on both, and skips the ~25ms process spawn.
+// the /bin/ prefix. Matching Homebrew's own Caskroom layout after resolving
+// symlinks works on both, and skips the ~25ms process spawn.
 func Detect() (*Install, error) {
 	exe, err := osExecutable()
 	if err != nil {
@@ -72,8 +76,11 @@ func Detect() (*Install, error) {
 		resolved = r
 	}
 
+	// The full layout has to match, not merely contain a "Caskroom" element: a
+	// binary someone copied into any directory of that name must not be able to
+	// authorise brew replacing something.
 	in := &Install{Method: MethodOther, resolved: resolved}
-	if hasSegment(resolved, "Caskroom") {
+	if filepath.Base(caskDir(resolved)) == caskName {
 		in.Method = MethodHomebrewCask
 	}
 	return in, nil
@@ -113,7 +120,9 @@ func (i *Install) CaskPath() string {
 }
 
 // caskDir walks up from <prefix>/Caskroom/<name>/<version>/<binary> to
-// <prefix>/Caskroom/<name>, where the .metadata directory lives.
+// <prefix>/Caskroom/<name>, where the .metadata directory lives. It returns ""
+// when no ancestor is a Caskroom, which is what makes the layout — rather than
+// the mere presence of the word — decide.
 func caskDir(resolved string) string {
 	for dir := filepath.Dir(resolved); ; {
 		parent := filepath.Dir(dir)
@@ -125,15 +134,4 @@ func caskDir(resolved string) string {
 		}
 		dir = parent
 	}
-}
-
-// hasSegment reports whether want appears as a whole path element, so a user
-// directory that merely contains the word is not mistaken for a Homebrew one.
-func hasSegment(path, want string) bool {
-	for _, seg := range strings.Split(filepath.ToSlash(path), "/") {
-		if seg == want {
-			return true
-		}
-	}
-	return false
 }
