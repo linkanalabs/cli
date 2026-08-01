@@ -64,13 +64,20 @@ func TestDecideBrewMetadataStale(t *testing.T) {
 	}
 }
 
-// Without a receipt there is no local cask to read. Attempting the upgrade is
-// the right default: brew either does it or reports nothing to do.
-func TestDecideUnknownLocalCaskStillTries(t *testing.T) {
+// Without a readable local cask, Homebrew's own receipt could not be confirmed
+// — and a Caskroom-shaped path can be forged. brew must not be handed a binary
+// it cannot be shown to have installed; the command is reported instead.
+func TestDecideUnconfirmedInstallIsNotSelfUpgraded(t *testing.T) {
 	got := Decide(Inputs{Install: caskInstall(), Current: "0.7.0", TapRemote: "0.8.0", TapLocal: ""})
 
-	if !got.CanSelfUpgrade {
-		t.Error("CanSelfUpgrade = false with an unknown local cask; brew should be asked to try")
+	if !got.UpdateAvailable {
+		t.Fatal("UpdateAvailable = false with a newer version published")
+	}
+	if got.CanSelfUpgrade {
+		t.Error("CanSelfUpgrade = true without a confirmed Homebrew receipt")
+	}
+	if got.Command != BrewUpgradeCommand {
+		t.Errorf("Command = %q, want the brew upgrade command", got.Command)
 	}
 }
 

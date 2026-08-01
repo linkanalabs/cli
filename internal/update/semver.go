@@ -94,10 +94,16 @@ func validIdentifiers(list string, rejectLeadingZero bool) bool {
 	return true
 }
 
-// numericID parses a semver numeric identifier: digits only, and no leading
-// zero unless the whole identifier is "0".
+// maxNumericDigits bounds a numeric identifier so accumulating it cannot
+// overflow int. 18 digits always fits in a 64-bit int, and a real version
+// component never comes close — a value past this is garbage, and garbage must
+// be refused rather than silently wrapped into a wrong ordering.
+const maxNumericDigits = 18
+
+// numericID parses a semver numeric identifier: digits only, no leading zero
+// unless the whole identifier is "0", and short enough to represent.
 func numericID(s string) (int, bool) {
-	if s == "" || (len(s) > 1 && s[0] == '0') {
+	if s == "" || len(s) > maxNumericDigits || (len(s) > 1 && s[0] == '0') {
 		return 0, false
 	}
 	n := 0

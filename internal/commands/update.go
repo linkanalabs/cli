@@ -89,7 +89,9 @@ func newUpdateCmd() *cobra.Command {
 			"itself and prints the reinstall command instead.\n\n" +
 			"Exit codes:\n" +
 			"  0  already current, or upgraded successfully\n" +
-			"  1  an update exists but was not installed (the output says why and how)\n\n" +
+			"  1  an upgrade was attempted and did not happen (the output says why and how)\n\n" +
+			"--check is a read and always exits 0 when the lookup succeeded; the answer\n" +
+			"is the update_available field, not the exit code.\n\n" +
 			"lk also checks for updates on its own, at most once a day; set\n" +
 			"LK_NO_AUTO_UPDATE to turn that off.",
 		Args: cobra.NoArgs,

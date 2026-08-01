@@ -158,6 +158,11 @@ func checkUpdate(ctx context.Context, currentVersion string, latest func(context
 	if err != nil {
 		return Check{Name: name, Status: StatusSkip, Message: "Could not resolve the published version", Hint: err.Error()}
 	}
+	// Newer is false for anything it cannot order, so without this a garbled
+	// version from the tap would be reported as "Up to date".
+	if !update.Comparable(v) {
+		return Check{Name: name, Status: StatusSkip, Message: "Could not resolve the published version", Hint: "published version " + v + " is not a version this CLI can order"}
+	}
 	if !update.Newer(v, currentVersion) {
 		return Check{Name: name, Status: StatusPass, Message: "Up to date (" + v + ")"}
 	}

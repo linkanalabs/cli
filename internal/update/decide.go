@@ -65,9 +65,12 @@ func Decide(in Inputs) Decision {
 	switch {
 	case in.Install == nil || !in.Install.Homebrew():
 		d.Command = InstallScriptCommand
-	// An unreadable local cask leaves brew's freshness unknown; trying is the
-	// safe default, since the worst case is brew reporting nothing to do.
-	case in.TapLocal != "" && Newer(in.TapRemote, in.TapLocal):
+	// No readable local cask means Homebrew's own receipt could not be
+	// confirmed, and a path can be forged. Never hand brew a binary it cannot
+	// be shown to have installed: say what to run instead.
+	case in.TapLocal == "":
+		d.Command = BrewUpgradeCommand
+	case Newer(in.TapRemote, in.TapLocal):
 		d.Command = BrewRefreshCommand
 	default:
 		d.CanSelfUpgrade = true

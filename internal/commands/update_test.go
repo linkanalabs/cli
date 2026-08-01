@@ -262,8 +262,9 @@ func TestUpdateDetectFailure(t *testing.T) {
 	}
 }
 
-// A missing local cask must not sink the command: brew is asked to try.
-func TestUpdateLocalCaskUnreadable(t *testing.T) {
+// An unreadable local cask means Homebrew's receipt could not be confirmed, and
+// a Caskroom-shaped path can be forged — so brew is told about, not run.
+func TestUpdateUnconfirmedInstallIsNotUpgraded(t *testing.T) {
 	withVersion(t, "0.7.0")
 	s := &updateStubs{
 		install: caskAt("0.7.0"), tapRemote: "0.8.0",
@@ -274,11 +275,14 @@ func TestUpdateLocalCaskUnreadable(t *testing.T) {
 	var out, errOut bytes.Buffer
 	code := run([]string{"update", "--format", "json"}, &out, &errOut)
 
-	if code != 0 {
-		t.Fatalf("exit code = %d, stderr = %q", code, errOut.String())
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1 (nothing was upgraded)", code)
 	}
-	if s.upgrades != 1 {
-		t.Errorf("ran %d upgrades, want 1", s.upgrades)
+	if s.upgrades != 0 {
+		t.Errorf("ran %d upgrades without a confirmed receipt", s.upgrades)
+	}
+	if !strings.Contains(errOut.String(), update.BrewUpgradeCommand) {
+		t.Errorf("stderr should name the command to run, got %q", errOut.String())
 	}
 }
 

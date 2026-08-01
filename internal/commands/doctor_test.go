@@ -248,6 +248,9 @@ func TestDoctorUpdateSkips(t *testing.T) {
 		{"lookup failed", "0.7.0", func(context.Context) (string, error) {
 			return "", errors.New("dns is down")
 		}},
+		// Newer is false for anything it cannot order, so a garbled version
+		// from the tap must skip rather than read as "up to date".
+		{"published version unorderable", "0.7.0", constVersion("not-a-version")},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
