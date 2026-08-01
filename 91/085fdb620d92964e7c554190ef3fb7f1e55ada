@@ -1,0 +1,24 @@
+internal/update/install.go
+  s_ec7dd0798e919c::t_704ca10f4bdbe9 13-22,96-97,100,106,108-114,131
+  s_ec7dd0798e919c::t_498f604a051ad1 132-133
+internal/update/install_test.go
+  s_ec7dd0798e919c::t_704ca10f4bdbe9 143-145
+CLAUDE.md
+  s_ec7dd0798e919c::t_f3baafc14f26ac 324-330
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "91085fdb620d92964e7c554190ef3fb7f1e55ada",
+  "prompts": {},
+  "sessions": {
+    "s_ec7dd0798e919c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11d9a684-922d-4e9f-ad52-11ef8093c074",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Cirdes <cirdes@linkana.com>"
+    }
+  }
+}
