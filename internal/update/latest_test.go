@@ -306,6 +306,21 @@ func TestReleaseErrors(t *testing.T) {
 		}
 	})
 
+	// A tag that cannot be ordered would make Newer false both ways and quietly
+	// suppress the divergence warning this probe feeds.
+	t.Run("unorderable tag", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Location", "https://github.com/linkanalabs/cli/releases/tag/nightly")
+			w.WriteHeader(http.StatusFound)
+		}))
+		defer srv.Close()
+		stubReleasesURL(t, srv.URL)
+
+		if _, err := Release(context.Background(), srv.Client()); err == nil {
+			t.Fatal("expected an error for a tag the CLI cannot order")
+		}
+	})
+
 	t.Run("unreachable", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 		url := srv.URL

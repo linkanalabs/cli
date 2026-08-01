@@ -123,6 +123,12 @@ func Release(ctx context.Context, hc *http.Client) (string, error) {
 	if tag == "" {
 		return "", fmt.Errorf("no release tag in the redirect target %q", loc)
 	}
+	// Same rule the tap lookups follow: a tag that cannot be ordered would make
+	// Newer false in both directions and quietly suppress the divergence
+	// warning this probe exists to feed.
+	if !Comparable(tag) {
+		return "", fmt.Errorf("the redirect target %q names %q, which is not a version this CLI can order", loc, tag)
+	}
 	return tag, nil
 }
 

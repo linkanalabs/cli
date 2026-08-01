@@ -134,6 +134,23 @@ func TestDecideNeverSelfUpgradesOntoAPrerelease(t *testing.T) {
 	}
 }
 
+// A refusal to install must not swallow the report that the pipeline is broken:
+// the tap trailing the published release is a real failure, and it stays visible
+// even when the version on offer is a prerelease lk will not install.
+func TestDecideKeepsBothWarnings(t *testing.T) {
+	got := Decide(Inputs{
+		Install: caskInstall(), Current: "0.8.0",
+		TapRemote: "0.9.0-rc.1", TapLocal: "0.9.0-rc.1", Release: "v1.0.0",
+	})
+
+	if !strings.Contains(got.Warning, "still serves") {
+		t.Errorf("the pipeline anomaly was lost: %q", got.Warning)
+	}
+	if !strings.Contains(got.Warning, "prerelease") {
+		t.Errorf("the prerelease refusal was lost: %q", got.Warning)
+	}
+}
+
 // Right after a release candidate is published, brew's local metadata is behind
 // by definition — so whoever opts in must be given the command that refreshes it
 // first, or it is a silent no-op.

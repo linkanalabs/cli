@@ -1,6 +1,9 @@
 package update
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // InstallScriptCommand reinstalls lk outside Homebrew. It is the same command
 // the README documents for a first install: the script resolves the newest
@@ -46,8 +49,17 @@ type Decision struct {
 // the source of truth for what can be installed: they diverge when a release
 // ships and the tap commit fails, and pointing someone at `brew upgrade` for a
 // version brew does not have only generates support.
-func Decide(in Inputs) Decision {
-	d := Decision{Latest: in.TapRemote}
+func Decide(in Inputs) (d Decision) {
+	d = Decision{Latest: in.TapRemote}
+
+	// Warnings accumulate rather than overwrite: a refusal to install something
+	// must never silently replace a report that the release pipeline is broken.
+	// They answer different questions and a caller needs both.
+	//
+	// The return is named so this deferred join reaches it — there are two exit
+	// points and only a named result can be written after the fact.
+	var warnings []string
+	defer func() { d.Warning = strings.Join(warnings, "; ") }()
 
 	// Either ordering between the tap and the published release is an anomaly in
 	// the release pipeline, and both are worth surfacing even when nothing is
@@ -56,13 +68,13 @@ func Decide(in Inputs) Decision {
 	if in.Release != "" && in.TapRemote != "" {
 		switch {
 		case Newer(in.Release, in.TapRemote):
-			d.Warning = fmt.Sprintf(
+			warnings = append(warnings, fmt.Sprintf(
 				"release %s is published but the tap still serves %s; brew cannot install it yet",
-				in.Release, in.TapRemote)
+				in.Release, in.TapRemote))
 		case Newer(in.TapRemote, in.Release):
-			d.Warning = fmt.Sprintf(
+			warnings = append(warnings, fmt.Sprintf(
 				"the tap serves %s, ahead of the published release %s",
-				in.TapRemote, in.Release)
+				in.TapRemote, in.Release))
 		}
 	}
 
@@ -85,8 +97,8 @@ func Decide(in Inputs) Decision {
 	// move a stable installation onto one unprompted; say so and let the person
 	// decide.
 	case Prerelease(in.TapRemote) && !Prerelease(in.Current):
-		d.Warning = fmt.Sprintf(
-			"%s is a prerelease; lk will not install it on its own", in.TapRemote)
+		warnings = append(warnings, fmt.Sprintf(
+			"%s is a prerelease; lk will not install it on its own", in.TapRemote))
 		// Whoever decides to opt in needs a command that works. Right after a
 		// release candidate is published, brew's local metadata is behind by
 		// definition — so this combination is the expected one, not an edge
