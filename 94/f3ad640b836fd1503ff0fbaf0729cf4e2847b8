@@ -1,0 +1,25 @@
+internal/update/upgrade_test.go
+  s_ec7dd0798e919c::t_27efd3aa1df718 78-81
+internal/commands/doctor_test.go
+  s_ec7dd0798e919c::t_23b94d26a65de4 166-175,177,193,289
+internal/update/spawn_unix_test.go
+  s_ec7dd0798e919c::t_9d4d158f3022ba 1-46
+internal/commands/update.go
+  s_ec7dd0798e919c::t_23b94d26a65de4 4,38-47,85-97,140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "94f3ad640b836fd1503ff0fbaf0729cf4e2847b8",
+  "prompts": {},
+  "sessions": {
+    "s_ec7dd0798e919c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11d9a684-922d-4e9f-ad52-11ef8093c074",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Cirdes <cirdes@linkana.com>"
+    }
+  }
+}
