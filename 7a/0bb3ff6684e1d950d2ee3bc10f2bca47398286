@@ -1,0 +1,26 @@
+README.md
+  s_ec7dd0798e919c::t_a82ea102a5a2a2 67-74
+internal/commands/autoupdate.go
+  s_ec7dd0798e919c::t_a82ea102a5a2a2 62,149-167
+  s_ec7dd0798e919c::t_388d1ca3f215da 168-169
+internal/commands/autoupdate_test.go
+  s_ec7dd0798e919c::t_605cf9afad2f0f 243-308
+CLAUDE.md
+  s_ec7dd0798e919c::t_1404f9975b12cf 309-313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "7a0bb3ff6684e1d950d2ee3bc10f2bca47398286",
+  "prompts": {},
+  "sessions": {
+    "s_ec7dd0798e919c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11d9a684-922d-4e9f-ad52-11ef8093c074",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Cirdes <cirdes@linkana.com>"
+    }
+  }
+}
