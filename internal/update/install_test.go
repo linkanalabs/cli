@@ -140,6 +140,9 @@ func TestDetectCaskWithoutUsableReceipt(t *testing.T) {
 		{"missing", ""},
 		{"malformed", "{not json"},
 		{"empty source", `{"source":{}}`},
+		// Homebrew's receipt is the evidence that brew installed this, and from
+		// our tap; a lookalike path with someone else's receipt is not.
+		{"another tap", `{"source":{"tap":"someone/tap","path":"/tmp/lk.rb"}}`},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

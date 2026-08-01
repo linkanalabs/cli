@@ -321,6 +321,13 @@ divergence becomes the `warning` field.
   file read — it runs on every invocation; Homebrew's receipt is read lazily by
   `Install.CaskPath()`, and the log path belongs to `internal/state`, which owns
   that directory.
+- **What authorises brew to replace the binary** is Homebrew's own
+  `INSTALL_RECEIPT.json` naming `linkanalabs/tap`, not the path. A path is only
+  a hint — any directory can be called `Caskroom` — so `CaskPath()` returns ""
+  unless the receipt confirms it, and an unconfirmed install is never
+  self-upgraded, only told the command. The check is free because the receipt is
+  read after the daily budget is claimed; `brew --prefix` (what gh and flyctl
+  use) would spawn a process on every invocation and still get Linux wrong.
 - State holds **one** field (`LastCheckAt`). The daily budget is what bounds
   retries, so nothing else needs remembering; what brew did is in the log.
 - `lk doctor` reports it as the `Update` check: **warn** when outdated, never

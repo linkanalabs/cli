@@ -10,10 +10,16 @@ import (
 // EnvNoAutoUpdate turns the automatic update check off entirely.
 const EnvNoAutoUpdate = "LK_NO_AUTO_UPDATE"
 
-// caskName is the cask this binary is published as, and the one the upgrade
-// command names. Only a binary living under <prefix>/Caskroom/<caskName>/ may
-// authorise `brew upgrade --cask lk`.
-const caskName = "lk"
+const (
+	// caskName is the cask this binary is published as, and the one the upgrade
+	// command names. Only a binary living under <prefix>/Caskroom/<caskName>/
+	// may authorise `brew upgrade --cask lk`.
+	caskName = "lk"
+
+	// caskTap is the tap the published cask comes from, as Homebrew records it
+	// (it strips the "homebrew-" prefix from linkanalabs/homebrew-tap).
+	caskTap = "linkanalabs/tap"
+)
 
 // Method is how this binary got onto the machine.
 type Method string
@@ -87,19 +93,25 @@ func Detect() (*Install, error) {
 }
 
 // installReceipt is the subset of Homebrew's INSTALL_RECEIPT.json we read.
+// Homebrew writes this file itself, which is what makes it evidence rather than
+// a guess: it names the tap the cask was installed from.
 type installReceipt struct {
 	Source struct {
+		Tap  string `json:"tap"`
 		Path string `json:"path"`
 	} `json:"source"`
 }
 
 // CaskPath returns the local cask file this install came from, as recorded by
-// Homebrew. That file is what tells us whether brew's metadata is fresh enough
-// for `brew upgrade` to do anything.
+// Homebrew, and "" unless the receipt confirms brew installed this from our tap.
 //
-// It reads the disk, so it is called only once a decision actually needs it —
-// never on the common path of an ordinary command. An absent or unreadable
-// receipt yields "", which callers treat as "cannot tell".
+// The path layout alone is not evidence — any directory can be named Caskroom —
+// so the receipt is what authorises brew to replace this binary: callers treat
+// "" as "not confirmed" and refuse to self-upgrade. Verifying it this way costs
+// nothing on the common path, because the read happens only after the daily
+// budget has been claimed; shelling out to `brew --prefix` instead, as gh and
+// flyctl do, would spawn a process on every single invocation and still get the
+// Linux case wrong (see Detect).
 func (i *Install) CaskPath() string {
 	if i.Method != MethodHomebrewCask {
 		return ""
@@ -114,6 +126,9 @@ func (i *Install) CaskPath() string {
 	}
 	var r installReceipt
 	if err := json.Unmarshal(data, &r); err != nil {
+		return ""
+	}
+	if r.Source.Tap != caskTap {
 		return ""
 	}
 	return r.Source.Path
