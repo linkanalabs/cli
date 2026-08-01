@@ -7,6 +7,11 @@ import (
 	"path/filepath"
 	"syscall"
 	"testing"
+
+	// syscall.Getsid exists on Darwin and the BSDs but not on Linux, where the
+	// CI runs. x/sys/unix wraps it for both and is already in the module graph;
+	// this is a test-only import, so the shipped binary is unaffected.
+	"golang.org/x/sys/unix"
 )
 
 // The point of spawning detached is that the upgrade outlives lk. Waiting on
@@ -45,7 +50,7 @@ func TestSpawnUpgradeChildLeavesOurProcessGroup(t *testing.T) {
 	// The session is the property that matters, and the one only Setsid gives:
 	// swapping it for Setpgid would keep the group assertions green while the
 	// child kept lk's controlling terminal.
-	session, err := syscall.Getsid(pid)
+	session, err := unix.Getsid(pid)
 	if err != nil {
 		t.Fatalf("reading the child's session: %v", err)
 	}
