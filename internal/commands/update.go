@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -34,9 +35,16 @@ func tapLocalFor(in *update.Install) string {
 	return v
 }
 
-// updateHTTPTimeout bounds the version lookups. Neither is on the critical path
-// of real work, so it stays short.
-const updateHTTPTimeout = 10 * time.Second
+const (
+	// updateHTTPTimeout bounds the lookup that decides what to install.
+	updateHTTPTimeout = 10 * time.Second
+
+	// releaseProbeTimeout bounds the release lookup, which only sharpens a
+	// warning. It gets less patience on purpose: the actionable version is
+	// already known by then, and an optional signal must never be able to
+	// postpone an upgrade someone asked for.
+	releaseProbeTimeout = 2 * time.Second
+)
 
 // updateResult is the contract. latest_version is what can be installed right
 // now (the tap's); release_version is what has been published. They differ when
@@ -72,6 +80,19 @@ func (r updateResult) Styled() string {
 		s += "warning: " + r.Warning + "\n"
 	}
 	return s
+}
+
+// probeRelease resolves the newest published release on a short leash, and
+// gives up quietly: it feeds a warning, never the decision.
+func probeRelease(ctx context.Context) string {
+	ctx, cancel := context.WithTimeout(ctx, releaseProbeTimeout)
+	defer cancel()
+
+	v, err := fetchRelease(ctx, &http.Client{Timeout: releaseProbeTimeout})
+	if err != nil {
+		return ""
+	}
+	return v
 }
 
 func newUpdateCmd() *cobra.Command {
@@ -116,7 +137,7 @@ func newUpdateCmd() *cobra.Command {
 			// These only sharpen the answer, so losing them is not fatal: the
 			// local cask says whether brew can act, the release says whether
 			// the tap is behind.
-			release, _ := fetchRelease(ctx, hc)
+			release := probeRelease(ctx)
 
 			d := update.Decide(update.Inputs{
 				Install:   in,

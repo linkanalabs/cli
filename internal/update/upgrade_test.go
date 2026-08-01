@@ -75,9 +75,10 @@ func TestRunUpgradeBrewMissing(t *testing.T) {
 	}
 }
 
-// The automatic path must not hold the process open: lk starts brew and exits,
-// so the upgrade outlives it and the agent is never made to wait.
-func TestSpawnUpgradeDetaches(t *testing.T) {
+// The spawned upgrade invokes brew the same way the synchronous path does.
+// Detachment itself is asserted separately, in
+// TestSpawnUpgradeChildLeavesOurProcessGroup.
+func TestSpawnUpgradeInvokesBrew(t *testing.T) {
 	stubBrew(t, fakeBrew(t, 0), nil)
 	logPath := filepath.Join(t.TempDir(), "upgrade.log")
 

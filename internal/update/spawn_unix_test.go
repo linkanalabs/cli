@@ -1,0 +1,46 @@
+//go:build !windows
+
+package update
+
+import (
+	"os"
+	"path/filepath"
+	"syscall"
+	"testing"
+)
+
+// The point of spawning detached is that the upgrade outlives lk. Waiting on
+// the child and reading its log proves it ran, not that it was detached — a
+// regression that dropped Setsid would still pass that. This asserts the
+// property the name claims: the child leads its own session, so lk exiting a
+// moment later cannot take it down with it.
+func TestSpawnUpgradeChildLeavesOurProcessGroup(t *testing.T) {
+	script := filepath.Join(t.TempDir(), "brew")
+	// Stay alive long enough to be inspected.
+	if err := os.WriteFile(script, []byte("#!/bin/sh\nsleep 5\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	stubBrew(t, script, nil)
+
+	cmd, err := SpawnUpgrade(filepath.Join(t.TempDir(), "upgrade.log"))
+	if err != nil {
+		t.Fatalf("SpawnUpgrade() error = %v", err)
+	}
+	t.Cleanup(func() {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+	})
+
+	pid := cmd.Process.Pid
+	group, err := syscall.Getpgid(pid)
+	if err != nil {
+		t.Fatalf("reading the child's process group: %v", err)
+	}
+	if group == syscall.Getpgrp() {
+		t.Error("the upgrade runs in lk's own process group; it would die with lk")
+	}
+	// Setsid makes the child lead a new session, so it is its own group leader.
+	if group != pid {
+		t.Errorf("child process group = %d, want its own pid %d", group, pid)
+	}
+}

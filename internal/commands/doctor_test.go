@@ -163,7 +163,18 @@ func TestStyledAndIcons(t *testing.T) {
 	}
 }
 
+// stubTapLookup keeps a run()-level doctor test off the network: newDoctorCmd
+// wires latestVersion to the real fetchTapRemote, so without this the suite
+// would quietly depend on raw.githubusercontent.com being up and unthrottled.
+func stubTapLookup(t *testing.T, version string) {
+	t.Helper()
+	swap(t, &fetchTapRemote, func(context.Context, *http.Client) (string, error) {
+		return version, nil
+	})
+}
+
 func TestDoctorCommandExitZero(t *testing.T) {
+	stubTapLookup(t, "0.0.1")
 	srv := upServer(t, http.StatusOK)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("LK_API_URL", srv.URL)
@@ -179,6 +190,7 @@ func TestDoctorCommandExitZero(t *testing.T) {
 }
 
 func TestDoctorCommandExitNonZeroOnFailure(t *testing.T) {
+	stubTapLookup(t, "0.0.1")
 	srv := upServer(t, http.StatusOK)
 	url := srv.URL
 	srv.Close()
@@ -274,9 +286,7 @@ func TestDoctorExitsZeroWhenOutdated(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	withVersion(t, "0.7.0")
 
-	prev := fetchTapRemote
-	fetchTapRemote = func(context.Context, *http.Client) (string, error) { return "9.9.9", nil }
-	t.Cleanup(func() { fetchTapRemote = prev })
+	stubTapLookup(t, "9.9.9")
 
 	var out, errOut bytes.Buffer
 	if code := run([]string{"doctor", "--format", "json"}, &out, &errOut); code != 0 {
