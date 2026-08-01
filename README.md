@@ -64,8 +64,14 @@ taps da máquina. Quando a metadata do brew está atrasada, o `lk` mostra o coma
 a rodar em vez de rodar por você.
 
 Fora do Homebrew, o `lk` não consegue se substituir e imprime o comando de
-reinstalação. Códigos de saída: `0` já está atualizado ou atualizou; `1` existe
-atualização que não foi instalada — a saída diz por quê e como.
+reinstalação.
+
+Códigos de saída de `lk update` (sem `--check`): `0` já está atualizado ou
+atualizou; `1` a atualização foi tentada e não aconteceu — a saída diz por quê e
+como. **`lk update --check` é leitura e sempre sai `0` quando a consulta
+funcionou**: a resposta está no campo `update_available`, não no código de
+saída. Isso é deliberado — usar o código como resposta impediria distinguir
+"tem atualização" de "a rede caiu".
 
 O `lk` também checa sozinho, **no máximo uma vez a cada 24h**, depois que o
 comando já produziu a saída. Quando encontra versão nova, dispara o

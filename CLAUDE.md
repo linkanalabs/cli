@@ -306,7 +306,11 @@ divergence becomes the `warning` field.
   running process is the old binary either way), at most once per 24h. The
   timestamp is claimed **before** the request, so a network outage cannot become
   one attempt per command — the cost is that a blip waits for tomorrow. Guards:
-  `LK_NO_AUTO_UPDATE`, CI env vars, `dev` build, and non-Homebrew install.
+  `LK_NO_AUTO_UPDATE`, CI env vars, `dev` build, non-Homebrew install, and
+  informational runs (`--help`, `--version`, `lk help ...`), since "read flags
+  have no side effects". A command that merely *failed* still checks: gating on
+  success would mean a broken install — the one most in need of a fix — never
+  updates.
 - A command opts out by declaring `Annotations[annotationNoAutoUpdate]` (today
   only `lk update`, which already did the job synchronously). The guard reads the
   annotation up the command chain rather than matching names — comparing against

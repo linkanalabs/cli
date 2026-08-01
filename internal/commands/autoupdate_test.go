@@ -240,6 +240,72 @@ func TestAutoUpdateStaleMetadataOnlyAdvises(t *testing.T) {
 	}
 }
 
+// "Read flags have no side effects" is a rule of this CLI: `lk --help` and
+// `lk --version` must not reach the network or start an upgrade.
+func TestAutoUpdateSkipsInformationalRuns(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+	}{
+		{"help flag", []string{"--help"}},
+		{"version flag", []string{"--version"}},
+		{"help flag on a subcommand", []string{"doctor", "--help"}},
+		{"help command", []string{"help", "doctor"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			withVersion(t, "0.7.0")
+			s := upgradableStubs()
+			s.apply(t)
+
+			root := newRootCmd()
+			root.SetArgs(c.args)
+			root.SetOut(&bytes.Buffer{})
+			root.SetErr(&bytes.Buffer{})
+			executed, err := root.ExecuteC()
+			if err != nil {
+				t.Fatalf("running %v: %v", c.args, err)
+			}
+
+			var errOut bytes.Buffer
+			maybeAutoUpdate(&errOut, executed)
+
+			if s.fetches != 0 {
+				t.Errorf("%v made %d network checks", c.args, s.fetches)
+			}
+			if s.spawns != 0 {
+				t.Errorf("%v spawned %d upgrades", c.args, s.spawns)
+			}
+			if len(s.saved) != 0 {
+				t.Errorf("%v wrote state %d times", c.args, len(s.saved))
+			}
+		})
+	}
+}
+
+// A command that merely failed is different: gating on success would mean a
+// broken install — the one most in need of a fix — never updates.
+func TestAutoUpdateStillRunsAfterAFailedCommand(t *testing.T) {
+	withVersion(t, "0.7.0")
+	s := upgradableStubs()
+	s.apply(t)
+
+	root := newRootCmd()
+	root.SetArgs([]string{"doctor", "--format", "nope"})
+	root.SetOut(&bytes.Buffer{})
+	root.SetErr(&bytes.Buffer{})
+	executed, err := root.ExecuteC()
+	if err == nil {
+		t.Fatal("expected the bad flag to fail")
+	}
+
+	maybeAutoUpdate(&bytes.Buffer{}, executed)
+
+	if s.fetches != 1 {
+		t.Errorf("made %d network checks after a failed command, want 1", s.fetches)
+	}
+}
+
 // Guards that must stop everything before any disk or network access.
 func TestAutoUpdateGuards(t *testing.T) {
 	cases := []struct {

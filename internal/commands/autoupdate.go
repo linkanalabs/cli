@@ -59,7 +59,7 @@ func maybeAutoUpdate(stderr io.Writer, executed *cobra.Command) {
 	// Every guard below is local and free. Nothing reads the disk until the
 	// install is known to be one brew can act on, and nothing touches the
 	// network until the once-a-day budget has been claimed.
-	if os.Getenv(update.EnvNoAutoUpdate) != "" || isCI() || skipsAutoUpdate(executed) {
+	if os.Getenv(update.EnvNoAutoUpdate) != "" || isCI() || skipsAutoUpdate(executed) || informational(executed) {
 		return
 	}
 	// A development build has no version to compare against.
@@ -144,6 +144,27 @@ func launchUpgrade(stderr io.Writer, latest string) {
 	_, _ = fmt.Fprintf(stderr,
 		"lk: upgrading %s → %s in the background; it applies from the next run (log: %s)\n",
 		version, latest, logPath)
+}
+
+// informational reports whether this run only printed help or the version.
+// "Read flags have no side effects" is a rule of this CLI, and `lk --help`
+// quietly reaching the network and starting a background brew upgrade would
+// break it — however throttled. Unlike a command that merely failed, these
+// paths never execute a command body at all.
+func informational(c *cobra.Command) bool {
+	if c == nil {
+		return false
+	}
+	// cobra's built-in `help` command, as in `lk help update`.
+	if c.Name() == "help" {
+		return true
+	}
+	for _, name := range []string{"help", "version"} {
+		if f := c.Flags().Lookup(name); f != nil && f.Changed {
+			return true
+		}
+	}
+	return false
 }
 
 func isCI() bool {
