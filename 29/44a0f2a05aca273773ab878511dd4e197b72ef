@@ -1,0 +1,29 @@
+internal/commands/autoupdate_test.go
+  s_ec7dd0798e919c::t_9c91a886cfad36 188-207
+internal/commands/autoupdate.go
+  s_ec7dd0798e919c::t_12c78e00fba6bd 79-82
+internal/update/semver.go
+  s_ec7dd0798e919c::t_12c78e00fba6bd 15-19,21,63,66,100-104,108,111-122,137-138,165,168
+internal/commands/update_test.go
+  s_ec7dd0798e919c::t_9c91a886cfad36 147-156
+internal/commands/update.go
+  s_ec7dd0798e919c::t_12c78e00fba6bd 147-152,155
+internal/update/edges_test.go
+  s_ec7dd0798e919c::t_9c91a886cfad36 55-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "2944a0f2a05aca273773ab878511dd4e197b72ef",
+  "prompts": {},
+  "sessions": {
+    "s_ec7dd0798e919c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11d9a684-922d-4e9f-ad52-11ef8093c074",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Cirdes <cirdes@linkana.com>"
+    }
+  }
+}
