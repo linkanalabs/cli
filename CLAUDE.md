@@ -288,8 +288,17 @@ brew is the only process that can write there. Overwriting it would also desync
 
 `update_available` compares against **`tap_remote`**, not the release: they
 diverge when a release ships and the tap commit fails, and pointing someone at
-`brew upgrade` for a version brew does not have only generates support. That
-divergence becomes the `warning` field.
+`brew upgrade` for a version brew does not have only generates support. Either
+ordering between the two becomes the `warning` field.
+
+**A prerelease in the tap is never installed on lk's own initiative.**
+`.goreleaser.yaml` has `release: prerelease: auto` but no `skip_upload` on
+`homebrew_casks`, and the release workflow guard accepts `vX.Y.Z-rc.1` — so
+tagging a release candidate commits its cask to the tap, while
+`/releases/latest` keeps pointing at the last stable release. Without this rule
+a single RC tag would auto-upgrade the whole fleet onto it. `lk update` reports
+the version and the command so a person can still opt in; moving between two
+prereleases is allowed, since that install already opted in.
 
 - **Never `api.github.com`** — 60 req/h *per IP*, shared behind a customer's NAT.
   Both sources above are CDN reads with no rate limit and no credentials. Never

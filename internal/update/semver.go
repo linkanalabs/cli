@@ -175,6 +175,14 @@ func comparePreID(a, b string) int {
 	}
 }
 
+// Prerelease reports whether v carries a prerelease identifier (1.0.0-rc.1).
+// It is false for anything that cannot be parsed, so an unreadable version is
+// never mistaken for a stable one.
+func Prerelease(v string) bool {
+	p, ok := parse(v)
+	return ok && len(p.pre) > 0
+}
+
 // Newer reports whether latest is a strictly newer version than current. It is
 // false whenever either side cannot be ordered, so a development build never
 // triggers an upgrade.

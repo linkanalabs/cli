@@ -1,6 +1,9 @@
 package update
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func caskInstall() *Install {
 	return &Install{Method: MethodHomebrewCask, resolved: "/opt/homebrew/Caskroom/lk/0.7.0/lk"}
@@ -105,6 +108,57 @@ func TestDecideOnlyCasksSelfUpgrade(t *testing.T) {
 	}
 	if got.Command != InstallScriptCommand {
 		t.Errorf("Command = %q", got.Command)
+	}
+}
+
+// A `vX.Y.Z-rc.1` tag makes GoReleaser commit the cask (there is no skip_upload)
+// while /releases/latest keeps pointing at the last stable one. Auto-upgrading
+// on that would move the whole fleet onto a release candidate.
+func TestDecideNeverSelfUpgradesOntoAPrerelease(t *testing.T) {
+	got := Decide(Inputs{
+		Install: caskInstall(), Current: "0.8.0",
+		TapRemote: "0.9.0-rc.1", TapLocal: "0.9.0-rc.1", Release: "v0.8.0",
+	})
+
+	if !got.UpdateAvailable {
+		t.Error("UpdateAvailable = false; the tap really does serve something newer")
+	}
+	if got.CanSelfUpgrade {
+		t.Fatal("CanSelfUpgrade = true onto a prerelease")
+	}
+	if got.Warning == "" {
+		t.Error("no warning explaining the refusal")
+	}
+	if got.Command != BrewUpgradeCommand {
+		t.Errorf("Command = %q, want the plain brew upgrade so a person can opt in", got.Command)
+	}
+}
+
+// Already on a prerelease, moving to the next one is not a surprise.
+func TestDecideSelfUpgradesBetweenPrereleases(t *testing.T) {
+	got := Decide(Inputs{
+		Install: caskInstall(), Current: "0.9.0-rc.1",
+		TapRemote: "0.9.0-rc.2", TapLocal: "0.9.0-rc.2",
+	})
+
+	if !got.CanSelfUpgrade {
+		t.Error("CanSelfUpgrade = false between prereleases")
+	}
+}
+
+// A tap ahead of the published release is an anomaly in the pipeline, the
+// mirror of the documented tap-behind case.
+func TestDecideWarnsWhenTapIsAheadOfTheRelease(t *testing.T) {
+	got := Decide(Inputs{
+		Install: caskInstall(), Current: "0.8.0",
+		TapRemote: "0.9.0", TapLocal: "0.9.0", Release: "v0.8.0",
+	})
+
+	if got.Warning == "" {
+		t.Fatal("expected a warning when the tap runs ahead of the published release")
+	}
+	if !strings.Contains(got.Warning, "ahead") {
+		t.Errorf("Warning = %q", got.Warning)
 	}
 }
 

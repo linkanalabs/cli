@@ -49,12 +49,21 @@ type Decision struct {
 func Decide(in Inputs) Decision {
 	d := Decision{Latest: in.TapRemote}
 
-	// The published release running ahead of the tap is the documented failure
-	// mode of the release pipeline; surface it even when nothing is upgradable.
-	if in.Release != "" && in.TapRemote != "" && Newer(in.Release, in.TapRemote) {
-		d.Warning = fmt.Sprintf(
-			"release %s is published but the tap still serves %s; brew cannot install it yet",
-			in.Release, in.TapRemote)
+	// Either ordering between the tap and the published release is an anomaly in
+	// the release pipeline, and both are worth surfacing even when nothing is
+	// upgradable: behind is the documented tap-commit failure, ahead means the
+	// tap carries something that was never published as the latest release.
+	if in.Release != "" && in.TapRemote != "" {
+		switch {
+		case Newer(in.Release, in.TapRemote):
+			d.Warning = fmt.Sprintf(
+				"release %s is published but the tap still serves %s; brew cannot install it yet",
+				in.Release, in.TapRemote)
+		case Newer(in.TapRemote, in.Release):
+			d.Warning = fmt.Sprintf(
+				"the tap serves %s, ahead of the published release %s",
+				in.TapRemote, in.Release)
+		}
 	}
 
 	if !Newer(in.TapRemote, in.Current) {
@@ -69,6 +78,15 @@ func Decide(in Inputs) Decision {
 	// confirmed, and a path can be forged. Never hand brew a binary it cannot
 	// be shown to have installed: say what to run instead.
 	case in.TapLocal == "":
+		d.Command = BrewUpgradeCommand
+	// GoReleaser commits the cask for prerelease tags too (no skip_upload), and
+	// /releases/latest skips prereleases — so a `vX.Y.Z-rc.1` tag makes the tap
+	// serve a release candidate while the published latest stays stable. Never
+	// move a stable installation onto one unprompted; say so and let the person
+	// decide.
+	case Prerelease(in.TapRemote) && !Prerelease(in.Current):
+		d.Warning = fmt.Sprintf(
+			"%s is a prerelease; lk will not install it on its own", in.TapRemote)
 		d.Command = BrewUpgradeCommand
 	case Newer(in.TapRemote, in.TapLocal):
 		d.Command = BrewRefreshCommand
