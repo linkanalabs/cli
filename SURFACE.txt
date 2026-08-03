@@ -12,6 +12,8 @@ lk impersonate
 lk impersonate status
 lk impersonate stop
 lk settings
+lk settings bank-information
+lk settings bank-information list
 lk settings buyer-document
 lk settings buyer-document create
 lk settings buyer-document disable
@@ -21,9 +23,32 @@ lk settings buyer-document reorder
 lk settings buyer-document show
 lk settings buyer-document update
 lk settings category
+lk settings category create
+lk settings category disable
+lk settings category duplicate
+lk settings category enable
 lk settings category list
+lk settings category risk
+lk settings category risk create
+lk settings category risk delete
+lk settings category risk list
+lk settings category risk update
+lk settings category show
+lk settings category update
+lk settings certificate
+lk settings certificate list
+lk settings check
+lk settings check list
 lk settings company-user
+lk settings company-user create
+lk settings company-user disable
+lk settings company-user enable
+lk settings company-user invite
+lk settings company-user invite cancel
+lk settings company-user invite create
+lk settings company-user invite list
 lk settings company-user list
+lk settings company-user update
 lk settings email-message
 lk settings email-message list
 lk settings email-message show
@@ -57,8 +82,13 @@ lk settings setting-grouper show
 lk settings setting-grouper update
 lk settings setting-grouper users
 lk settings setting-grouper users list
+lk settings supplier-field
+lk settings supplier-field list
 lk settings tag
+lk settings tag create
+lk settings tag delete
 lk settings tag list
+lk settings tag update
 lk supplier
 lk supplier create
 lk supplier list

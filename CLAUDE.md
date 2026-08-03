@@ -187,29 +187,35 @@ command resolves it yet, **expose that one first (prerequisite) in an earlier
 wave** — never ship a command whose relationship id has no CLI source. This
 chaining becomes skill instruction (Phase C).
 
-**Ordered phases (per plan):**
-1. **linkana** (source of truth): read the action; derive the contract by the
-   rules above; TDD `<...>_cli_test.rb` (success + 401/403/404/422/400, web
-   intact); add `cli_expose`, the `format.json` branch + jbuilders, and
-   `config/cli/<x>.yml`; `bin/rails cli:manifest` (commit the manifest);
-   `bin/rails test` + `cli:manifest:check` green. PR (see stacking below). **The
-   cli step only starts once this PR is merged to `main`** — `make
-   update-manifest` reads `main`.
-2. **cli**: `make update-manifest`; `TestSurfaceGolden -update`; `make
-   test|lint|cover`; **prove it end-to-end with the real binary** against a local
-   backend (`make dev` / `LK_API_URL`), including the error paths. PR with those
-   commands as test instructions.
-3. **lk-stack** (always a new PR from the latest `main`): update the `lk` skill in
+**Ordered phases (linkana per command → cli+lk-stack once per batch):**
+1. **linkana** (source of truth, **one PR per command**): read the action; derive
+   the contract by the rules above; TDD `<...>_cli_test.rb` (success +
+   401/403/404/422/400, web intact); add `cli_expose`, the `format.json` branch +
+   jbuilders, and `config/cli/<x>.yml`; `bin/rails cli:manifest` (commit the
+   manifest). **Gate ANTES de abrir o PR (obrigatório, ordenado): `bin/rails test` +
+   `cli:manifest:check` verdes E `curl` real contra o backend local de pé (PAT) — os
+   dois passando, saída do curl colada na descrição** (ver CLAUDE.local.md). Stack
+   dependentes com `gh-stack`.
+2. **cli — UM PR consolidado por LOTE, só depois que TODOS os PRs de linkana do lote
+   estiverem mergeados na `main`.** NÃO abrir um PR de cli por comando. Quando o
+   último backend entrar na `main`, rode `make update-manifest` **uma vez** (ele
+   vendoriza o manifest inteiro e atualizado, capturando todos os comandos do lote de
+   uma vez); `TestSurfaceGolden -update`; `make test|lint|cover` (≥95%); **prove
+   e2e com o binário real** contra o backend local (`make dev` / `LK_API_URL`),
+   incluindo os caminhos de erro. `make update-manifest` lê a `main`.
+3. **lk-stack — PAREADO com o PR de cli (abrir juntos).** Update the `lk` skill in
    `lk-stack/lk-tools/skills/lk/` — `SKILL.md` and/or `references/command-catalog.md`
-   — teaching the new/changed command (syntax, flags) and especially the
-   **reference chaining** (which command to run first to obtain each id this
-   command needs).
+   — ensinando todos os comandos novos/alterados do lote (syntax, flags) e o
+   **reference chaining** (qual comando rodar antes para obter cada id). O PR de cli e
+   o de lk-stack são um par: o cli expõe, a skill ensina; revisar/mergear juntos.
 
-**Ordering & stacking:** cross-repo order is always linkana (merge to `main`) →
-cli → lk-stack. Dependent plans run in waves (a command that needs another's id
-is a later wave). **Within a repo, stack dependent PRs with `gh-stack`** (base
-first), so each builds on the previous and stays easy to test and commit; request
-review in stack order.
+**Ordering & stacking:** ordem cross-repo é sempre linkana (todos os PRs do lote
+mergeados na `main`) → cli → lk-stack. Planos dependentes rodam em ondas (um comando
+que precisa do id de outro é onda posterior). **No linkana, um PR por comando,
+empilhando dependentes com `gh-stack`** (base primeiro), review na ordem do stack.
+**As fases cli e lk-stack acontecem UMA vez por lote** (não por comando): um único PR
+de cli consolidado + um único PR de lk-stack, abertos juntos depois que o backend do
+lote estiver 100% mergeado.
 
 ## Impersonation / buyer-scope (LIN-5921)
 

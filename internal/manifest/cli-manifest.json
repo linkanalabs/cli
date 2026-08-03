@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-07-31T16:59:46Z",
-  "source": "linkanalabs/linkana@32f92b3735",
+  "generated_at": "2026-08-03T22:50:09Z",
+  "source": "linkanalabs/linkana@22c2fddd37",
   "endpoints": [
     {
       "command": [
@@ -17,6 +17,30 @@
       "response": "200 with {id, email, name, role, buyer_id, is_staff}.",
       "auth": "pat",
       "controller": "my/identity#show"
+    },
+    {
+      "command": [
+        "settings",
+        "bank-information",
+        "list"
+      ],
+      "summary": "List the buyer's bank information documents",
+      "description": "Lists the buyer's bank information documents (dados bancários — SettingBankInformation), ordered by display order then display_name. A buyer has at most one enabled bank information document. By default returns the enabled documents; pass --tab disabled to list the archived (disabled) ones instead. Each item carries the applicability flags national_pj/national_pf/international, which tell for which category legal_entity (PJ / PF / INTERNATIONAL) the document is available. This is a source of the `setting_document_id` a future `settings category risk create` will need: pick a document whose applicability flag matches the category's legal_entity (national_pj for a PJ category, national_pf for PF, international for INTERNATIONAL).",
+      "method": "GET",
+      "path": "/srm_settings/bank_informations",
+      "path_params": [],
+      "params": [
+        {
+          "name": "tab",
+          "type": "string",
+          "required": false,
+          "desc": "Which set to list: omit (or any value other than 'disabled') for enabled documents, or 'disabled' for archived ones.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id}. The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the document applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "auth": "pat",
+      "controller": "srm_settings/bank_informations#index"
     },
     {
       "command": [
@@ -330,6 +354,144 @@
       "command": [
         "settings",
         "category",
+        "create"
+      ],
+      "summary": "Create a supplier category",
+      "description": "Creates a supplier category for the buyer. Only the category's own settings are set here — risks (documents) are attached by a separate command. Requires the admin role or above.",
+      "method": "POST",
+      "path": "/srm_settings/categories",
+      "path_params": [],
+      "body_root": "setting_category",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": true,
+          "desc": "Display name of the category (must be unique among the buyer's enabled categories)",
+          "in": "body"
+        },
+        {
+          "name": "legal_entity",
+          "type": "string",
+          "required": false,
+          "desc": "Legal entity the category applies to. Defaults to PJ when omitted.",
+          "in": "body",
+          "enum": [
+            "PJ",
+            "PF",
+            "INTERNATIONAL"
+          ]
+        },
+        {
+          "name": "renew_at_in_days_after_approval",
+          "type": "integer",
+          "required": false,
+          "desc": "Days after approval to schedule the qualification renewal (0 = never renew). Defaults to 0.",
+          "in": "body"
+        },
+        {
+          "name": "force_processing_on_renewal",
+          "type": "boolean",
+          "required": false,
+          "desc": "On re-qualification, force expired renewable documents into a new blocking processing version. Defaults to false.",
+          "in": "body"
+        },
+        {
+          "name": "monitor_on_qualification_start",
+          "type": "boolean",
+          "required": false,
+          "desc": "Enable supplier monitoring at the start of qualification. Defaults to false.",
+          "in": "body"
+        },
+        {
+          "name": "monitor_after_approval",
+          "type": "boolean",
+          "required": false,
+          "desc": "Enable supplier monitoring after the qualification is approved. Defaults to false.",
+          "in": "body"
+        },
+        {
+          "name": "monitor_after_refusal",
+          "type": "boolean",
+          "required": false,
+          "desc": "Enable supplier monitoring after the qualification is refused. Defaults to false.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the created {id, display_name, legal_entity, disabled, renew_at_in_days_after_approval, force_processing_on_renewal, monitor_on_qualification_start, monitor_after_approval, monitor_after_refusal, setting_risks} (setting_risks is [] on a fresh create). 422 {errors} on validation (e.g. blank or duplicate display_name, or a legal_entity outside PJ/PF/INTERNATIONAL); 400 Rails default {status, error} when the setting_category root is missing; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/categories#create"
+    },
+    {
+      "command": [
+        "settings",
+        "category",
+        "disable"
+      ],
+      "summary": "Disable a supplier category",
+      "description": "Disables a category by its id (see `settings category list`). Unlike `settings category enable`, the id is a positional argument (path param), not a flag. Requires the admin role or above.",
+      "method": "DELETE",
+      "path": "/srm_settings/categories_enabling/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with the affected category in the same shape as `settings category show` (disabled is now true). 404 Rails default {status, error} if the id is unknown; 403 {error} when the category belongs to another buyer or the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/categories_enabling#destroy"
+    },
+    {
+      "command": [
+        "settings",
+        "category",
+        "duplicate"
+      ],
+      "summary": "Duplicate a supplier category",
+      "description": "Creates a copy of an existing category (including its risks), naming it with a \"(cópia)\" suffix. The source category is identified by the `--setting-category-id` flag (a top-level query param, NOT a positional argument), whose value comes from `settings category list`. Requires the admin role or above.",
+      "method": "POST",
+      "path": "/srm_settings/categories_duplicate",
+      "path_params": [],
+      "params": [
+        {
+          "name": "setting_category_id",
+          "type": "string",
+          "required": true,
+          "desc": "Id of the category to duplicate; comes from `settings category list`.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with the newly created duplicate in the same shape as `settings category show`. 404 Rails default {status, error} when setting_category_id is missing or unknown; 422 {errors} when the duplication fails; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/categories_duplicate#create"
+    },
+    {
+      "command": [
+        "settings",
+        "category",
+        "enable"
+      ],
+      "summary": "Enable (re-activate) a supplier category",
+      "description": "Enables a previously disabled category so it can be used again. The category is identified by the `--setting-category-id` flag (a top-level query param, NOT a positional argument), whose value comes from `settings category list`. Requires the admin role or above.",
+      "method": "POST",
+      "path": "/srm_settings/categories_enabling",
+      "path_params": [],
+      "params": [
+        {
+          "name": "setting_category_id",
+          "type": "string",
+          "required": true,
+          "desc": "Id of the category to enable; comes from `settings category list`.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with the affected category in the same shape as `settings category show` (disabled is now false). 404 Rails default {status, error} when setting_category_id is missing or unknown; 403 {error} when the category belongs to another buyer or the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/categories_enabling#create"
+    },
+    {
+      "command": [
+        "settings",
+        "category",
         "list"
       ],
       "summary": "List the buyer's supplier categories",
@@ -345,6 +507,436 @@
     {
       "command": [
         "settings",
+        "category",
+        "risk",
+        "create"
+      ],
+      "summary": "Attach a document to a category as a risk",
+      "description": "Attaches a SettingDocument to a category with a risk score (creates a risk). `category_id` comes from `settings category list`. `setting_document_id` is the id of a SettingDocument (a supplier field / check / certificate / bank information) — obtain it from the document-list commands (`settings supplier-field list`, `settings check list`, `settings certificate list`, `settings bank-information list`), which list every enabled document with its applicability flags; `settings category risk list` only lists documents already attached to a category. IMPORTANT: the API does NOT filter by legal entity. The web screen only offers documents whose applicability matches the category's `legal_entity` (PJ / PF / INTERNATIONAL), but this endpoint accepts ANY existing document regardless of that match — attach only documents compatible with the category's legal entity. Attaching a `setting_document_id` already present in the category is idempotent: it updates that risk's score instead of creating a second one (200).",
+      "method": "POST",
+      "path": "/srm_settings/categories/:category_id/risks",
+      "path_params": [
+        "category_id"
+      ],
+      "body_root": "setting_risk",
+      "params": [
+        {
+          "name": "setting_document_id",
+          "type": "string",
+          "required": true,
+          "desc": "UUID of the SettingDocument to attach. Get it from the document-list commands — `settings supplier-field list`, `settings check list`, `settings certificate list`, `settings bank-information list` — which list every enabled document with its applicability flags (national_pj / national_pf / international); pick a document whose applicability matches the category's legal_entity (the API does NOT enforce it). `settings category risk list` only returns documents ALREADY attached to a category, so it is not the source for a new attachment (re-attaching an already-present document just updates its score).",
+          "in": "body"
+        },
+        {
+          "name": "risk",
+          "type": "string",
+          "required": true,
+          "desc": "Risk score for the document. One of 0 (Sem risco), 7 (Risco muito baixo), 20 (Risco baixo), 60 (Risco alto), 100 (Risco muito alto).",
+          "in": "body",
+          "enum": [
+            "0",
+            "7",
+            "20",
+            "60",
+            "100"
+          ]
+        },
+        {
+          "name": "trigger_sync",
+          "type": "boolean",
+          "required": false,
+          "desc": "When true, enqueues a background job that propagates the new document to existing suppliers of the category. Optional; defaults to false.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with {id, setting_document_id, risk, setting_document:{id, display_name, type}}. 422 {errors} when the setting_document_id does not exist; 400 (bad request) when the setting_risk root is absent; 404 Rails default {status, error} when the category is unknown or belongs to another buyer; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/categories_risks#create"
+    },
+    {
+      "command": [
+        "settings",
+        "category",
+        "risk",
+        "delete"
+      ],
+      "summary": "Detach a document from a category (archive the risk)",
+      "description": "Detaches a document from a category by the risk `id` (from `settings category risk list`). The risk is marked for archival and a background job removes the attached document from the category's suppliers; the risk row is returned immediately.",
+      "method": "DELETE",
+      "path": "/srm_settings/risks/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with the archived {id, setting_document_id, risk, setting_document:{id, display_name, type}}. 404 Rails default {status, error} when the id is unknown; 403 {error} when the risk belongs to another buyer or the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/categories_risks#destroy"
+    },
+    {
+      "command": [
+        "settings",
+        "category",
+        "risk",
+        "list"
+      ],
+      "summary": "List the risks (attached documents) of a category",
+      "description": "Lists the documents attached to one category as risks. A risk links a SettingDocument to the category with a risk score. `category_id` comes from `settings category list`. Each entry carries the `id` (the risk id) consumed by `settings category risk update|delete`, the `setting_document_id`, the `risk` score, and an embedded `setting_document` ({id, display_name, type}) to identify the document. The `type` is the SettingDocument subtype: Settings::SettingForm (supplier field), Settings::SettingCheck, Settings::SettingCertificate or Settings::SettingBankInformation. Scoped to the current buyer — a `category_id` from another buyer returns 404.",
+      "method": "GET",
+      "path": "/srm_settings/categories/:category_id/risks",
+      "path_params": [
+        "category_id"
+      ],
+      "params": [],
+      "response": "200 with an array of {id, setting_document_id, risk, setting_document:{id, display_name, type}}. 404 Rails default {status, error} when the category is unknown or belongs to another buyer; 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "auth": "pat",
+      "controller": "srm_settings/categories_risks#index"
+    },
+    {
+      "command": [
+        "settings",
+        "category",
+        "risk",
+        "update"
+      ],
+      "summary": "Change a risk's score",
+      "description": "Updates the risk score of an attached document by the risk `id` (from `settings category risk list`). Only the score changes; the document stays attached.",
+      "method": "PATCH",
+      "path": "/srm_settings/risks/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_risk",
+      "params": [
+        {
+          "name": "risk",
+          "type": "string",
+          "required": true,
+          "desc": "New risk score. One of 0 (Sem risco), 7 (Risco muito baixo), 20 (Risco baixo), 60 (Risco alto), 100 (Risco muito alto).",
+          "in": "body",
+          "enum": [
+            "0",
+            "7",
+            "20",
+            "60",
+            "100"
+          ]
+        }
+      ],
+      "response": "200 with {id, setting_document_id, risk, setting_document:{id, display_name, type}}. 404 Rails default {status, error} when the id is unknown; 403 {error} when the risk belongs to another buyer or the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/categories_risks#update"
+    },
+    {
+      "command": [
+        "settings",
+        "category",
+        "show"
+      ],
+      "summary": "Show a supplier category with its risks",
+      "description": "Shows one supplier category by its id (see `settings category list` for available ids), including the full monitoring/renewal settings and its risks. Each embedded risk carries the `id` used as `risk_id` and the `setting_document_id` it points at. Requires the manager role or above.",
+      "method": "GET",
+      "path": "/srm_settings/categories/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with {id, display_name, legal_entity, disabled, renew_at_in_days_after_approval, force_processing_on_renewal, monitor_on_qualification_start, monitor_after_approval, monitor_after_refusal, setting_risks:[{id, setting_document_id, risk}]}. `legal_entity` is one of PJ, PF, INTERNATIONAL. 404 Rails default {status, error} if the id is unknown; 403 {error} when the category belongs to another buyer or the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/categories#show"
+    },
+    {
+      "command": [
+        "settings",
+        "category",
+        "update"
+      ],
+      "summary": "Update a supplier category",
+      "description": "Updates a supplier category by its id (see `settings category list`). Only the fields you pass are changed. Risks (documents) are managed by a separate command. Requires the admin role or above.",
+      "method": "PATCH",
+      "path": "/srm_settings/categories/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_category",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": false,
+          "desc": "New display name of the category (must be unique among the buyer's enabled categories)",
+          "in": "body"
+        },
+        {
+          "name": "legal_entity",
+          "type": "string",
+          "required": false,
+          "desc": "Legal entity the category applies to.",
+          "in": "body",
+          "enum": [
+            "PJ",
+            "PF",
+            "INTERNATIONAL"
+          ]
+        },
+        {
+          "name": "renew_at_in_days_after_approval",
+          "type": "integer",
+          "required": false,
+          "desc": "Days after approval to schedule the qualification renewal (0 = never renew).",
+          "in": "body"
+        },
+        {
+          "name": "force_processing_on_renewal",
+          "type": "boolean",
+          "required": false,
+          "desc": "On re-qualification, force expired renewable documents into a new blocking processing version.",
+          "in": "body"
+        },
+        {
+          "name": "monitor_on_qualification_start",
+          "type": "boolean",
+          "required": false,
+          "desc": "Enable supplier monitoring at the start of qualification.",
+          "in": "body"
+        },
+        {
+          "name": "monitor_after_approval",
+          "type": "boolean",
+          "required": false,
+          "desc": "Enable supplier monitoring after the qualification is approved.",
+          "in": "body"
+        },
+        {
+          "name": "monitor_after_refusal",
+          "type": "boolean",
+          "required": false,
+          "desc": "Enable supplier monitoring after the qualification is refused.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the updated category in the same shape as `settings category show`. 422 {errors} on validation (e.g. blank or duplicate display_name, or an invalid legal_entity); 404 Rails default {status, error} if the id is unknown; 403 {error} when the category belongs to another buyer or the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/categories#update"
+    },
+    {
+      "command": [
+        "settings",
+        "certificate",
+        "list"
+      ],
+      "summary": "List the buyer's certificates",
+      "description": "Lists the buyer's certificate documents (SettingCertificate), ordered by display order then display_name. By default returns the enabled certificates; pass --tab disabled to list the archived (disabled) ones instead. Each item carries the applicability flags national_pj/national_pf/international, which tell for which category legal_entity (PJ / PF / INTERNATIONAL) the certificate is available. This is a source of the `setting_document_id` a future `settings category risk create` will need: pick a certificate whose applicability flag matches the category's legal_entity (national_pj for a PJ category, national_pf for PF, international for INTERNATIONAL).",
+      "method": "GET",
+      "path": "/srm_settings/certificates",
+      "path_params": [],
+      "params": [
+        {
+          "name": "tab",
+          "type": "string",
+          "required": false,
+          "desc": "Which set to list: omit (or any value other than 'disabled') for enabled certificates, or 'disabled' for archived ones.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id}. The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the certificate applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "auth": "pat",
+      "controller": "srm_settings/certificates#index"
+    },
+    {
+      "command": [
+        "settings",
+        "check",
+        "list"
+      ],
+      "summary": "List the buyer's checks (consultas)",
+      "description": "Lists the buyer's check documents (consultas — SettingCheck), ordered by display order then display_name. By default returns the enabled checks; pass --tab disabled to list the archived (disabled) ones instead. Each item carries the applicability flags national_pj/national_pf/international, which tell for which category legal_entity (PJ / PF / INTERNATIONAL) the check is available. This is a source of the `setting_document_id` a future `settings category risk create` will need: pick a check whose applicability flag matches the category's legal_entity (national_pj for a PJ category, national_pf for PF, international for INTERNATIONAL).",
+      "method": "GET",
+      "path": "/srm_settings/checks",
+      "path_params": [],
+      "params": [
+        {
+          "name": "tab",
+          "type": "string",
+          "required": false,
+          "desc": "Which set to list: omit (or any value other than 'disabled') for enabled checks, or 'disabled' for archived ones.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id}. The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the check applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "auth": "pat",
+      "controller": "srm_settings/checks#index"
+    },
+    {
+      "command": [
+        "settings",
+        "company-user",
+        "create"
+      ],
+      "summary": "Create (invite) a buyer user",
+      "description": "Creates a user for the current buyer and sends the invite e-mail. If a user with the same e-mail already exists on any buyer, the request fails (a buyer user cannot be re-created). Requires super_admin role.",
+      "method": "POST",
+      "path": "/srm_settings/company_users",
+      "path_params": [],
+      "body_root": "user",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "required": true,
+          "desc": "Full name of the user",
+          "in": "body"
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "required": true,
+          "desc": "E-mail of the user (unique across buyer users; the invite is sent here)",
+          "in": "body"
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "required": true,
+          "desc": "Permission role. One of the enum values (ascending privilege); defaults to member on the model but is required here.",
+          "in": "body",
+          "enum": [
+            "requester",
+            "observer",
+            "member",
+            "operator",
+            "manager",
+            "admin",
+            "super_admin"
+          ]
+        }
+      ],
+      "response": "200 with the created {id, name, email, role, discarded_at}. 422 {errors} on validation (blank name, invalid/blank e-mail, invalid role, or an e-mail that already belongs to a user); 400 {status, error} when the `user` body root is absent (params.expect runs before the policy check); 403 {error} when the policy denies access (requires super_admin role); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/company_users#create"
+    },
+    {
+      "command": [
+        "settings",
+        "company-user",
+        "disable"
+      ],
+      "summary": "Deactivate a buyer user",
+      "description": "Deactivates (soft-deletes / discards) a user of the current buyer by its id and removes its supplier links. The id is a positional argument (path segment), unlike `settings company-user enable`, which takes `--id`. Resolve the id with `settings company-user list`. A user cannot disable itself. Requires super_admin role.",
+      "method": "DELETE",
+      "path": "/srm_settings/company_users_enabling/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with the deactivated {id, name, email, role, discarded_at} (discarded_at set). 404 {status, error} when the id is unknown or belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the caller tries to disable itself or the policy denies access (requires super_admin role); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/company_users_enabling#destroy"
+    },
+    {
+      "command": [
+        "settings",
+        "company-user",
+        "enable"
+      ],
+      "summary": "Reactivate a deactivated buyer user",
+      "description": "Reactivates (undiscards) a previously deactivated user of the current buyer. The id is read at the top level, so it is passed as `--id <uuid>` (a query param), NOT as a positional argument — this is the asymmetry with `settings company-user disable`, which takes the id positionally. Resolve the id with `settings company-user list`. Requires super_admin role.",
+      "method": "POST",
+      "path": "/srm_settings/company_users_enabling",
+      "path_params": [],
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "desc": "Id (uuid) of the user to reactivate; resolve it with `settings company-user list`.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with the reactivated {id, name, email, role, discarded_at} (discarded_at null). 400 {status, error} when the id query param is missing; 404 {status, error} when the id is unknown or belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access (requires super_admin role); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/company_users_enabling#create"
+    },
+    {
+      "command": [
+        "settings",
+        "company-user",
+        "invite",
+        "cancel"
+      ],
+      "summary": "Cancel a pending invite",
+      "description": "Cancels (deletes) a pending invite by its id (see `settings company-user invite list` for available ids) and returns the deleted invite. This only revokes an invite that has not been accepted yet; to deactivate an active user use the company-user commands instead.",
+      "method": "DELETE",
+      "path": "/srm_settings/invited_users/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with the deleted {id, email, role, created_at}. 404 Rails default {status, error} if the id is unknown; 403 {error} when the invite belongs to another buyer or the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/invited_users#destroy"
+    },
+    {
+      "command": [
+        "settings",
+        "company-user",
+        "invite",
+        "create"
+      ],
+      "summary": "Invite a user by e-mail",
+      "description": "Sends an e-mail invite to join the buyer as a new user and returns the created pending invite. The person becomes an active user (in `settings company-user list`) only after they accept the invite; until then they stay in `settings company-user invite list`. Fails if the e-mail already has a pending invite or already belongs to an existing user.",
+      "method": "POST",
+      "path": "/srm_settings/invited_users",
+      "path_params": [],
+      "body_root": "buyer_invite",
+      "params": [
+        {
+          "name": "email",
+          "type": "string",
+          "required": true,
+          "desc": "E-mail address of the person to invite (must not already have a pending invite or an existing user account)",
+          "in": "body"
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "required": false,
+          "desc": "Role the invited user will receive (defaults to member when omitted)",
+          "in": "body",
+          "enum": [
+            "requester",
+            "observer",
+            "member",
+            "operator",
+            "manager",
+            "admin",
+            "super_admin"
+          ]
+        }
+      ],
+      "response": "201 with the created {id, email, role, created_at}. 422 {errors} on validation (blank/invalid e-mail, an e-mail already invited, or an e-mail that already belongs to an existing user); 400 when the buyer_invite body root is absent; 403 {error} when the policy denies access (caller below super_admin); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/invited_users#create"
+    },
+    {
+      "command": [
+        "settings",
+        "company-user",
+        "invite",
+        "list"
+      ],
+      "summary": "List the buyer's pending invites",
+      "description": "Lists the pending invites (buyer_invites) of the current buyer, ordered by created_at desc. A pending invite is NOT an active user: it is a person who was invited by e-mail but has not accepted yet. Once accepted, the invite is consumed and the person shows up in `settings company-user list` instead. Use the returned id with `settings company-user invite cancel`. Requires a super_admin (or above) credential.",
+      "method": "GET",
+      "path": "/srm_settings/invited_users",
+      "path_params": [],
+      "params": [],
+      "response": "200 with an array of {id, email, role, created_at}. The secret acceptance token is never exposed. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (caller below super_admin).",
+      "auth": "pat",
+      "controller": "srm_settings/invited_users#index"
+    },
+    {
+      "command": [
+        "settings",
         "company-user",
         "list"
       ],
@@ -354,9 +946,45 @@
       "path": "/srm_settings/company_users",
       "path_params": [],
       "params": [],
-      "response": "200 with array of {id, name, email, role, active, discarded_at}. The active flag is legacy and mirrors discarded_at until it is removed; prefer discarded_at. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (caller below admin).",
+      "response": "200 with array of {id, name, email, role, discarded_at}. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (caller below admin).",
       "auth": "pat",
       "controller": "srm_settings/company_users#index"
+    },
+    {
+      "command": [
+        "settings",
+        "company-user",
+        "update"
+      ],
+      "summary": "Change a buyer user's role",
+      "description": "Updates ONLY the role of a buyer user by its id (see `settings company-user list` for available ids). name and email are ignored even if sent. Requires super_admin role.",
+      "method": "PATCH",
+      "path": "/srm_settings/company_users/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "user",
+      "params": [
+        {
+          "name": "role",
+          "type": "string",
+          "required": true,
+          "desc": "New permission role. One of the enum values (ascending privilege).",
+          "in": "body",
+          "enum": [
+            "requester",
+            "observer",
+            "member",
+            "operator",
+            "manager",
+            "admin",
+            "super_admin"
+          ]
+        }
+      ],
+      "response": "200 with the updated {id, name, email, role, discarded_at}. 422 {errors} on an invalid role; 404 {status, error} if the id is unknown; 403 {error} when the user belongs to another buyer or the policy denies access (requires super_admin role); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/company_users#update"
     },
     {
       "command": [
@@ -1141,6 +1769,73 @@
     {
       "command": [
         "settings",
+        "supplier-field",
+        "list"
+      ],
+      "summary": "List the buyer's supplier form documents",
+      "description": "Lists the buyer's supplier form documents (the 'Formulários' settings — SettingForm plus the bank-information document), ordered by display order then display_name. By default returns the enabled documents; pass --tab disabled to list the archived (disabled) ones instead. Each item carries the applicability flags national_pj/national_pf/international, which tell for which category legal_entity (PJ / PF / INTERNATIONAL) the document is available. This is a source of the `setting_document_id` a future `settings category risk create` will need: pick a document whose applicability flag matches the category's legal_entity (national_pj for a PJ category, national_pf for PF, international for INTERNATIONAL).",
+      "method": "GET",
+      "path": "/srm_settings/supplier_fields",
+      "path_params": [],
+      "params": [
+        {
+          "name": "tab",
+          "type": "string",
+          "required": false,
+          "desc": "Which set to list: omit (or any value other than 'disabled') for enabled documents, or 'disabled' for archived ones.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id}. The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the document applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_fields#index"
+    },
+    {
+      "command": [
+        "settings",
+        "tag",
+        "create"
+      ],
+      "summary": "Create a setting tag",
+      "description": "Creates a setting tag (marcador) for the buyer. Requires admin role or above.",
+      "method": "POST",
+      "path": "/srm_settings/setting_tags",
+      "path_params": [],
+      "body_root": "setting_tag",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": true,
+          "desc": "Display name of the tag (unique per buyer)",
+          "in": "body"
+        }
+      ],
+      "response": "200 with {id, display_name}. 422 {errors} on validation (blank, duplicate, or missing display_name); 403 {error} when the policy denies access (requires admin role or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_tags#create"
+    },
+    {
+      "command": [
+        "settings",
+        "tag",
+        "delete"
+      ],
+      "summary": "Delete a setting tag",
+      "description": "Deletes a setting tag by its id (see `settings tag list` for available ids). Requires admin role or above.",
+      "method": "DELETE",
+      "path": "/srm_settings/setting_tags/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with the deleted {id, display_name}. 404 Rails default {status, error} if the id is unknown; 403 {error} when the tag belongs to another buyer or the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_tags#destroy"
+    },
+    {
+      "command": [
+        "settings",
         "tag",
         "list"
       ],
@@ -1153,6 +1848,33 @@
       "response": "200 with array of {id, display_name}. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires operator role or above).",
       "auth": "pat",
       "controller": "srm_settings/setting_tags#index"
+    },
+    {
+      "command": [
+        "settings",
+        "tag",
+        "update"
+      ],
+      "summary": "Update a setting tag",
+      "description": "Renames a setting tag by its id (see `settings tag list` for available ids). Requires admin role or above.",
+      "method": "PATCH",
+      "path": "/srm_settings/setting_tags/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_tag",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": true,
+          "desc": "New display name of the tag (unique per buyer)",
+          "in": "body"
+        }
+      ],
+      "response": "200 with {id, display_name}. 422 {errors} on validation (blank or duplicate display_name); 404 Rails default {status, error} if the id is unknown; 403 {error} when the tag belongs to another buyer or the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_tags#update"
     },
     {
       "command": [
