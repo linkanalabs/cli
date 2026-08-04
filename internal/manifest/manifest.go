@@ -50,6 +50,20 @@ type Endpoint struct {
 	Response    string   `json:"response"`
 	Auth        string   `json:"auth"`
 	Controller  string   `json:"controller"`
+
+	// Pagination is set when the endpoint's JSON is paged. It is a capability,
+	// not a param: the executor derives --page/--all from it, so a paged
+	// endpoint does not hand-declare a page param (and every future one gets
+	// the same behaviour for free).
+	Pagination *Pagination `json:"pagination,omitempty"`
+}
+
+// Pagination describes how an endpoint pages its JSON response: Param is the
+// query parameter that selects the page (1-based). The page size and the total
+// are deliberately absent — they travel per response in the pagination
+// headers, so the manifest cannot go stale against the backend.
+type Pagination struct {
+	Param string `json:"param"`
 }
 
 // Param describes one request parameter of an endpoint.
@@ -160,6 +174,29 @@ func (e *Endpoint) validate() error {
 	}
 	if spreadParams == 1 && bodyParams > 1 {
 		return fmt.Errorf("a spread param must be the only body param, found %d body params", bodyParams)
+	}
+	if err := e.validatePagination(seen); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validatePagination mirrors the backend's schema check: the page param must be
+// usable as a flag name — not reserved, and not already taken by a declared
+// param.
+func (e *Endpoint) validatePagination(declaredParams map[string]bool) error {
+	if e.Pagination == nil {
+		return nil
+	}
+	name := e.Pagination.Param
+	if name == "" {
+		return fmt.Errorf("pagination: missing param")
+	}
+	if reservedParamNames[name] {
+		return fmt.Errorf("pagination: param %q would shadow the built-in --%s flag", name, name)
+	}
+	if declaredParams[name] {
+		return fmt.Errorf("pagination: param %q collides with a declared param", name)
 	}
 	return nil
 }

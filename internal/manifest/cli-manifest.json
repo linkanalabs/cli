@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-03T22:50:09Z",
-  "source": "linkanalabs/linkana@22c2fddd37",
+  "generated_at": "2026-08-04T02:34:50Z",
+  "source": "linkanalabs/linkana@39f1ca757c",
   "endpoints": [
     {
       "command": [
@@ -1961,13 +1961,16 @@
         "supplier",
         "list"
       ],
-      "summary": "List the buyer's suppliers",
-      "description": "Lists every supplier of the current buyer. Each entry is identified by its id (use it with `supplier show`). No filters in this version.",
+      "summary": "List the buyer's suppliers (one page per call; total comes in headers)",
+      "description": "Lists the suppliers of the current buyer. Each entry is identified by its id (use it with `supplier show`). The response is PAGINATED: the body carries one page, and the page metadata comes back in headers (`total-count`, `total-pages`, `current-page`, `page-items`). `--format count` reports the buyer's TOTAL from that header, not the size of the page, so one call answers \"how many suppliers does this buyer have\". Use `--page N` to fetch a specific page; the CLI reports on stderr which page you are on and how many there are. No other filters in this version.",
       "method": "GET",
       "path": "/srm/suppliers",
       "path_params": [],
+      "pagination": {
+        "param": "page"
+      },
       "params": [],
-      "response": "200 with an array of {id, name, identifier, legal_entity, state, tags:[{id, display_name}]}. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access.",
+      "response": "200 with one page of {id, name, identifier, legal_entity, state, tags:[{id, display_name}]}, plus the pagy headers (`total-count`, `total-pages`, `current-page`, `page-items`). A page past the last one returns an empty array (still 200). 401 (empty body) when unauthenticated; 403 {error} when the policy denies access.",
       "auth": "pat",
       "controller": "srm/suppliers#index"
     },

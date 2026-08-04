@@ -77,7 +77,21 @@ func newDynamicCmd(e *manifest.Endpoint) *cobra.Command {
 	for i := range e.Params {
 		addDynamicFlag(cmd, &e.Params[i])
 	}
+	addPaginationFlags(cmd, e)
 	return cmd
+}
+
+// addPaginationFlags derives the page flag from the endpoint's capability, so
+// a paged endpoint never hand-declares it. How many pages there are (and how
+// many records in total) comes back per response in the pagination headers,
+// not from the manifest — so the CLI can never drift from the backend's page
+// size.
+func addPaginationFlags(cmd *cobra.Command, e *manifest.Endpoint) {
+	if e.Pagination == nil {
+		return
+	}
+	cmd.Flags().Int64(e.Pagination.Param, 0,
+		"1-based page number; omit for the first page (the response reports the total and how many pages there are)")
 }
 
 // addDynamicFlag registers one manifest param as a cobra flag. Native types

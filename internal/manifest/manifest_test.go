@@ -217,3 +217,61 @@ func TestParseSpreadValid(t *testing.T) {
 		t.Errorf("Spread = false, want true")
 	}
 }
+
+// -- Pagination capability
+
+func paginatedEndpointJSON(pagination string, params string) []byte {
+	return []byte(`{"manifest_version":1,"endpoints":[{
+		"command":["gadget","list"],"method":"GET","path":"/gadgets",
+		"path_params":[],"params":[` + params + `],"pagination":` + pagination + `}]}`)
+}
+
+func TestParseAcceptsPaginationCapability(t *testing.T) {
+	m, err := Parse(paginatedEndpointJSON(`{"param":"page"}`, ""))
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	p := m.Endpoints[0].Pagination
+	if p == nil || p.Param != "page" {
+		t.Errorf("pagination = %+v, want {page}", p)
+	}
+}
+
+func TestParseLeavesPaginationNilWhenAbsent(t *testing.T) {
+	m, err := Parse([]byte(`{"manifest_version":1,"endpoints":[{"command":["a","b"],"method":"GET","path":"/x","path_params":[],"params":[]}]}`))
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if m.Endpoints[0].Pagination != nil {
+		t.Errorf("pagination = %+v, want nil", m.Endpoints[0].Pagination)
+	}
+}
+
+func TestParseRejectsInvalidPagination(t *testing.T) {
+	cases := []struct {
+		name       string
+		pagination string
+		params     string
+		wantErr    string
+	}{
+		{"missing param", `{}`, "", "missing param"},
+		{
+			"param collides with a declared param",
+			`{"param":"page"}`,
+			`{"name":"page","type":"integer","required":false,"desc":"d","in":"query"}`,
+			"collides with a declared param",
+		},
+		{"param shadows a built-in flag", `{"param":"format","per_page":10}`, "", "would shadow the built-in"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := Parse(paginatedEndpointJSON(tc.pagination, tc.params))
+			if err == nil {
+				t.Fatalf("Parse() error = nil, want %q", tc.wantErr)
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Errorf("Parse() error = %v, want it to contain %q", err, tc.wantErr)
+			}
+		})
+	}
+}

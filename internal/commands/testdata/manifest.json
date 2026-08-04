@@ -4,26 +4,74 @@
   "source": "linkanalabs/linkana@test",
   "endpoints": [
     {
-      "command": ["widget", "list"],
+      "command": [
+        "widget",
+        "list"
+      ],
       "summary": "List widgets",
       "description": "Lists widgets with optional filters.",
       "method": "GET",
       "path": "/widgets",
       "path_params": [],
       "params": [
-        {"name": "q", "type": "string", "required": false, "desc": "Free-text search", "in": "query"},
-        {"name": "page", "type": "integer", "required": false, "desc": "Page number", "in": "query"},
-        {"name": "active", "type": "boolean", "required": false, "desc": "Only active widgets", "in": "query"},
-        {"name": "state", "type": "string", "required": false, "desc": "Filter by state", "enum": ["draft", "active", "archived"], "in": "query"},
-        {"name": "tags", "type": "array", "item": "string", "required": false, "desc": "Filter by tags", "in": "query"},
-        {"name": "filter", "type": "object", "required": false, "desc": "Advanced filter", "in": "query"}
+        {
+          "name": "q",
+          "type": "string",
+          "required": false,
+          "desc": "Free-text search",
+          "in": "query"
+        },
+        {
+          "name": "page",
+          "type": "integer",
+          "required": false,
+          "desc": "Page number",
+          "in": "query"
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": false,
+          "desc": "Only active widgets",
+          "in": "query"
+        },
+        {
+          "name": "state",
+          "type": "string",
+          "required": false,
+          "desc": "Filter by state",
+          "enum": [
+            "draft",
+            "active",
+            "archived"
+          ],
+          "in": "query"
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "item": "string",
+          "required": false,
+          "desc": "Filter by tags",
+          "in": "query"
+        },
+        {
+          "name": "filter",
+          "type": "object",
+          "required": false,
+          "desc": "Advanced filter",
+          "in": "query"
+        }
       ],
       "response": "200 with array of widgets.",
       "auth": "pat",
       "controller": "widgets#index"
     },
     {
-      "command": ["widget", "create"],
+      "command": [
+        "widget",
+        "create"
+      ],
       "summary": "Create a widget",
       "description": "Creates a widget for the buyer.",
       "method": "POST",
@@ -31,23 +79,90 @@
       "path_params": [],
       "body_root": "widget",
       "params": [
-        {"name": "name", "type": "string", "required": true, "desc": "Widget name", "in": "body"},
-        {"name": "count", "type": "integer", "required": false, "desc": "Initial count", "in": "body"},
-        {"name": "enabled", "type": "boolean", "required": false, "desc": "Enabled flag", "in": "body"},
-        {"name": "price", "type": "decimal", "required": false, "desc": "Unit price", "in": "body"},
-        {"name": "due_on", "type": "date", "required": false, "desc": "Due date", "in": "body"},
-        {"name": "labels", "type": "array", "item": "string", "required": false, "desc": "Labels", "in": "body"},
-        {"name": "counts", "type": "array", "item": "integer", "required": false, "desc": "Counts per bucket", "in": "body"},
-        {"name": "toggles", "type": "array", "item": "boolean", "required": false, "desc": "Feature toggles", "in": "body"},
-        {"name": "metadata", "type": "object", "required": false, "desc": "Arbitrary metadata (JSON)", "in": "body"},
-        {"name": "items", "type": "array", "item": "object", "required": false, "desc": "Line items (JSON)", "in": "body"}
+        {
+          "name": "name",
+          "type": "string",
+          "required": true,
+          "desc": "Widget name",
+          "in": "body"
+        },
+        {
+          "name": "count",
+          "type": "integer",
+          "required": false,
+          "desc": "Initial count",
+          "in": "body"
+        },
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "required": false,
+          "desc": "Enabled flag",
+          "in": "body"
+        },
+        {
+          "name": "price",
+          "type": "decimal",
+          "required": false,
+          "desc": "Unit price",
+          "in": "body"
+        },
+        {
+          "name": "due_on",
+          "type": "date",
+          "required": false,
+          "desc": "Due date",
+          "in": "body"
+        },
+        {
+          "name": "labels",
+          "type": "array",
+          "item": "string",
+          "required": false,
+          "desc": "Labels",
+          "in": "body"
+        },
+        {
+          "name": "counts",
+          "type": "array",
+          "item": "integer",
+          "required": false,
+          "desc": "Counts per bucket",
+          "in": "body"
+        },
+        {
+          "name": "toggles",
+          "type": "array",
+          "item": "boolean",
+          "required": false,
+          "desc": "Feature toggles",
+          "in": "body"
+        },
+        {
+          "name": "metadata",
+          "type": "object",
+          "required": false,
+          "desc": "Arbitrary metadata (JSON)",
+          "in": "body"
+        },
+        {
+          "name": "items",
+          "type": "array",
+          "item": "object",
+          "required": false,
+          "desc": "Line items (JSON)",
+          "in": "body"
+        }
       ],
       "response": "201 with the widget; 422 {errors} on validation.",
       "auth": "pat",
       "controller": "widgets#create"
     },
     {
-      "command": ["widget", "calibrate"],
+      "command": [
+        "widget",
+        "calibrate"
+      ],
       "summary": "Calibrate widget weights",
       "description": "Sets weights for a hash of widgets keyed by id.",
       "method": "PUT",
@@ -55,40 +170,68 @@
       "path_params": [],
       "body_root": "setting_performance_pillar",
       "params": [
-        {"name": "weights", "type": "object", "required": true, "desc": "Weights by id", "in": "body", "spread": true}
+        {
+          "name": "weights",
+          "type": "object",
+          "required": true,
+          "desc": "Weights by id",
+          "in": "body",
+          "spread": true
+        }
       ],
       "response": "200 with the updated pillars.",
       "auth": "pat",
       "controller": "widgets#calibrate"
     },
     {
-      "command": ["widget", "note", "show"],
+      "command": [
+        "widget",
+        "note",
+        "show"
+      ],
       "summary": "Show a widget note",
       "description": "Shows one note of a widget.",
       "method": "GET",
       "path": "/widgets/:widget_id/notes/:note_id",
-      "path_params": ["widget_id", "note_id"],
+      "path_params": [
+        "widget_id",
+        "note_id"
+      ],
       "params": [],
       "response": "200 with {id, body}.",
       "auth": "pat",
       "controller": "widget_notes#show"
     },
     {
-      "command": ["widget", "delete"],
+      "command": [
+        "widget",
+        "delete"
+      ],
       "summary": "Delete a widget",
       "description": "Deletes a widget.",
       "method": "DELETE",
       "path": "/widgets/:id",
-      "path_params": ["id"],
+      "path_params": [
+        "id"
+      ],
       "params": [
-        {"name": "force", "type": "boolean", "required": false, "desc": "Skip soft delete", "in": "query"}
+        {
+          "name": "force",
+          "type": "boolean",
+          "required": false,
+          "desc": "Skip soft delete",
+          "in": "query"
+        }
       ],
       "response": "204 on success.",
       "auth": "pat",
       "controller": "widgets#destroy"
     },
     {
-      "command": ["auth", "login"],
+      "command": [
+        "auth",
+        "login"
+      ],
       "summary": "Shadow auth login (must be skipped: manual wins)",
       "description": "This endpoint collides with the manual `auth login` command and must never be registered.",
       "method": "GET",
@@ -100,7 +243,9 @@
       "controller": "shadow#index"
     },
     {
-      "command": ["whoami"],
+      "command": [
+        "whoami"
+      ],
       "summary": "Shadow whoami (must be skipped: manual wins)",
       "description": "This endpoint collides with the manual `whoami` command and must never be registered.",
       "method": "GET",
@@ -112,7 +257,10 @@
       "controller": "shadow#identity"
     },
     {
-      "command": ["version", "extra"],
+      "command": [
+        "version",
+        "extra"
+      ],
       "summary": "Shadow version subcommand (must be skipped: manual leaf wins)",
       "description": "This endpoint would nest under the manual `version` leaf command and must never be registered.",
       "method": "GET",
@@ -122,6 +270,32 @@
       "response": "200.",
       "auth": "pat",
       "controller": "shadow#version"
+    },
+    {
+      "command": [
+        "gadget",
+        "list"
+      ],
+      "summary": "List gadgets",
+      "description": "Lists gadgets, paged.",
+      "method": "GET",
+      "path": "/gadgets",
+      "path_params": [],
+      "params": [
+        {
+          "name": "q",
+          "type": "string",
+          "required": false,
+          "desc": "Free text",
+          "in": "query"
+        }
+      ],
+      "pagination": {
+        "param": "page"
+      },
+      "response": "200 with an array of gadgets.",
+      "auth": "pat",
+      "controller": "gadgets#index"
     }
   ]
 }

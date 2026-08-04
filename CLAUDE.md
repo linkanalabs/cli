@@ -44,13 +44,30 @@ Inspired by Basecamp's `fizzy-cli` / `fizzy-sdk` — see `docs/references/fizzy-
     messages are keyed by `template`. An actually empty response prints
     nothing and exits 0.
   - `count` — an integer, and always one (a 2xx with an empty body prints
-    `0`). It counts **what this response carried, not what exists**:
-    `supplier list` is paginated at 10 with no pagination metadata in the
-    JSON, so `count` there never exceeds 10. Never answer "how many suppliers
-    does this buyer have" with it.
+    `0`). On an unpaginated endpoint it counts **what this response carried**.
+    On a paginated one it reports the collection's real total, read from the
+    `total-count` header (see "Pagination" below) — `lk supplier list --format
+    count` is the honest answer to "how many suppliers does this buyer have".
   - `ids` and `count` exist to keep an agent's context cheap. `--jq` was
     deliberately rejected: piping to the shell's `jq` costs the model no
     tokens either, and gojq would buy a dependency plus a flag-conflict matrix.
+- **Pagination is a manifest capability, not a param.** An endpoint whose JSON
+  is paged declares `pagination: {param}` in its `config/cli/*.yml`; the
+  executor derives the page flag from it, so no paged endpoint hand-declares
+  one. **The page size and the total are never in the manifest** — they come
+  back per response in the pagy headers (`total-count`, `total-pages`,
+  `current-page`, `page-items`), so the CLI cannot drift from the backend:
+  - `--<param>` (e.g. `--page`) fetches one page; below 1 is rejected locally
+    (the backend 500s on it — LIN-6637).
+  - `--format count` answers the **collection's total** from the header, in a
+    single request — that is what makes "how many are there?" cheap. With an
+    explicit `--page`, it counts that page instead (the caller asked for it).
+  - When there is more than one page, stderr reports `page X of Y — N records
+    in total` plus the next-page hint. stdout stays pure data.
+  - No header (unpaged endpoint, older backend) degrades to the previous
+    behaviour: count the body, say nothing.
+  - Only `supplier list` is paged today: the `srm_settings` index actions run
+    `pagy` inside `format.html`, so their JSON returns the full collection.
 - **stdout = data, stderr = diagnostics.**
 - **Meaningful exit codes** (0 ok, 1 failure). Commands render their own result
   and signal failure via an error; `run()` translates it into an exit code.
