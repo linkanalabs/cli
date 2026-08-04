@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-04T02:34:50Z",
-  "source": "linkanalabs/linkana@39f1ca757c",
+  "generated_at": "2026-08-04T14:27:37Z",
+  "source": "linkanalabs/linkana@009ce9f6df",
   "endpoints": [
     {
       "command": [
@@ -17,6 +17,254 @@
       "response": "200 with {id, email, name, role, buyer_id, is_staff}.",
       "auth": "pat",
       "controller": "my/identity#show"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
+        "create"
+      ],
+      "summary": "Create an approval step",
+      "description": "Creates an approval step for the buyer. IMPORTANT: when `action` is TIERS_APPROVAL the backend automatically seeds one default tier (\"Nível Único Padrão\") — you do not pass tiers here, and a tiers step without a tier would be invalid. A step is created NOT in use; putting it to work is done elsewhere. Both the uppercase value (RISK_SCORE) and the lowercase key (risk_score) are accepted on input, and the response always reads back the lowercase form. Requires the manager role or above.",
+      "method": "POST",
+      "path": "/srm_settings/setting_approval_steps",
+      "path_params": [],
+      "body_root": "setting_approval_step",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": true,
+          "desc": "Name of the approval step.",
+          "in": "body"
+        },
+        {
+          "name": "condition",
+          "type": "string",
+          "required": true,
+          "desc": "What triggers the step. One of SETTING_CATEGORY, RISK_SCORE, SETTING_DOCUMENT, EXCEPTION_APPROVAL (the lowercase key is also accepted).",
+          "in": "body",
+          "enum": [
+            "SETTING_CATEGORY",
+            "RISK_SCORE",
+            "SETTING_DOCUMENT",
+            "EXCEPTION_APPROVAL"
+          ]
+        },
+        {
+          "name": "action",
+          "type": "string",
+          "required": true,
+          "desc": "What the step does. One of AUTOMATIC_APPROVAL, AUTOMATIC_REFUSAL, TIERS_APPROVAL (the lowercase key is also accepted). With condition EXCEPTION_APPROVAL only TIERS_APPROVAL is valid.",
+          "in": "body",
+          "enum": [
+            "AUTOMATIC_APPROVAL",
+            "AUTOMATIC_REFUSAL",
+            "TIERS_APPROVAL"
+          ]
+        },
+        {
+          "name": "being_used",
+          "type": "boolean",
+          "required": false,
+          "desc": "Whether the step is already in use. Defaults to false (a draft).",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the created {id, display_name, condition, action, being_used}. 422 {errors} on validation (missing display_name/condition/action, or an action other than TIERS_APPROVAL when the condition is EXCEPTION_APPROVAL); 400 Rails default {status, error} when the setting_approval_step root is missing; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps#create"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
+        "decision-reason",
+        "create"
+      ],
+      "summary": "Create a rejection reason",
+      "description": "Creates a rejection reason for the buyer. The name must be unique within the buyer. Requires the admin role or above (listing is manager+).",
+      "method": "POST",
+      "path": "/srm_settings/setting_approval_steps_decision_reasons",
+      "path_params": [],
+      "body_root": "setting_approval_steps_decision_reason",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": true,
+          "desc": "Name of the rejection reason (e.g. \"Risco financeiro\"). Must be unique among the buyer's reasons.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the created {id, display_name}. 422 {errors} when the name is blank or already used by this buyer; 400 Rails default {status, error} when the setting_approval_steps_decision_reason root is missing; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps_decision_reasons#create"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
+        "decision-reason",
+        "delete"
+      ],
+      "summary": "Delete a rejection reason",
+      "description": "Deletes one rejection reason by its id (see `settings approval-step decision-reason list`). IMPORTANT: the backend refuses to delete the buyer's LAST remaining reason — an approval step rejection would have nothing to pick — and answers 403 in that case, not 422. Check the list length before deleting. Requires the admin role or above.",
+      "method": "DELETE",
+      "path": "/srm_settings/setting_approval_steps_decision_reasons/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 echoing the deleted {id, display_name}. 403 {error} when it is the buyer's last remaining reason, when the reason belongs to another buyer, or when the policy denies access; 404 if the id is unknown; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps_decision_reasons#destroy"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
+        "decision-reason",
+        "list"
+      ],
+      "summary": "List the rejection reasons available to approval steps",
+      "description": "Lists the buyer's rejection reasons (motivos de reprovação), ordered by display_name. These are the reasons an approver picks when refusing a supplier in an approval step. Returns the whole collection — this list is not paginated. There is no `show`: the list already carries every field. Requires the manager role or above.",
+      "method": "GET",
+      "path": "/srm_settings/setting_approval_steps_decision_reasons",
+      "path_params": [],
+      "params": [],
+      "response": "200 with an array of {id, display_name}. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps_decision_reasons#index"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
+        "decision-reason",
+        "update"
+      ],
+      "summary": "Rename a rejection reason",
+      "description": "Renames one rejection reason by its id — get the id from `settings approval-step decision-reason list`. Requires the admin role or above.",
+      "method": "PATCH",
+      "path": "/srm_settings/setting_approval_steps_decision_reasons/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_approval_steps_decision_reason",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": true,
+          "desc": "New name of the rejection reason. Must be unique among the buyer's reasons.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the updated {id, display_name}. 422 {errors} when the name is blank or already used; 400 Rails default {status, error} when the root is missing; 404 if the id is unknown; 403 {error} when the reason belongs to another buyer or the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps_decision_reasons#update"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
+        "list"
+      ],
+      "summary": "List the buyer's approval steps",
+      "description": "Lists the buyer's approval steps (etapas de aprovação), newest first. By default returns the steps NOT in use (drafts); pass --current_tab with any value to list the ones in use instead. Optional --search filters by display_name (partial match). Returns the whole collection — this list is not paginated. Requires the manager role or above.",
+      "method": "GET",
+      "path": "/srm_settings/setting_approval_steps",
+      "path_params": [],
+      "params": [
+        {
+          "name": "current_tab",
+          "type": "string",
+          "required": false,
+          "desc": "Omit to list the steps not in use (being_used false); pass any value (e.g. 'being_used') to list the ones in use.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with an array of {id, display_name, condition, action, being_used}. `condition` and `action` come back as lowercase keys (e.g. risk_score, automatic_approval) even when created with the uppercase form. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps#index"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
+        "show"
+      ],
+      "summary": "Show one approval step",
+      "description": "Shows one approval step by its id — get the id from `settings approval-step list`. Requires the manager role or above.",
+      "method": "GET",
+      "path": "/srm_settings/setting_approval_steps/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with {id, display_name, condition, action, being_used}. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer, so a foreign id never resolves); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps#show"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
+        "update"
+      ],
+      "summary": "Update an approval step",
+      "description": "Updates one approval step by its id (see `settings approval-step list`). Only the fields you pass change. Same enum rules as `create`. Requires the manager role or above.",
+      "method": "PATCH",
+      "path": "/srm_settings/setting_approval_steps/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_approval_step",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": false,
+          "desc": "New name of the approval step.",
+          "in": "body"
+        },
+        {
+          "name": "condition",
+          "type": "string",
+          "required": false,
+          "desc": "What triggers the step. One of SETTING_CATEGORY, RISK_SCORE, SETTING_DOCUMENT, EXCEPTION_APPROVAL (the lowercase key is also accepted).",
+          "in": "body",
+          "enum": [
+            "SETTING_CATEGORY",
+            "RISK_SCORE",
+            "SETTING_DOCUMENT",
+            "EXCEPTION_APPROVAL"
+          ]
+        },
+        {
+          "name": "action",
+          "type": "string",
+          "required": false,
+          "desc": "What the step does. One of AUTOMATIC_APPROVAL, AUTOMATIC_REFUSAL, TIERS_APPROVAL (the lowercase key is also accepted).",
+          "in": "body",
+          "enum": [
+            "AUTOMATIC_APPROVAL",
+            "AUTOMATIC_REFUSAL",
+            "TIERS_APPROVAL"
+          ]
+        },
+        {
+          "name": "being_used",
+          "type": "boolean",
+          "required": false,
+          "desc": "Whether the step is in use.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the updated {id, display_name, condition, action, being_used}. 422 {errors} on validation (e.g. a blank display_name); 400 Rails default {status, error} when the setting_approval_step root is missing; 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (scoped lookup); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps#update"
     },
     {
       "command": [
@@ -41,6 +289,100 @@
       "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id}. The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the document applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
       "auth": "pat",
       "controller": "srm_settings/bank_informations#index"
+    },
+    {
+      "command": [
+        "settings",
+        "bank-information",
+        "show"
+      ],
+      "summary": "Show the bank information document with its editable settings",
+      "description": "Shows one bank information document (dados bancários) of the buyer by its id — get the id from `settings bank-information list`. On top of the list fields it returns everything `settings bank-information update` can change, plus the nested `setting_document_review` (`review_type` and `expires_on_in_days`). Requires the manager role or above.",
+      "method": "GET",
+      "path": "/srm_settings/bank_informations/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, renew_at_in_days, allow_pf_bank_account, block_supplier_on_expiry, send_document_reviewed_event, webhook_reference, setting_document_review:{id, review_type, expires_on_in_days}}. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (scoped lookup); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/bank_informations#show"
+    },
+    {
+      "command": [
+        "settings",
+        "bank-information",
+        "update"
+      ],
+      "summary": "Update the bank information document",
+      "description": "Updates one bank information document by its id (see `settings bank-information list`). Only the fields you pass change. There is no create/destroy for this document — the buyer has it from the start, you only configure it. Requires the admin role or above (reading is manager+).",
+      "method": "PATCH",
+      "path": "/srm_settings/bank_informations/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_bank_information",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": false,
+          "desc": "Label shown to the supplier.",
+          "in": "body"
+        },
+        {
+          "name": "renew_at_in_days",
+          "type": "integer",
+          "required": false,
+          "desc": "Days after approval when the document must be renewed (0 = never).",
+          "in": "body"
+        },
+        {
+          "name": "allow_pf_bank_account",
+          "type": "boolean",
+          "required": false,
+          "desc": "Whether a supplier may inform a personal (PF) bank account.",
+          "in": "body"
+        },
+        {
+          "name": "setting_grouper_id",
+          "type": "string",
+          "required": false,
+          "desc": "Id of the review group that reviews this document — from `settings setting-grouper list`. Must belong to the same buyer.",
+          "in": "body"
+        },
+        {
+          "name": "block_supplier_on_expiry",
+          "type": "boolean",
+          "required": false,
+          "desc": "Whether the supplier is blocked when this document expires.",
+          "in": "body"
+        },
+        {
+          "name": "send_document_reviewed_event",
+          "type": "boolean",
+          "required": false,
+          "desc": "Whether a webhook event is emitted when this document is reviewed.",
+          "in": "body"
+        },
+        {
+          "name": "webhook_reference",
+          "type": "string",
+          "required": false,
+          "desc": "Free-text reference sent along with the webhook event.",
+          "in": "body"
+        },
+        {
+          "name": "setting_document_review_attributes",
+          "type": "object",
+          "required": false,
+          "desc": "JSON object with the nested review settings. Requires the review's own `id` (from `settings bank-information show`) plus the field to change, e.g. '{\"id\":\"<review-id>\",\"expires_on_in_days\":90}'. `expires_on_in_days` must be one of 0, 30, 90, 180, 360, 720, 1080.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the updated document in the same shape as `settings bank-information show`. 422 {errors} on validation (e.g. an expires_on_in_days outside the allowed set); 400 Rails default {status, error} when the setting_bank_information root is missing; 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (scoped lookup); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/bank_informations#update"
     },
     {
       "command": [
@@ -765,6 +1107,58 @@
       "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id}. The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the check applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
       "auth": "pat",
       "controller": "srm_settings/checks#index"
+    },
+    {
+      "command": [
+        "settings",
+        "check",
+        "show"
+      ],
+      "summary": "Show one check with its review settings",
+      "description": "Shows one check (consulta) of the buyer by its id — get the id from `settings check list`. On top of the list fields it embeds `setting_document_review`, which carries the review configuration: `review_type` (how the document is reviewed) and `automatic_review_rule` (whether reviewed documents are re-checked automatically). Requires the manager role or above.",
+      "method": "GET",
+      "path": "/srm_settings/checks/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, setting_document_review:{id, review_type, automatic_review_rule, expires_on_in_days}}. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (scoped lookup); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/checks#show"
+    },
+    {
+      "command": [
+        "settings",
+        "check",
+        "update"
+      ],
+      "summary": "Update a check's review group or automatic review rule",
+      "description": "Updates one check by its id (see `settings check list`). Only two things are editable here: which review group reviews it (`setting_grouper_id`) and the nested review configuration (`setting_document_review_attributes`). Everything else about a check is fixed. Requires the admin role or above (reading is manager+).",
+      "method": "PATCH",
+      "path": "/srm_settings/checks/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_check",
+      "params": [
+        {
+          "name": "setting_grouper_id",
+          "type": "string",
+          "required": false,
+          "desc": "Id of the review group that should review this check — from `settings setting-grouper list`. Must belong to the same buyer.",
+          "in": "body"
+        },
+        {
+          "name": "setting_document_review_attributes",
+          "type": "object",
+          "required": false,
+          "desc": "JSON object with the nested review settings. Requires the review's own `id` (from `settings check show`) plus the field to change, e.g. '{\"id\":\"<review-id>\",\"automatic_review_rule\":\"all_reviews\"}'. `automatic_review_rule` is one of disabled, only_refused, all_reviews.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the updated check in the same shape as `settings check show`. 422 {errors} on validation (e.g. an automatic_review_rule outside disabled/only_refused/all_reviews); 400 Rails default {status, error} when the setting_check root is missing; 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (scoped lookup); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/checks#update"
     },
     {
       "command": [
@@ -1789,6 +2183,139 @@
       "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id}. The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the document applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
       "auth": "pat",
       "controller": "srm_settings/supplier_fields#index"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-field",
+        "show"
+      ],
+      "summary": "Show one supplier field with its review settings",
+      "description": "Shows one supplier field (campo de fornecedor — SettingForm) by its id; get the id from `settings supplier-field list`. Returns everything `settings supplier-field update` can change plus the nested `setting_document_review`. Requires the manager role or above.",
+      "method": "GET",
+      "path": "/srm_settings/supplier_fields/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, hint, renew_at_in_days, webhook_reference, default_responsible_party, block_supplier_on_expiry, send_document_reviewed_event, setting_document_review:{id, review_type, expires_on_in_days, automatic_review_rule}}. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_fields#show"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-field",
+        "update"
+      ],
+      "summary": "Update a supplier field",
+      "description": "Updates one supplier field by its id (see `settings supplier-field list`). Only the fields you pass change. Same rule as create: a `setting_grouper_id` from another buyer answers 404 — a document cannot change hands. Requires the admin role or above (reading is manager+).",
+      "method": "PATCH",
+      "path": "/srm_settings/supplier_fields/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_form",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": false,
+          "desc": "New label of the field. Must stay unique among the buyer's enabled documents.",
+          "in": "body"
+        },
+        {
+          "name": "setting_grouper_id",
+          "type": "string",
+          "required": false,
+          "desc": "Move the field to another review group of YOUR buyer — from `settings setting-grouper list`. A group from another buyer returns 404.",
+          "in": "body"
+        },
+        {
+          "name": "hint",
+          "type": "string",
+          "required": false,
+          "desc": "Helper text shown to the supplier.",
+          "in": "body"
+        },
+        {
+          "name": "national_pj",
+          "type": "boolean",
+          "required": false,
+          "desc": "Whether the field applies to national companies (PJ).",
+          "in": "body"
+        },
+        {
+          "name": "national_pf",
+          "type": "boolean",
+          "required": false,
+          "desc": "Whether the field applies to national individuals (PF).",
+          "in": "body"
+        },
+        {
+          "name": "international",
+          "type": "boolean",
+          "required": false,
+          "desc": "Whether the field applies to international suppliers.",
+          "in": "body"
+        },
+        {
+          "name": "renew_at_in_days",
+          "type": "integer",
+          "required": false,
+          "desc": "Days after approval when the field must be renewed (0 = never).",
+          "in": "body"
+        },
+        {
+          "name": "default_responsible_party",
+          "type": "string",
+          "required": false,
+          "desc": "Who fills the field: supplier or buyer.",
+          "in": "body",
+          "enum": [
+            "supplier",
+            "buyer"
+          ]
+        },
+        {
+          "name": "block_supplier_on_expiry",
+          "type": "boolean",
+          "required": false,
+          "desc": "Whether the supplier is blocked when the field expires.",
+          "in": "body"
+        },
+        {
+          "name": "send_document_reviewed_event",
+          "type": "boolean",
+          "required": false,
+          "desc": "Whether a webhook event is emitted when the field is reviewed. Requires webhook_reference to be filled.",
+          "in": "body"
+        },
+        {
+          "name": "webhook_reference",
+          "type": "string",
+          "required": false,
+          "desc": "Free-text reference sent along with the webhook event.",
+          "in": "body"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "required": false,
+          "desc": "Archive (true) or restore (false) the field. Archiving records who did it.",
+          "in": "body"
+        },
+        {
+          "name": "setting_document_review_attributes",
+          "type": "object",
+          "required": false,
+          "desc": "JSON object with the nested review settings. Requires the review's own `id` (from `settings supplier-field show`), e.g. '{\"id\":\"<review-id>\",\"expires_on_in_days\":90}'.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the updated field in the same shape as `settings supplier-field show`. 422 {errors} on validation; 404 Rails default {status, error} when the id is unknown, belongs to another buyer, or the setting_grouper_id is from another buyer; 400 Rails default {status, error} when the setting_form root is missing; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_fields#update"
     },
     {
       "command": [
