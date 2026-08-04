@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-03T22:50:09Z",
-  "source": "linkanalabs/linkana@22c2fddd37",
+  "generated_at": "2026-08-04T01:55:12Z",
+  "source": "linkanalabs/linkana@bce41b7a98",
   "endpoints": [
     {
       "command": [
@@ -1961,13 +1961,21 @@
         "supplier",
         "list"
       ],
-      "summary": "List the buyer's suppliers",
-      "description": "Lists every supplier of the current buyer. Each entry is identified by its id (use it with `supplier show`). No filters in this version.",
+      "summary": "List the buyer's suppliers (paginated, 10 per page)",
+      "description": "Lists the suppliers of the current buyer. Each entry is identified by its id (use it with `supplier show`). IMPORTANT: this response is PAGINATED at 10 suppliers per page and carries no pagination metadata — an answer with exactly 10 entries almost certainly means there are more. Use `--page` to walk the pages: keep incrementing until a page comes back empty (an empty array means you passed the last page). Never answer \"how many suppliers does this buyer have\" from a single page (nor from `--format count`, which counts only what this page carried) — walk every page and sum. No other filters in this version.",
       "method": "GET",
       "path": "/srm/suppliers",
       "path_params": [],
-      "params": [],
-      "response": "200 with an array of {id, name, identifier, legal_entity, state, tags:[{id, display_name}]}. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access.",
+      "params": [
+        {
+          "name": "page",
+          "type": "integer",
+          "required": false,
+          "desc": "1-based page number (10 suppliers per page). Omit for the first page. Increment until the response comes back as an empty array — that means the previous page was the last one. Must be >= 1: a page below 1 currently raises a server error (500), so never pass 0 or a negative value.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with an array of at most 10 {id, name, identifier, legal_entity, state, tags:[{id, display_name}]}. A page past the last one returns an empty array (still 200). 500 when page < 1 (unhandled Pagy::VariableError — pre-existing, tracked separately). 401 (empty body) when unauthenticated; 403 {error} when the policy denies access.",
       "auth": "pat",
       "controller": "srm/suppliers#index"
     },
