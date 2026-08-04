@@ -50,6 +50,21 @@ type Endpoint struct {
 	Response    string   `json:"response"`
 	Auth        string   `json:"auth"`
 	Controller  string   `json:"controller"`
+
+	// Pagination is set when the endpoint's JSON is paged. It is a capability,
+	// not a param: the executor derives --page/--all from it, so a paged
+	// endpoint does not hand-declare a page param (and every future one gets
+	// the same behaviour for free).
+	Pagination *Pagination `json:"pagination,omitempty"`
+}
+
+// Pagination describes how an endpoint pages its JSON response. Param is the
+// query parameter that selects the page (1-based); PerPage is how many records
+// a full page carries, which is what lets the executor tell "this page is full,
+// there is probably more" from "this is the last page".
+type Pagination struct {
+	Param   string `json:"param"`
+	PerPage int    `json:"per_page"`
 }
 
 // Param describes one request parameter of an endpoint.
@@ -161,12 +176,48 @@ func (e *Endpoint) validate() error {
 	if spreadParams == 1 && bodyParams > 1 {
 		return fmt.Errorf("a spread param must be the only body param, found %d body params", bodyParams)
 	}
+	if err := e.validatePagination(seen); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validatePagination mirrors the backend's schema check: the page param must be
+// usable as a flag name (not reserved, not already taken by a declared param)
+// and per_page must be positive — otherwise the executor could not tell a full
+// page from a partial one.
+func (e *Endpoint) validatePagination(declaredParams map[string]bool) error {
+	if e.Pagination == nil {
+		return nil
+	}
+	name := e.Pagination.Param
+	if name == "" {
+		return fmt.Errorf("pagination: missing param")
+	}
+	if reservedParamNames[name] || name == AllFlagName {
+		return fmt.Errorf("pagination: param %q would shadow the built-in --%s flag", name, name)
+	}
+	if declaredParams[name] {
+		return fmt.Errorf("pagination: param %q collides with a declared param", name)
+	}
+	// --all is only added to paginated endpoints, so a param named "all" is
+	// fine elsewhere but would collide here.
+	if declaredParams[AllFlagName] {
+		return fmt.Errorf("pagination: declared param %q collides with the --%s flag", AllFlagName, AllFlagName)
+	}
+	if e.Pagination.PerPage <= 0 {
+		return fmt.Errorf("pagination: per_page must be positive, got %d", e.Pagination.PerPage)
+	}
 	return nil
 }
 
 // reservedParamNames are flag names owned by the CLI itself; a manifest param
 // with one of these names would shadow (or panic on) a built-in flag.
 var reservedParamNames = map[string]bool{"format": true, "help": true, "h": true}
+
+// AllFlagName is the flag the executor adds to paginated endpoints to walk
+// every page; a manifest param may not shadow it either.
+const AllFlagName = "all"
 
 func (p *Param) validate() error {
 	if p.Name == "" {

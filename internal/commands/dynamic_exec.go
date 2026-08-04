@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"github.com/linkanalabs/cli/internal/auth"
+	"github.com/linkanalabs/cli/internal/client"
 	"github.com/linkanalabs/cli/internal/manifest"
 	"github.com/linkanalabs/cli/internal/output"
 )
@@ -37,31 +39,47 @@ func runDynamic(e *manifest.Endpoint) func(*cobra.Command, []string) error {
 				payload = map[string]any{e.BodyRoot: body}
 			}
 		}
+		query, err = applyPagination(cmd, e, query)
+		if err != nil {
+			return err
+		}
+		if wantsAllPages(cmd, e) {
+			return runAllPages(cmd, e, api, imp, path, query, payload)
+		}
 		resp, err := api.Do(cmd.Context(), e.Method, path, query, payload)
 		if err != nil {
 			return err
 		}
-		if resp.StatusCode == http.StatusUnauthorized {
-			return unauthorizedErr(imp)
+		raw, err := successBody(cmd, e, resp, imp)
+		if err != nil || raw == nil {
+			return err
 		}
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			if len(resp.Body) > 0 {
-				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), strings.TrimSpace(string(resp.Body)))
-			}
-			return fmt.Errorf("%s %s returned %d", e.Method, e.Path, resp.StatusCode)
-		}
-		if len(resp.Body) == 0 {
-			// A 2xx with no body carries no record. The counting projection
-			// still owes its integer — a caller doing `n=$(lk ... --format
-			// count)` must never get an empty string — while every other
-			// format stays silent.
-			if formatFlag(cmd) == output.FormatCount {
-				return output.Render(cmd.OutOrStdout(), output.FormatCount, nil)
-			}
-			return nil
-		}
-		return output.Render(cmd.OutOrStdout(), formatFlag(cmd), json.RawMessage(resp.Body))
+		warnIfPageIsFull(cmd, e, raw)
+		return output.Render(cmd.OutOrStdout(), formatFlag(cmd), json.RawMessage(raw))
 	}
+}
+
+// successBody turns a response into its raw 2xx body, or an error. A nil body
+// with a nil error means "2xx carrying no record": the counting projection
+// still owes its integer — a caller doing `n=$(lk ... --format count)` must
+// never get an empty string — while every other format stays silent.
+func successBody(cmd *cobra.Command, e *manifest.Endpoint, resp *client.Response, imp *auth.Impersonation) ([]byte, error) {
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, unauthorizedErr(imp)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		if len(resp.Body) > 0 {
+			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), strings.TrimSpace(string(resp.Body)))
+		}
+		return nil, fmt.Errorf("%s %s returned %d", e.Method, e.Path, resp.StatusCode)
+	}
+	if len(resp.Body) == 0 {
+		if formatFlag(cmd) == output.FormatCount {
+			return nil, output.Render(cmd.OutOrStdout(), output.FormatCount, nil)
+		}
+		return nil, nil
+	}
+	return resp.Body, nil
 }
 
 // substitutePathParams replaces each "/:param" segment with the matching

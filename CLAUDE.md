@@ -44,13 +44,28 @@ Inspired by Basecamp's `fizzy-cli` / `fizzy-sdk` — see `docs/references/fizzy-
     messages are keyed by `template`. An actually empty response prints
     nothing and exits 0.
   - `count` — an integer, and always one (a 2xx with an empty body prints
-    `0`). It counts **what this response carried, not what exists**:
-    `supplier list` is paginated at 10 with no pagination metadata in the
-    JSON, so `count` there never exceeds 10. Never answer "how many suppliers
-    does this buyer have" with it.
+    `0`). It counts **what this response carried, not what exists**: on a
+    paginated endpoint a bare `count` is one page's worth. Pair it with
+    `--all` (see "Pagination" below) to count the whole collection —
+    `lk supplier list --all --format count` is the honest total.
   - `ids` and `count` exist to keep an agent's context cheap. `--jq` was
     deliberately rejected: piping to the shell's `jq` costs the model no
     tokens either, and gojq would buy a dependency plus a flag-conflict matrix.
+- **Pagination is a manifest capability, not a param.** An endpoint whose JSON
+  is paged declares `pagination: {param, per_page}` in its `config/cli/*.yml`;
+  the executor derives everything from it, so no paged endpoint hand-declares a
+  page param and every future one behaves the same:
+  - `--<param>` (e.g. `--page`) fetches one page; below 1 is rejected locally
+    (the backend 500s on it — LIN-6637).
+  - `--all` walks every page and concatenates into a single array, stopping on
+    the first short/empty page (bounded by `maxPagesWalked`). Mutually
+    exclusive with `--page`.
+  - Without either, a **full** page (`len == per_page`) prints a warning on
+    stderr pointing at `--all` — the JSON has no pagination metadata, so
+    otherwise an agent reads one page as the whole collection. stdout stays
+    pure data.
+  - Only `supplier list` is paged today: the `srm_settings` index actions run
+    `pagy` inside `format.html`, so their JSON returns the full collection.
 - **stdout = data, stderr = diagnostics.**
 - **Meaningful exit codes** (0 ok, 1 failure). Commands render their own result
   and signal failure via an error; `run()` translates it into an exit code.

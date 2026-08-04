@@ -77,7 +77,27 @@ func newDynamicCmd(e *manifest.Endpoint) *cobra.Command {
 	for i := range e.Params {
 		addDynamicFlag(cmd, &e.Params[i])
 	}
+	addPaginationFlags(cmd, e)
 	return cmd
+}
+
+// addPaginationFlags derives the paging flags from the endpoint's capability,
+// so a paged endpoint never hand-declares them. --page fetches one page;
+// --all walks every page and concatenates. Without either, the caller gets
+// the first page and a stderr warning when it came back full.
+func addPaginationFlags(cmd *cobra.Command, e *manifest.Endpoint) {
+	if e.Pagination == nil {
+		return
+	}
+	flags := cmd.Flags()
+	flags.Int64(e.Pagination.Param, 0, fmt.Sprintf(
+		"1-based page number (%d per page); mutually exclusive with --%s",
+		e.Pagination.PerPage, manifest.AllFlagName,
+	))
+	flags.Bool(manifest.AllFlagName, false, fmt.Sprintf(
+		"fetch every page and concatenate (walks pages of %d until one comes back empty)",
+		e.Pagination.PerPage,
+	))
 }
 
 // addDynamicFlag registers one manifest param as a cobra flag. Native types
