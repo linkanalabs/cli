@@ -12,8 +12,20 @@ lk impersonate
 lk impersonate status
 lk impersonate stop
 lk settings
+lk settings approval-step
+lk settings approval-step create
+lk settings approval-step decision-reason
+lk settings approval-step decision-reason create
+lk settings approval-step decision-reason delete
+lk settings approval-step decision-reason list
+lk settings approval-step decision-reason update
+lk settings approval-step list
+lk settings approval-step show
+lk settings approval-step update
 lk settings bank-information
 lk settings bank-information list
+lk settings bank-information show
+lk settings bank-information update
 lk settings buyer-document
 lk settings buyer-document create
 lk settings buyer-document disable
@@ -39,6 +51,8 @@ lk settings certificate
 lk settings certificate list
 lk settings check
 lk settings check list
+lk settings check show
+lk settings check update
 lk settings company-user
 lk settings company-user create
 lk settings company-user disable
@@ -84,6 +98,8 @@ lk settings setting-grouper users
 lk settings setting-grouper users list
 lk settings supplier-field
 lk settings supplier-field list
+lk settings supplier-field show
+lk settings supplier-field update
 lk settings tag
 lk settings tag create
 lk settings tag delete
