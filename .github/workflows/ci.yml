@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
     types: [opened, reopened, synchronize, ready_for_review]
+  # Chamável pelo release.yml, para o gate da release usar esta definição de
+  # "verde" em vez de manter uma cópia própria que divergiria.
+  workflow_call:
 
 permissions:
   contents: read
@@ -13,7 +16,7 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -27,7 +30,7 @@ jobs:
   test:
     name: Test (race + coverage gate)
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -38,7 +41,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5

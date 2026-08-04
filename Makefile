@@ -1,6 +1,6 @@
 COVER_MIN := 95.0
 
-.PHONY: build test cover lint fmt vet run dev tidy update-manifest
+.PHONY: build test cover lint fmt vet run dev tidy update-manifest release-preflight release-verify
 
 build:
 	go build -o lk ./cmd/lk
@@ -47,3 +47,17 @@ update-manifest:
 		echo "error: could not fetch a valid cli-manifest.json from linkanalabs/linkana (404 or invalid JSON); local copy kept" >&2; \
 		exit 1; \
 	fi
+
+# Deterministic gate before tagging a release: repo state, scope, semver bump
+# derived from SURFACE.txt, golden, CI on the exact sha, tests. Creates no tag and
+# pushes nothing. VERSION is optional — without it the script derives the
+# recommended version; with it, the requested version is validated against the
+# minimum derived bump. Full runbook: .claude/skills/release/SKILL.md.
+release-preflight:
+	./scripts/release-preflight.sh $(VERSION)
+
+# Verify an already published release: assets, cask in the Homebrew tap and the
+# install paths. LOCAL=1 adds the Homebrew check, which touches the machine's lk.
+release-verify:
+	@test -n "$(VERSION)" || { echo "usage: make release-verify VERSION=vX.Y.Z [LOCAL=1]" >&2; exit 1; }
+	./scripts/release-verify.sh $(VERSION) $(if $(LOCAL),--local,)
