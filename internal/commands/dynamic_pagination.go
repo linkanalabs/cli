@@ -1,44 +1,56 @@
 package commands
 
 import (
-	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strconv"
 
 	"github.com/spf13/cobra"
 
-	"github.com/linkanalabs/cli/internal/auth"
-	"github.com/linkanalabs/cli/internal/client"
 	"github.com/linkanalabs/cli/internal/manifest"
-	"github.com/linkanalabs/cli/internal/output"
 )
 
-// maxPagesWalked bounds --all so a backend that never returns an empty page
-// (a filter the CLI does not know about, a clamped page param) cannot spin
-// forever. At the usual 10 per page this is 10k records — far past any real
-// buyer, and the walk reports when it stops here.
-const maxPagesWalked = 1000
+// Pagination metadata headers emitted by the backend (pagy's headers extra).
+// The list bodies are bare JSON arrays, so the page metadata has to travel
+// outside the body — these are what let the CLI report the real total from a
+// single request instead of counting one page.
+const (
+	headerTotalCount = "total-count"
+	headerTotalPages = "total-pages"
+	headerPage       = "current-page"
+)
+
+// pageMeta is the pagination metadata of one response, when the backend sent
+// it. Absent headers leave the fields at zero and every caller degrades to the
+// page it received.
+type pageMeta struct {
+	total int
+	pages int
+	page  int
+}
+
+// readPageMeta pulls the pagination headers off a response. ok is false when
+// the endpoint did not report any (an unpaged endpoint, or an older backend).
+func readPageMeta(h http.Header) (pageMeta, bool) {
+	total, err := strconv.Atoi(h.Get(headerTotalCount))
+	if err != nil {
+		return pageMeta{}, false
+	}
+	meta := pageMeta{total: total}
+	meta.pages, _ = strconv.Atoi(h.Get(headerTotalPages))
+	meta.page, _ = strconv.Atoi(h.Get(headerPage))
+	return meta, true
+}
 
 // applyPagination puts an explicit --page onto the query, returning the query
 // to use (collectParams leaves it nil when no query param changed, so paging
-// may have to create it). It also rejects --page together with --all, which
-// would silently ignore one of them.
+// may have to create it).
 func applyPagination(cmd *cobra.Command, e *manifest.Endpoint, query url.Values) (url.Values, error) {
-	if e.Pagination == nil {
+	if e.Pagination == nil || !cmd.Flags().Changed(e.Pagination.Param) {
 		return query, nil
 	}
-	flags := cmd.Flags()
-	pageChanged := flags.Changed(e.Pagination.Param)
-	allChanged := flags.Changed(manifest.AllFlagName)
-	if pageChanged && allChanged {
-		return nil, fmt.Errorf("--%s and --%s are mutually exclusive: --%s already walks every page",
-			e.Pagination.Param, manifest.AllFlagName, manifest.AllFlagName)
-	}
-	if !pageChanged {
-		return query, nil
-	}
-	page, err := flags.GetInt64(e.Pagination.Param)
+	page, err := cmd.Flags().GetInt64(e.Pagination.Param)
 	if err != nil {
 		return nil, err
 	}
@@ -54,97 +66,37 @@ func applyPagination(cmd *cobra.Command, e *manifest.Endpoint, query url.Values)
 	return query, nil
 }
 
-// wantsAllPages reports whether the caller asked to walk every page.
-func wantsAllPages(cmd *cobra.Command, e *manifest.Endpoint) bool {
-	return e.Pagination != nil && cmd.Flags().Changed(manifest.AllFlagName)
-}
-
-// runAllPages walks the endpoint page by page and renders the concatenation as
-// a single array, so `--format count` reports the real total instead of one
-// page's worth. It stops at the first page that comes back empty (or short,
-// which can only be the last one).
-func runAllPages(
-	cmd *cobra.Command,
-	e *manifest.Endpoint,
-	api client.API,
-	imp *auth.Impersonation,
-	path string,
-	query url.Values,
-	payload any,
-) error {
-	combined := make([]json.RawMessage, 0, e.Pagination.PerPage)
-	for page := 1; ; page++ {
-		if page > maxPagesWalked {
-			_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
-				"warning: stopped after %d pages (%d records); the backend kept returning full pages\n",
-				maxPagesWalked, len(combined))
-			break
-		}
-		pageQuery := cloneQuery(query)
-		pageQuery.Set(e.Pagination.Param, strconv.Itoa(page))
-
-		resp, err := api.Do(cmd.Context(), e.Method, path, pageQuery, payload)
-		if err != nil {
-			return err
-		}
-		raw, err := successBody(cmd, e, resp, imp)
-		if err != nil {
-			return err
-		}
-		if raw == nil { // 2xx with no body: nothing more to walk
-			break
-		}
-		var items []json.RawMessage
-		if err := json.Unmarshal(raw, &items); err != nil {
-			return fmt.Errorf("--%s expects every page to be a JSON array, but page %d was not: %w",
-				manifest.AllFlagName, page, err)
-		}
-		combined = append(combined, items...)
-		// A short page can only be the last one; an empty page means we already
-		// had everything. Either way, stop without spending another request.
-		if len(items) < e.Pagination.PerPage {
-			break
-		}
-	}
-	encoded, err := json.Marshal(combined)
-	if err != nil {
-		return err
-	}
-	return output.Render(cmd.OutOrStdout(), formatFlag(cmd), json.RawMessage(encoded))
-}
-
-// warnIfPageIsFull tells the caller, on stderr, that a full page almost
-// certainly means there is more — the JSON carries no pagination metadata, so
-// without this an agent reads one page as if it were the whole collection.
-// stdout stays pure data.
-func warnIfPageIsFull(cmd *cobra.Command, e *manifest.Endpoint, raw []byte) {
-	if e.Pagination == nil {
+// reportPage tells the caller, on stderr, where this page sits in the whole
+// collection — the body alone cannot say it. Without this an agent reads one
+// page as if it were everything. stdout stays pure data.
+func reportPage(cmd *cobra.Command, e *manifest.Endpoint, meta pageMeta, ok bool) {
+	if e.Pagination == nil || !ok || meta.pages <= 1 {
 		return
 	}
-	var items []json.RawMessage
-	if err := json.Unmarshal(raw, &items); err != nil {
-		return // not an array: nothing to say about paging
+	page := meta.page
+	if page == 0 {
+		page = 1
 	}
-	if len(items) < e.Pagination.PerPage {
-		return
-	}
-	page := int64(1)
-	if cmd.Flags().Changed(e.Pagination.Param) {
-		if v, err := cmd.Flags().GetInt64(e.Pagination.Param); err == nil {
-			page = v
-		}
+	next := ""
+	if page < meta.pages {
+		next = fmt.Sprintf("; next page: --%s %d", e.Pagination.Param, page+1)
 	}
 	_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
-		"warning: page %d is full (%d records) — there are probably more; use --%s for every page, or --%s %d for the next one\n",
-		page, len(items), manifest.AllFlagName, e.Pagination.Param, page+1)
+		"page %d of %d — %d records in total%s\n",
+		page, meta.pages, meta.total, next)
 }
 
-// cloneQuery copies the collected query so each page request can set its own
-// page value without mutating the caller's.
-func cloneQuery(src url.Values) url.Values {
-	dst := make(url.Values, len(src)+1)
-	for k, v := range src {
-		dst[k] = append([]string(nil), v...)
-	}
-	return dst
+// countFromMeta renders --format count as the collection's real total, taken
+// from the header, instead of the size of the page that happened to arrive.
+// That is what makes "how many are there?" a single request.
+func countFromMeta(cmd *cobra.Command, meta pageMeta) error {
+	_, err := fmt.Fprintln(cmd.OutOrStdout(), meta.total)
+	return err
+}
+
+// countsWholeCollection reports whether --format count should answer with the
+// header total. Asking for a specific page means the caller wants that page's
+// size, not the collection's.
+func countsWholeCollection(cmd *cobra.Command, e *manifest.Endpoint, ok bool) bool {
+	return ok && e.Pagination != nil && !cmd.Flags().Changed(e.Pagination.Param)
 }

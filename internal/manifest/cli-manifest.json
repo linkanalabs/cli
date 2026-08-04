@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-04T02:07:47Z",
-  "source": "linkanalabs/linkana@a3e1193282",
+  "generated_at": "2026-08-04T02:34:50Z",
+  "source": "linkanalabs/linkana@39f1ca757c",
   "endpoints": [
     {
       "command": [
@@ -1961,17 +1961,16 @@
         "supplier",
         "list"
       ],
-      "summary": "List the buyer's suppliers (paginated, 10 per page)",
-      "description": "Lists the suppliers of the current buyer. Each entry is identified by its id (use it with `supplier show`). The response is PAGINATED at 10 per page: use `--all` to fetch every page at once (the CLI walks them and concatenates), or `--page N` to fetch one specific page. Without either, you get the first page only — and `--format count` then counts just that page, so never answer \"how many suppliers does this buyer have\" without `--all`. No other filters in this version.",
+      "summary": "List the buyer's suppliers (one page per call; total comes in headers)",
+      "description": "Lists the suppliers of the current buyer. Each entry is identified by its id (use it with `supplier show`). The response is PAGINATED: the body carries one page, and the page metadata comes back in headers (`total-count`, `total-pages`, `current-page`, `page-items`). `--format count` reports the buyer's TOTAL from that header, not the size of the page, so one call answers \"how many suppliers does this buyer have\". Use `--page N` to fetch a specific page; the CLI reports on stderr which page you are on and how many there are. No other filters in this version.",
       "method": "GET",
       "path": "/srm/suppliers",
       "path_params": [],
       "pagination": {
-        "param": "page",
-        "per_page": 10
+        "param": "page"
       },
       "params": [],
-      "response": "200 with an array of at most 10 {id, name, identifier, legal_entity, state, tags:[{id, display_name}]} (with `--all`, the concatenation of every page). A page past the last one returns an empty array (still 200). 401 (empty body) when unauthenticated; 403 {error} when the policy denies access.",
+      "response": "200 with one page of {id, name, identifier, legal_entity, state, tags:[{id, display_name}]}, plus the pagy headers (`total-count`, `total-pages`, `current-page`, `page-items`). A page past the last one returns an empty array (still 200). 401 (empty body) when unauthenticated; 403 {error} when the policy denies access.",
       "auth": "pat",
       "controller": "srm/suppliers#index"
     },

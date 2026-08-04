@@ -43,9 +43,6 @@ func runDynamic(e *manifest.Endpoint) func(*cobra.Command, []string) error {
 		if err != nil {
 			return err
 		}
-		if wantsAllPages(cmd, e) {
-			return runAllPages(cmd, e, api, imp, path, query, payload)
-		}
 		resp, err := api.Do(cmd.Context(), e.Method, path, query, payload)
 		if err != nil {
 			return err
@@ -54,7 +51,13 @@ func runDynamic(e *manifest.Endpoint) func(*cobra.Command, []string) error {
 		if err != nil || raw == nil {
 			return err
 		}
-		warnIfPageIsFull(cmd, e, raw)
+		meta, hasMeta := readPageMeta(resp.Header)
+		// On a paged endpoint, `count` means the size of the collection, not of
+		// the page that happened to arrive — the header carries the real total.
+		if formatFlag(cmd) == output.FormatCount && countsWholeCollection(cmd, e, hasMeta) {
+			return countFromMeta(cmd, meta)
+		}
+		reportPage(cmd, e, meta, hasMeta)
 		return output.Render(cmd.OutOrStdout(), formatFlag(cmd), json.RawMessage(raw))
 	}
 }

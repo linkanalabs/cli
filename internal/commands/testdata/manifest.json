@@ -291,8 +291,7 @@
         }
       ],
       "pagination": {
-        "param": "page",
-        "per_page": 2
+        "param": "page"
       },
       "response": "200 with an array of gadgets.",
       "auth": "pat",

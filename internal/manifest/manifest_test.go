@@ -227,13 +227,13 @@ func paginatedEndpointJSON(pagination string, params string) []byte {
 }
 
 func TestParseAcceptsPaginationCapability(t *testing.T) {
-	m, err := Parse(paginatedEndpointJSON(`{"param":"page","per_page":10}`, ""))
+	m, err := Parse(paginatedEndpointJSON(`{"param":"page"}`, ""))
 	if err != nil {
 		t.Fatalf("Parse() error = %v", err)
 	}
 	p := m.Endpoints[0].Pagination
-	if p == nil || p.Param != "page" || p.PerPage != 10 {
-		t.Errorf("pagination = %+v, want {page 10}", p)
+	if p == nil || p.Param != "page" {
+		t.Errorf("pagination = %+v, want {page}", p)
 	}
 }
 
@@ -254,23 +254,14 @@ func TestParseRejectsInvalidPagination(t *testing.T) {
 		params     string
 		wantErr    string
 	}{
-		{"missing param", `{"per_page":10}`, "", "missing param"},
-		{"non-positive per_page", `{"param":"page","per_page":0}`, "", "per_page must be positive"},
-		{"negative per_page", `{"param":"page","per_page":-1}`, "", "per_page must be positive"},
+		{"missing param", `{}`, "", "missing param"},
 		{
 			"param collides with a declared param",
-			`{"param":"page","per_page":10}`,
+			`{"param":"page"}`,
 			`{"name":"page","type":"integer","required":false,"desc":"d","in":"query"}`,
 			"collides with a declared param",
 		},
-		{
-			"declared param collides with --all",
-			`{"param":"page","per_page":10}`,
-			`{"name":"all","type":"boolean","required":false,"desc":"d","in":"query"}`,
-			"collides with the --all flag",
-		},
 		{"param shadows a built-in flag", `{"param":"format","per_page":10}`, "", "would shadow the built-in"},
-		{"param named all", `{"param":"all","per_page":10}`, "", "would shadow the built-in"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

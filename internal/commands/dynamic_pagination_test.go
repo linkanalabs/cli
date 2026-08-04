@@ -5,27 +5,33 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 )
 
-// pagedServer serves `total` gadgets in pages of `perPage`, recording the page
-// values it was asked for. It mirrors the backend contract the capability
-// describes: ?page= is 1-based and a page past the end is an empty array.
-func pagedServer(t *testing.T, total, perPage int, pages *[]string) *httptest.Server {
+// pagedServer mirrors the backend contract: one page in the body (a bare JSON
+// array) and the page metadata in the pagy headers.
+func pagedServer(t *testing.T, total, perPage int, seenPages *[]string) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		page := r.URL.Query().Get("page")
-		*pages = append(*pages, page)
-		n := 1
-		if page != "" {
-			_, _ = fmt.Sscanf(page, "%d", &n)
+		raw := r.URL.Query().Get("page")
+		if seenPages != nil {
+			*seenPages = append(*seenPages, raw)
 		}
-		start := (n - 1) * perPage
+		page := 1
+		if raw != "" {
+			page, _ = strconv.Atoi(raw)
+		}
+		pages := (total + perPage - 1) / perPage
 		var items []string
-		for i := start; i < start+perPage && i < total; i++ {
+		for i := (page - 1) * perPage; i < page*perPage && i < total; i++ {
 			items = append(items, fmt.Sprintf(`{"id":"g_%d"}`, i))
 		}
+		w.Header().Set("total-count", strconv.Itoa(total))
+		w.Header().Set("total-pages", strconv.Itoa(pages))
+		w.Header().Set("current-page", strconv.Itoa(page))
+		w.Header().Set("page-items", strconv.Itoa(perPage))
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("[" + strings.Join(items, ",") + "]"))
 	}))
@@ -41,8 +47,9 @@ func pagedEnv(t *testing.T, srv *httptest.Server) {
 	t.Setenv("LK_TOKEN", "lkn_abc_def")
 }
 
-// The capability must produce the flags; a paged endpoint never declares them.
-func TestPaginationFlagsComeFromTheCapability(t *testing.T) {
+// The capability produces --page; a paged endpoint never declares it. And no
+// walk-everything flag exists: the total comes from the header instead.
+func TestPaginationFlagComesFromTheCapability(t *testing.T) {
 	swapFixtureManifest(t)
 	root := newRootCmd()
 
@@ -53,99 +60,116 @@ func TestPaginationFlagsComeFromTheCapability(t *testing.T) {
 	if gadget.Flags().Lookup("page") == nil {
 		t.Error("--page not registered from the pagination capability")
 	}
-	if gadget.Flags().Lookup("all") == nil {
-		t.Error("--all not registered from the pagination capability")
+	if gadget.Flags().Lookup("all") != nil {
+		t.Error("--all should not exist: the header total replaces walking every page")
 	}
 
-	// An endpoint without the capability must not gain --all (its own "page"
-	// param is a plain query param, not paging).
 	widget := findCommand(root, "widget", "list")
 	if widget == nil {
 		t.Fatal("widget list not registered")
 	}
 	if widget.Flags().Lookup("all") != nil {
-		t.Error("--all leaked onto an endpoint without the pagination capability")
+		t.Error("--all leaked onto an endpoint without the capability")
 	}
 }
 
-func TestPaginationAllWalksEveryPageAndConcatenates(t *testing.T) {
+// The point of the whole design: one request answers "how many are there".
+func TestPaginationCountReportsTheCollectionTotalNotThePage(t *testing.T) {
 	var pages []string
-	srv := pagedServer(t, 5, 2, &pages) // 3 pages: 2, 2, 1
+	srv := pagedServer(t, 47, 10, &pages)
 	pagedEnv(t, srv)
 
 	var out, errOut bytes.Buffer
-	if code := run([]string{"gadget", "list", "--all", "--format", "count"}, &out, &errOut); code != 0 {
+	if code := run([]string{"gadget", "list", "--format", "count"}, &out, &errOut); code != 0 {
 		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
 	}
-	// count must be the real total, not one page's worth.
-	if got := strings.TrimSpace(out.String()); got != "5" {
-		t.Errorf("count = %q, want 5 (the real total)", got)
+	if got := strings.TrimSpace(out.String()); got != "47" {
+		t.Errorf("count = %q, want 47 (the real total, not the 10 in this page)", got)
 	}
-	// Stops on the short page: no request for page 4.
-	if want := []string{"1", "2", "3"}; strings.Join(pages, ",") != strings.Join(want, ",") {
-		t.Errorf("pages requested = %v, want %v", pages, want)
+	if len(pages) != 1 {
+		t.Errorf("requests = %v, want exactly one", pages)
 	}
 }
 
-func TestPaginationAllStopsOnAnEmptyPage(t *testing.T) {
-	var pages []string
-	srv := pagedServer(t, 4, 2, &pages) // exactly 2 full pages, then empty
+// Asking for one page means the caller wants that page's size.
+func TestPaginationCountWithExplicitPageCountsThatPage(t *testing.T) {
+	srv := pagedServer(t, 47, 10, nil)
 	pagedEnv(t, srv)
 
 	var out, errOut bytes.Buffer
-	if code := run([]string{"gadget", "list", "--all", "--format", "count"}, &out, &errOut); code != 0 {
+	if code := run([]string{"gadget", "list", "--page", "5", "--format", "count"}, &out, &errOut); code != 0 {
 		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
 	}
-	if got := strings.TrimSpace(out.String()); got != "4" {
-		t.Errorf("count = %q, want 4", got)
-	}
-	if want := []string{"1", "2", "3"}; strings.Join(pages, ",") != strings.Join(want, ",") {
-		t.Errorf("pages requested = %v, want %v (page 3 confirms the end)", pages, want)
+	if got := strings.TrimSpace(out.String()); got != "7" {
+		t.Errorf("count = %q, want 7 (the last page's size)", got)
 	}
 }
 
-func TestPaginationAllKeepsOtherQueryParams(t *testing.T) {
-	var pages []string
-	var gotQ []string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		pages = append(pages, r.URL.Query().Get("page"))
-		gotQ = append(gotQ, r.URL.Query().Get("q"))
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`[]`))
-	}))
-	t.Cleanup(srv.Close)
+func TestPaginationReportsWhereThePageSits(t *testing.T) {
+	srv := pagedServer(t, 47, 10, nil)
 	pagedEnv(t, srv)
 
 	var out, errOut bytes.Buffer
-	if code := run([]string{"gadget", "list", "--all", "--q", "acme"}, &out, &errOut); code != 0 {
+	if code := run([]string{"gadget", "list", "--format", "json"}, &out, &errOut); code != 0 {
 		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
 	}
-	if len(gotQ) == 0 || gotQ[0] != "acme" {
-		t.Errorf("q = %v, want the caller's filter carried into every page", gotQ)
+	for _, want := range []string{"page 1 of 5", "47 records in total", "--page 2"} {
+		if !strings.Contains(errOut.String(), want) {
+			t.Errorf("stderr = %q, want it to contain %q", errOut.String(), want)
+		}
+	}
+	// The report must not pollute stdout: it stays parseable data.
+	if strings.Contains(out.String(), "records in total") {
+		t.Errorf("stdout = %q, want data only", out.String())
 	}
 }
 
-func TestPaginationPageAndAllAreMutuallyExclusive(t *testing.T) {
-	var pages []string
-	srv := pagedServer(t, 1, 2, &pages)
+func TestPaginationOmitsTheNextHintOnTheLastPage(t *testing.T) {
+	srv := pagedServer(t, 47, 10, nil)
 	pagedEnv(t, srv)
 
 	var out, errOut bytes.Buffer
-	code := run([]string{"gadget", "list", "--all", "--page", "2"}, &out, &errOut)
-	if code == 0 {
-		t.Fatal("exit = 0, want failure when --page and --all are combined")
+	if code := run([]string{"gadget", "list", "--page", "5", "--format", "json"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
 	}
-	if !strings.Contains(errOut.String(), "mutually exclusive") {
-		t.Errorf("stderr = %q, want a mutually-exclusive error", errOut.String())
+	if !strings.Contains(errOut.String(), "page 5 of 5") {
+		t.Errorf("stderr = %q, want the position reported", errOut.String())
 	}
-	if len(pages) != 0 {
-		t.Errorf("requests = %v, want none (fail before spending a request)", pages)
+	if strings.Contains(errOut.String(), "next page") {
+		t.Errorf("stderr = %q, want no next-page hint on the last page", errOut.String())
+	}
+}
+
+func TestPaginationStaysQuietWhenEverythingFitsInOnePage(t *testing.T) {
+	srv := pagedServer(t, 3, 10, nil)
+	pagedEnv(t, srv)
+
+	var out, errOut bytes.Buffer
+	if code := run([]string{"gadget", "list", "--format", "json"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	if errOut.Len() != 0 {
+		t.Errorf("stderr = %q, want silence when there is a single page", errOut.String())
+	}
+}
+
+func TestPaginationExplicitPageIsSentAsQuery(t *testing.T) {
+	var pages []string
+	srv := pagedServer(t, 47, 10, &pages)
+	pagedEnv(t, srv)
+
+	var out, errOut bytes.Buffer
+	if code := run([]string{"gadget", "list", "--page", "3", "--format", "json"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	if len(pages) != 1 || pages[0] != "3" {
+		t.Errorf("pages requested = %v, want exactly [3]", pages)
 	}
 }
 
 func TestPaginationRejectsPageBelowOne(t *testing.T) {
 	var pages []string
-	srv := pagedServer(t, 1, 2, &pages)
+	srv := pagedServer(t, 5, 10, &pages)
 	pagedEnv(t, srv)
 
 	var out, errOut bytes.Buffer
@@ -157,84 +181,13 @@ func TestPaginationRejectsPageBelowOne(t *testing.T) {
 		t.Errorf("stderr = %q, want a >= 1 error", errOut.String())
 	}
 	if len(pages) != 0 {
-		t.Errorf("requests = %v, want none", pages)
+		t.Errorf("requests = %v, want none (fail before spending a request)", pages)
 	}
 }
 
-func TestPaginationExplicitPageIsSentAsQuery(t *testing.T) {
-	var pages []string
-	srv := pagedServer(t, 10, 2, &pages)
-	pagedEnv(t, srv)
-
-	var out, errOut bytes.Buffer
-	if code := run([]string{"gadget", "list", "--page", "3", "--format", "count"}, &out, &errOut); code != 0 {
-		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
-	}
-	if len(pages) != 1 || pages[0] != "3" {
-		t.Errorf("pages requested = %v, want exactly [3]", pages)
-	}
-}
-
-func TestPaginationWarnsOnAFullPage(t *testing.T) {
-	var pages []string
-	srv := pagedServer(t, 10, 2, &pages) // page 1 comes back full
-	pagedEnv(t, srv)
-
-	var out, errOut bytes.Buffer
-	if code := run([]string{"gadget", "list", "--format", "json"}, &out, &errOut); code != 0 {
-		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
-	}
-	if !strings.Contains(errOut.String(), "probably more") {
-		t.Errorf("stderr = %q, want a warning that the page is full", errOut.String())
-	}
-	if !strings.Contains(errOut.String(), "--all") {
-		t.Errorf("stderr = %q, want the warning to point at --all", errOut.String())
-	}
-	// The warning must not pollute stdout: it stays parseable data.
-	if strings.Contains(out.String(), "probably more") {
-		t.Errorf("stdout = %q, want data only", out.String())
-	}
-}
-
-func TestPaginationDoesNotWarnOnAShortPage(t *testing.T) {
-	var pages []string
-	srv := pagedServer(t, 1, 2, &pages) // short page: that is the whole thing
-	pagedEnv(t, srv)
-
-	var out, errOut bytes.Buffer
-	if code := run([]string{"gadget", "list", "--format", "json"}, &out, &errOut); code != 0 {
-		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
-	}
-	if strings.Contains(errOut.String(), "probably more") {
-		t.Errorf("stderr = %q, want no warning for a short page", errOut.String())
-	}
-}
-
-func TestPaginationAllFailsWhenAPageIsNotAnArray(t *testing.T) {
+// An endpoint that sends no pagination headers must behave exactly as before.
+func TestPaginationDegradesWhenTheBackendSendsNoHeaders(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"not":"an array"}`))
-	}))
-	t.Cleanup(srv.Close)
-	pagedEnv(t, srv)
-
-	var out, errOut bytes.Buffer
-	code := run([]string{"gadget", "list", "--all"}, &out, &errOut)
-	if code == 0 {
-		t.Fatal("exit = 0, want failure when a page is not an array")
-	}
-	if !strings.Contains(errOut.String(), "JSON array") {
-		t.Errorf("stderr = %q, want an explanation about the array contract", errOut.String())
-	}
-}
-
-func TestPaginationAllPropagatesAnErrorResponse(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("page") == "2" {
-			w.WriteHeader(http.StatusForbidden)
-			_, _ = w.Write([]byte(`{"error":"nope"}`))
-			return
-		}
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`[{"id":"g_0"},{"id":"g_1"}]`))
 	}))
@@ -242,28 +195,32 @@ func TestPaginationAllPropagatesAnErrorResponse(t *testing.T) {
 	pagedEnv(t, srv)
 
 	var out, errOut bytes.Buffer
-	code := run([]string{"gadget", "list", "--all"}, &out, &errOut)
-	if code == 0 {
-		t.Fatal("exit = 0, want the mid-walk error to surface")
+	if code := run([]string{"gadget", "list", "--format", "count"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
 	}
-	if !strings.Contains(errOut.String(), "403") {
-		t.Errorf("stderr = %q, want the 403 reported", errOut.String())
+	if got := strings.TrimSpace(out.String()); got != "2" {
+		t.Errorf("count = %q, want 2 (falls back to counting the body)", got)
+	}
+	if errOut.Len() != 0 {
+		t.Errorf("stderr = %q, want no report without metadata", errOut.String())
 	}
 }
 
-func TestPaginationAllHandlesUnauthorized(t *testing.T) {
+// An unpaged endpoint must not gain any of this behaviour.
+func TestPaginationLeavesUnpagedEndpointsAlone(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusUnauthorized)
+		w.Header().Set("total-count", "999") // even if a header shows up
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`[{"id":"w_0"}]`))
 	}))
 	t.Cleanup(srv.Close)
 	pagedEnv(t, srv)
 
 	var out, errOut bytes.Buffer
-	code := run([]string{"gadget", "list", "--all"}, &out, &errOut)
-	if code == 0 {
-		t.Fatal("exit = 0, want failure on 401")
+	if code := run([]string{"widget", "list", "--format", "count"}, &out, &errOut); code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
 	}
-	if !strings.Contains(errOut.String(), "lk auth login") {
-		t.Errorf("stderr = %q, want the login hint", errOut.String())
+	if got := strings.TrimSpace(out.String()); got != "1" {
+		t.Errorf("count = %q, want 1: an unpaged endpoint counts its body", got)
 	}
 }
