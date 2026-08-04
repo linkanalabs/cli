@@ -17,7 +17,8 @@ import (
 // runWithStdin runs the CLI with the given stdin contents.
 func runWithStdin(t *testing.T, args []string, stdin string, stdout, stderr *bytes.Buffer) int {
 	t.Helper()
-	return runWith(strings.NewReader(stdin), args, stdout, stderr)
+	code, _ := runWith(strings.NewReader(stdin), args, stdout, stderr)
+	return code
 }
 
 // authEnv isolates config + token storage to temp dirs with the keyring off.

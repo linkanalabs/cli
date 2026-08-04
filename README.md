@@ -22,7 +22,9 @@ lk doctor
 ```
 
 O cask é atualizado automaticamente pelo [GoReleaser](https://goreleaser.com) a
-cada release. Para atualizar: `brew upgrade lk`.
+cada release. Para atualizar: `lk update` (ou `brew install linkanalabs/tap/lk`,
+que funciona em qualquer estado — `brew upgrade lk` só funciona se o tap já
+tiver sido adicionado).
 
 **Linux** — via script instalador (detecta OS/arch, baixa do último release,
 verifica checksum, instala em `~/.local/bin/lk`):
@@ -48,6 +50,41 @@ git clone https://github.com/linkanalabs/cli && cd cli && make build && ./lk doc
 ```
 
 </details>
+
+## Atualização
+
+```bash
+lk update --check   # o que existe publicado, sem instalar nada
+lk update           # atualiza
+```
+
+Instalado via Homebrew, `lk update` roda `brew upgrade --cask lk`. Ele **nunca**
+roda um `brew update` pelado: isso não tem escopo por tap e atualizaria todos os
+taps da máquina. Quando a metadata do brew está atrasada, o `lk` mostra o comando
+a rodar em vez de rodar por você.
+
+Fora do Homebrew, o `lk` não consegue se substituir e imprime o comando de
+reinstalação.
+
+Códigos de saída de `lk update` (sem `--check`): `0` já está atualizado ou
+atualizou; `1` a atualização foi tentada e não aconteceu — a saída diz por quê e
+como. **`lk update --check` é leitura e sempre sai `0` quando a consulta
+funcionou**: a resposta está no campo `update_available`, não no código de
+saída. Isso é deliberado — usar o código como resposta impediria distinguir
+"tem atualização" de "a rede caiu".
+
+O `lk` também checa sozinho, **no máximo uma vez a cada 24h**, depois que o
+comando já produziu a saída. Quando encontra versão nova, dispara o
+`brew upgrade` em segundo plano e avisa em uma linha no **stderr** (stdout
+continua sendo só o contrato JSON); a versão nova vale a partir da execução
+seguinte. Nunca checa em CI, nem em build local (`dev`), nem quando
+`LK_NO_AUTO_UPDATE` está setado:
+
+```bash
+export LK_NO_AUTO_UPDATE=1   # desliga a checagem automática
+```
+
+O `lk doctor` também reporta se há versão nova (como `warn`, nunca `fail`).
 
 ## Requisitos
 

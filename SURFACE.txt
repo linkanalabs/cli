@@ -93,5 +93,6 @@ lk supplier
 lk supplier create
 lk supplier list
 lk supplier show
+lk update
 lk version
 lk whoami

@@ -16,6 +16,7 @@ import (
 	"github.com/linkanalabs/cli/internal/client"
 	"github.com/linkanalabs/cli/internal/config"
 	"github.com/linkanalabs/cli/internal/output"
+	"github.com/linkanalabs/cli/internal/update"
 )
 
 // Check statuses.
@@ -106,6 +107,11 @@ type doctorInput struct {
 	// Auth check inputs.
 	hasToken bool
 	identity func(context.Context) (*client.Identity, error)
+
+	// latestVersion resolves the newest installable version. Always set: a
+	// nil-means-skip field would leak a wiring hole into the JSON contract as
+	// a status no real installation can produce.
+	latestVersion func(context.Context) (string, error)
 }
 
 // authCheckInput carries what the auth check needs, decoupled from the client.
@@ -132,7 +138,40 @@ func runDoctorChecks(ctx context.Context, in doctorInput) *Result {
 		hasToken:  in.hasToken,
 		identity:  in.identity,
 	}))
+	r.add(checkUpdate(ctx, in.version, in.latestVersion))
 	return r
+}
+
+// checkUpdate reports whether a newer lk can be installed.
+//
+// It never fails: doctor exits non-zero when a check fails, and being a version
+// behind is not a broken installation — it would make `lk doctor` exit 1 on
+// every machine that has not upgraded yet. Out of date is a warning; unknown is
+// a skip.
+func checkUpdate(ctx context.Context, currentVersion string, latest func(context.Context) (string, error)) Check {
+	const name = "Update"
+	if !update.Comparable(currentVersion) {
+		return Check{Name: name, Status: StatusSkip, Message: "Development build"}
+	}
+
+	v, err := latest(ctx)
+	if err != nil {
+		return Check{Name: name, Status: StatusSkip, Message: "Could not resolve the published version", Hint: err.Error()}
+	}
+	// Newer is false for anything it cannot order, so without this a garbled
+	// version from the tap would be reported as "Up to date".
+	if !update.Comparable(v) {
+		return Check{Name: name, Status: StatusSkip, Message: "Could not resolve the published version", Hint: "published version " + v + " is not a version this CLI can order"}
+	}
+	if !update.Newer(v, currentVersion) {
+		return Check{Name: name, Status: StatusPass, Message: "Up to date (" + v + ")"}
+	}
+	return Check{
+		Name:    name,
+		Status:  StatusWarn,
+		Message: currentVersion + " → " + v + " available",
+		Hint:    "Run `lk update`",
+	}
 }
 
 func checkAuth(ctx context.Context, in authCheckInput) Check {
@@ -235,6 +274,14 @@ func newDoctorCmd() *cobra.Command {
 				configErr:  cfgErr,
 				configDir:  dir,
 				httpClient: &http.Client{Timeout: 5 * time.Second},
+			}
+			// The tap, not the backend: this is the only lookup lk makes
+			// against a host that is not Linkana's, and it carries no
+			// credentials. Capture the client, not `in` — the closure is a
+			// field of `in`, and it must not observe the fields set below.
+			hc := in.httpClient
+			in.latestVersion = func(ctx context.Context) (string, error) {
+				return fetchTapRemote(ctx, hc)
 			}
 			if cfg != nil {
 				in.baseURL = cfg.BaseURL
