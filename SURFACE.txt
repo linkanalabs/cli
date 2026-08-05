@@ -49,6 +49,8 @@ lk settings category show
 lk settings category update
 lk settings certificate
 lk settings certificate list
+lk settings certificate show
+lk settings certificate update
 lk settings check
 lk settings check list
 lk settings check show
@@ -63,6 +65,10 @@ lk settings company-user invite create
 lk settings company-user invite list
 lk settings company-user list
 lk settings company-user update
+lk settings document
+lk settings document change-grouper
+lk settings document disable
+lk settings document enable
 lk settings email-message
 lk settings email-message list
 lk settings email-message show
