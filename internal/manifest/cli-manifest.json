@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-04T14:27:37Z",
-  "source": "linkanalabs/linkana@009ce9f6df",
+  "generated_at": "2026-08-04T17:23:27Z",
+  "source": "linkanalabs/linkana@8625342981",
   "endpoints": [
     {
       "command": [
@@ -1087,6 +1087,76 @@
     {
       "command": [
         "settings",
+        "certificate",
+        "show"
+      ],
+      "summary": "Show the certificate with its editable settings",
+      "description": "Shows one certificate document (SettingCertificate) of the buyer by its id — get the id from `settings certificate list`. On top of the list fields it returns the internal `name` and `default_responsible_party`, plus the nested `setting_document_review` (`id`, `automatic_review_rule`). `name` is the certificate's internal identifier (e.g. CND_FEDERAL) and is different from `display_name`, which is the free, editable label shown to the supplier — INTERNAL_RESTRICTION_LISTS and CNAE_LISTS are the two certificates fed by CSV import; this command shows and updates them like any other certificate, it just does not expose the imported list items (restriction_lists/cnae_restrictions) themselves. Requires the manager role or above.",
+      "method": "GET",
+      "path": "/srm_settings/certificates/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, name, default_responsible_party, setting_document_review:{id, automatic_review_rule}}. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (scoped lookup); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/certificates#show"
+    },
+    {
+      "command": [
+        "settings",
+        "certificate",
+        "update"
+      ],
+      "summary": "Update the certificate",
+      "description": "Updates one certificate by its id (see `settings certificate list`). Only the fields you pass change. Requires the admin role or above (reading is manager+).",
+      "method": "PATCH",
+      "path": "/srm_settings/certificates/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_certificate",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": false,
+          "desc": "Label shown to the supplier.",
+          "in": "body"
+        },
+        {
+          "name": "default_responsible_party",
+          "type": "string",
+          "required": false,
+          "desc": "Who is responsible for providing this certificate.",
+          "in": "body",
+          "enum": [
+            "supplier",
+            "buyer"
+          ]
+        },
+        {
+          "name": "setting_grouper_id",
+          "type": "string",
+          "required": false,
+          "desc": "Id of the review group that reviews this certificate — from `settings setting-grouper list`. Must belong to the same buyer.",
+          "in": "body"
+        },
+        {
+          "name": "setting_document_review_attributes",
+          "type": "object",
+          "required": false,
+          "desc": "JSON object with the nested review settings. Requires the review's own `id` (from `settings certificate show`) plus `automatic_review_rule`, e.g. '{\"id\":\"<review-id>\",\"automatic_review_rule\":\"only_refused\"}'. `automatic_review_rule` must be one of disabled, only_refused, all_reviews.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the updated certificate in the same shape as `settings certificate show`. 422 {errors} on validation (e.g. an automatic_review_rule outside the allowed set); 400 Rails default {status, error} when the setting_certificate root is missing; 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (scoped lookup), or when setting_grouper_id is unknown or belongs to another buyer; 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/certificates#update"
+    },
+    {
+      "command": [
+        "settings",
         "check",
         "list"
       ],
@@ -1379,6 +1449,75 @@
       "response": "200 with the updated {id, name, email, role, discarded_at}. 422 {errors} on an invalid role; 404 {status, error} if the id is unknown; 403 {error} when the user belongs to another buyer or the policy denies access (requires super_admin role); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/company_users#update"
+    },
+    {
+      "command": [
+        "settings",
+        "document",
+        "change-grouper"
+      ],
+      "summary": "Move a document to another review group",
+      "description": "Moves a document (Settings::SettingDocument) of the buyer — certificate, bank information, form or check — to a different review group (SettingGrouper). The `id` identifies the document to move — resolve it from the matching type's list command (e.g. `settings certificate list`). The destination `setting_grouper_id` must belong to the same buyer — get it from `settings setting-grouper list`; a grouper from another buyer or an unknown id is rejected before any write.",
+      "method": "PATCH",
+      "path": "/srm_settings/documents_changing_grouper/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_document",
+      "params": [
+        {
+          "name": "setting_grouper_id",
+          "type": "string",
+          "required": true,
+          "desc": "Id of the destination review group — from `settings setting-grouper list`. Must belong to the same buyer as the document being moved.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the moved document in the same shape as enable/disable, with the new setting_grouper_id. 422 {errors} on validation (e.g. a document with the same internal name already enabled in the destination group); 400 Rails default {status, error} when the setting_document root is missing; 404 Rails default {status, error} when the id is unknown or belongs to another buyer, or when setting_grouper_id is unknown or belongs to another buyer; 403 {error} when the policy denies access (requires admin role or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/documents_changing_grouper#update"
+    },
+    {
+      "command": [
+        "settings",
+        "document",
+        "disable"
+      ],
+      "summary": "Disable (archive) a document",
+      "description": "Disables an enabled document (Settings::SettingDocument) of the buyer — certificate, bank information, form or check. This has a wide side effect, not a cosmetic toggle: it also marks every setting_risk associated with the document for destruction and enqueues an archive job (Settings::Risks::ArchiveDocumentsJob) per affected risk, which will archive the suppliers' documents tied to those risks. The `id` identifies the enabled document to disable — resolve it from the matching type's list command (e.g. `settings certificate list`, `settings bank-information list`, `settings supplier-field list`).",
+      "method": "DELETE",
+      "path": "/srm_settings/documents_enabling/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with the disabled document {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, name, type}. 404 Rails default {status, error} when the id is unknown, belongs to another buyer, or is already disabled (the lookup only matches enabled documents); 403 {error} when the policy denies access (requires admin role or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/documents_enabling#destroy"
+    },
+    {
+      "command": [
+        "settings",
+        "document",
+        "enable"
+      ],
+      "summary": "Enable (unarchive) a document",
+      "description": "Enables a previously disabled document (Settings::SettingDocument) of the buyer — certificate, bank information, form or check. Unlike disable/change-grouper, the underlying route has no id in the path, so the target is passed as setting_document_id. Get the id from the disabled/archived listing of the matching type (e.g. `settings certificate list --tab disabled`, `settings bank-information list --tab disabled`, `settings supplier-field list --tab disabled`).",
+      "method": "POST",
+      "path": "/srm_settings/documents_enabling",
+      "path_params": [],
+      "params": [
+        {
+          "name": "setting_document_id",
+          "type": "string",
+          "required": true,
+          "desc": "The id of the disabled document to enable (from the archived listing of its type — certificate, bank-information or supplier-field)",
+          "in": "query"
+        }
+      ],
+      "response": "200 with the enabled document {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, name, type}. `type` is the raw Settings::SettingDocument STI value: Settings::SettingCertificate, Settings::SettingForm, Settings::SettingBankInformation or Settings::SettingCheck. 422 {errors} when enabling would break a model validation — most often another ENABLED document in the same review group already uses this document's name, since the uniqueness rule only applies to enabled documents; the document stays disabled. 400 Rails default {status, error} when setting_document_id is missing; 404 Rails default {status, error} when the id is unknown, belongs to another buyer, or is already enabled (the lookup only matches disabled documents); 403 {error} when the policy denies access (requires admin role or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/documents_enabling#create"
     },
     {
       "command": [
