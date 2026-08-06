@@ -13,6 +13,16 @@ lk impersonate status
 lk impersonate stop
 lk settings
 lk settings approval-step
+lk settings approval-step condition
+lk settings approval-step condition risk-score
+lk settings approval-step condition risk-score show
+lk settings approval-step condition risk-score update
+lk settings approval-step condition setting-category
+lk settings approval-step condition setting-category show
+lk settings approval-step condition setting-category update
+lk settings approval-step condition setting-document
+lk settings approval-step condition setting-document show
+lk settings approval-step condition setting-document update
 lk settings approval-step create
 lk settings approval-step decision-reason
 lk settings approval-step decision-reason create
@@ -21,6 +31,11 @@ lk settings approval-step decision-reason list
 lk settings approval-step decision-reason update
 lk settings approval-step list
 lk settings approval-step show
+lk settings approval-step tier
+lk settings approval-step tier create
+lk settings approval-step tier delete
+lk settings approval-step tier list
+lk settings approval-step tier update
 lk settings approval-step update
 lk settings bank-information
 lk settings bank-information list

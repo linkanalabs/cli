@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-04T17:23:27Z",
-  "source": "linkanalabs/linkana@8625342981",
+  "generated_at": "2026-08-06T13:29:07Z",
+  "source": "linkanalabs/linkana@57280b8c33",
   "endpoints": [
     {
       "command": [
@@ -17,6 +17,155 @@
       "response": "200 with {id, email, name, role, buyer_id, is_staff}.",
       "auth": "pat",
       "controller": "my/identity#show"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
+        "condition",
+        "risk-score",
+        "show"
+      ],
+      "summary": "Show the RISK_SCORE condition of an approval step",
+      "description": "Shows the rating_labels that trigger a RISK_SCORE approval step. Get the setting_approval_step_id from `settings approval-step list|show`. Requires the manager role or above.",
+      "method": "GET",
+      "path": "/srm_settings/setting_approval_steps/:setting_approval_step_id/condition_risk_score/edit",
+      "path_params": [
+        "setting_approval_step_id"
+      ],
+      "params": [],
+      "response": "200 with {id, rating_labels}. rating_labels is the array of risk score labels (e.g. [\"A\",\"B\"]) that trigger the step. 404 Rails default {status, error} when setting_approval_step_id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps/condition_risk_scores#edit"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
+        "condition",
+        "risk-score",
+        "update"
+      ],
+      "summary": "Replace the rating_labels of a RISK_SCORE approval step",
+      "description": "Replaces the rating_labels that trigger one RISK_SCORE approval step. Get the setting_approval_step_id from `settings approval-step list|show`. IMPORTANT — this call ALWAYS clears every setting_category linked to the step (via `settings approval-step condition setting-category update`) as a side effect, even when you only touch rating_labels and the step's condition has nothing to do with setting_category: this mirrors a pre-existing quirk of the backend and is deliberately left as-is, not treated as a bug to fix here. If the step also had setting_category links, re-link them afterwards. The whole call (clearing the category links and validating rating_labels) is wrapped in one transaction, so a rejected update (422) leaves both rating_labels and the category links untouched. Requires the manager role or above, same as show.",
+      "method": "PATCH",
+      "path": "/srm_settings/setting_approval_steps/:setting_approval_step_id/condition_risk_score",
+      "path_params": [
+        "setting_approval_step_id"
+      ],
+      "body_root": "setting_approval_step",
+      "params": [
+        {
+          "name": "rating_labels",
+          "type": "array",
+          "required": true,
+          "desc": "Full list of risk score labels that trigger the step (e.g. [\"A\",\"B\"]). Required and non-empty for a RISK_SCORE step — sending an empty array is rejected with 422, it does not clear the labels.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the updated {id, rating_labels} (same shape as `settings approval-step condition risk-score show`). 422 {errors} when rating_labels is empty; 400 Rails default {status, error} when the setting_approval_step root is missing entirely; 404 Rails default {status, error} when setting_approval_step_id is unknown OR belongs to another buyer (scoped lookup); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps/condition_risk_scores#update"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
+        "condition",
+        "setting-category",
+        "show"
+      ],
+      "summary": "Show the SETTING_CATEGORY condition of an approval step",
+      "description": "Shows the setting_categories that trigger a SETTING_CATEGORY approval step. Get the setting_approval_step_id from `settings approval-step list|show`. Requires the manager role or above.",
+      "method": "GET",
+      "path": "/srm_settings/setting_approval_steps/:setting_approval_step_id/condition_setting_category/edit",
+      "path_params": [
+        "setting_approval_step_id"
+      ],
+      "params": [],
+      "response": "200 with {id, setting_category_ids}, ordered by id. setting_category_ids come from `settings category list`. 404 Rails default {status, error} when setting_approval_step_id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps/condition_setting_categories#edit"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
+        "condition",
+        "setting-category",
+        "update"
+      ],
+      "summary": "Replace the setting_categories linked to a SETTING_CATEGORY approval step",
+      "description": "Replaces the FULL list of setting_categories that trigger one SETTING_CATEGORY approval step — this is a total replacement, never a merge: the backend deletes every existing link before applying the ones you send. To add one category to a step that already has two linked, you must resend all three setting_category_ids. Each setting_category_id comes from `settings category list` and must belong to the caller's buyer, or the request 404s before anything is deleted. IMPORTANT — sending setting_approval_steps_setting_categories_attributes as an empty array [] is the explicit, intentional way to clear every link, and it succeeds; but omitting the setting_approval_step root from the request body ENTIRELY also clears every link (returns 200 with an empty setting_category_ids) — there is no partial add/remove and no safe empty body, only an explicit clear or the full desired list. Sending the root as an empty object ({}) behaves the same as omitting it: every link is cleared with a 200. The clearing and the update are wrapped in one transaction, so a rejected update (422) leaves the existing links untouched. Requires the manager role or above, same as show.",
+      "method": "PATCH",
+      "path": "/srm_settings/setting_approval_steps/:setting_approval_step_id/condition_setting_category",
+      "path_params": [
+        "setting_approval_step_id"
+      ],
+      "body_root": "setting_approval_step",
+      "params": [
+        {
+          "name": "setting_approval_steps_setting_categories_attributes",
+          "type": "array",
+          "required": true,
+          "desc": "JSON array of category objects [{\"setting_category_id\":\"<uuid>\"}] — the FULL desired list, not a delta. Pass [] to clear every link. setting_category_id comes from `settings category list` and must belong to the caller's buyer, or the whole request 404s.",
+          "in": "body",
+          "item": "object"
+        }
+      ],
+      "response": "200 with the updated {id, setting_category_ids} — including when the setting_approval_step root is absent or an empty object, which clears every link and still answers 200 (same shape as `settings approval-step condition setting-category show`). 422 {errors} when a setting_category_id entry is present but null (fails the join's required association); 404 Rails default {status, error} when setting_approval_step_id is unknown, belongs to another buyer, OR any setting_category_id belongs to another buyer (both lookups are buyer-scoped); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps/condition_setting_categories#update"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
+        "condition",
+        "setting-document",
+        "show"
+      ],
+      "summary": "Show the SETTING_DOCUMENT condition of an approval step",
+      "description": "Shows the setting_documents that trigger a SETTING_DOCUMENT approval step. Get the setting_approval_step_id from `settings approval-step list|show`. Requires the manager role or above.",
+      "method": "GET",
+      "path": "/srm_settings/setting_approval_steps/:setting_approval_step_id/condition_setting_document/edit",
+      "path_params": [
+        "setting_approval_step_id"
+      ],
+      "params": [],
+      "response": "200 with {id, setting_document_ids}, ordered by id. setting_document_ids are Settings::SettingDocument ids — sourced from `settings check list` / `settings certificate list` (forms have no listing command yet). 404 Rails default {status, error} when setting_approval_step_id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps/condition_setting_documents#edit"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
+        "condition",
+        "setting-document",
+        "update"
+      ],
+      "summary": "Replace the setting_documents linked to a SETTING_DOCUMENT approval step",
+      "description": "Replaces the FULL list of setting_documents that trigger one SETTING_DOCUMENT approval step — this is a total replacement, never a merge: the backend deletes every existing link before applying the ones you send. To add one document to a step that already has two linked, you must resend all three setting_document_ids. Each setting_document_id is a Settings::SettingDocument id (see `settings check list` / `settings certificate list`) and must belong to the caller's buyer, or the request 404s before anything is deleted. IMPORTANT — sending setting_approval_steps_setting_documents_attributes as an empty array [] is the explicit, intentional way to clear every link, and it succeeds; but omitting the setting_approval_step root from the request body ENTIRELY also clears every link (returns 200 with an empty setting_document_ids) — there is no partial add/remove and no safe empty body, only an explicit clear or the full desired list. Sending the root as an empty object ({}) behaves the same as omitting it: every link is cleared with a 200. The clearing and the update are wrapped in one transaction, so a rejected update (422) leaves the existing links untouched. Requires the manager role or above, same as show.",
+      "method": "PATCH",
+      "path": "/srm_settings/setting_approval_steps/:setting_approval_step_id/condition_setting_document",
+      "path_params": [
+        "setting_approval_step_id"
+      ],
+      "body_root": "setting_approval_step",
+      "params": [
+        {
+          "name": "setting_approval_steps_setting_documents_attributes",
+          "type": "array",
+          "required": true,
+          "desc": "JSON array of document objects [{\"setting_document_id\":\"<uuid>\"}] — the FULL desired list, not a delta. Pass [] to clear every link. setting_document_id is a Settings::SettingDocument id (see `settings check list` / `settings certificate list`) and must belong to the caller's buyer, or the whole request 404s.",
+          "in": "body",
+          "item": "object"
+        }
+      ],
+      "response": "200 with the updated {id, setting_document_ids} — including when the setting_approval_step root is absent or an empty object, which clears every link and still answers 200 (same shape as `settings approval-step condition setting-document show`). 422 {errors} when a setting_document_id entry is present but null (fails the join's required association); 404 Rails default {status, error} when setting_approval_step_id is unknown, belongs to another buyer, OR any setting_document_id belongs to another buyer (both lookups are buyer-scoped); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps/condition_setting_documents#update"
     },
     {
       "command": [
@@ -203,9 +352,119 @@
         "id"
       ],
       "params": [],
-      "response": "200 with {id, display_name, condition, action, being_used}. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer, so a foreign id never resolves); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, display_name, condition, action, being_used, rating_labels, setting_category_ids, setting_document_ids, tiers}. `rating_labels` is the risk score labels that trigger the step (only meaningful when condition is RISK_SCORE; otherwise it still comes back with its default [A, B, C, D, E]). `setting_category_ids` / `setting_document_ids` are the ids linked to the step's condition (only meaningful when condition is SETTING_CATEGORY / SETTING_DOCUMENT respectively; empty array otherwise, never omitted). `tiers` is an array of {id, display_name, user_ids} — only populated when action is TIERS_APPROVAL; a tier just seeded by `settings approval-step create` comes back with an empty user_ids and needs `settings approval-step tier update` to gain approvers. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer, so a foreign id never resolves); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/setting_approval_steps#show"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
+        "tier",
+        "create"
+      ],
+      "summary": "Add a level (tier) to a TIERS_APPROVAL step",
+      "description": "Creates a new tier under one approval step. Get the setting_approval_step_id from `settings approval-step list|show`. Approvers, if any, are set via setting_approval_steps_tiers_users_attributes, whose user_id comes from `settings company-user list`. Requires the admin role or above (listing is manager+).",
+      "method": "POST",
+      "path": "/srm_settings/setting_approval_steps/:setting_approval_step_id/tiers",
+      "path_params": [
+        "setting_approval_step_id"
+      ],
+      "body_root": "setting_approval_steps_tier",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": true,
+          "desc": "Name of the tier (e.g. \"Nível 2\").",
+          "in": "body"
+        },
+        {
+          "name": "setting_approval_steps_tiers_users_attributes",
+          "type": "array",
+          "required": false,
+          "desc": "JSON array of approver objects [{\"user_id\":\"<uuid>\"}]; user_id comes from `settings company-user list` and must belong to the caller's buyer. Omit for a tier with no approvers yet.",
+          "in": "body",
+          "item": "object"
+        }
+      ],
+      "response": "200 with the created {id, display_name, user_ids}. 422 {errors} when display_name is blank; 400 Rails default {status, error} when the setting_approval_steps_tier root is missing; 404 Rails default {status, error} when setting_approval_step_id is unknown, belongs to another buyer, OR any user_id in setting_approval_steps_tiers_users_attributes does not belong to the caller's buyer (both lookups are buyer-scoped, so a foreign id never resolves); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps/tiers#create"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
+        "tier",
+        "delete"
+      ],
+      "summary": "Delete a level (tier) from a TIERS_APPROVAL step",
+      "description": "Deletes one tier by its id (see `settings approval-step tier list`). IMPORTANT: the backend refuses to delete a step's LAST remaining tier — a TIERS_APPROVAL step would have nothing to route through — and answers 403 in that case, not 422. Check the list length before deleting. Requires the admin role or above.",
+      "method": "DELETE",
+      "path": "/srm_settings/tiers/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 echoing the deleted {id, display_name, user_ids}. 403 {error} when it is the step's last remaining tier, or when the policy denies access by role; 404 Rails default {status, error} when the tier id is unknown or belongs to another buyer (scoped lookup); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps/tiers#destroy"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
+        "tier",
+        "list"
+      ],
+      "summary": "List the levels (tiers) of a TIERS_APPROVAL step",
+      "description": "Lists the approval levels (tiers) of one approval step, ordered by creation. Get the setting_approval_step_id from `settings approval-step list|show`. Requires the manager role or above.",
+      "method": "GET",
+      "path": "/srm_settings/setting_approval_steps/:setting_approval_step_id/tiers",
+      "path_params": [
+        "setting_approval_step_id"
+      ],
+      "params": [],
+      "response": "200 with an array of {id, display_name, user_ids}. A freshly seeded tier (from `settings approval-step create` with action TIERS_APPROVAL) comes back with an empty user_ids and needs `settings approval-step tier update` to gain approvers. 404 Rails default {status, error} when setting_approval_step_id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps/tiers#index"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
+        "tier",
+        "update"
+      ],
+      "summary": "Rename a tier or replace its approvers",
+      "description": "Updates one tier by its id (see `settings approval-step tier list`). IMPORTANT — setting_approval_steps_tiers_users_attributes is a TOTAL REPLACEMENT of the tier's approvers, never a merge: the backend deletes every existing approver before applying the ones you send, so re-sending only a subset drops the rest, and calling update WITHOUT this param at all still deletes every approver and returns success — there is no partial add/remove. To add one approver to a tier that already has two, you must resend all three user_ids; to keep the current approvers unchanged, resend the same list back. This param is declared required here specifically to force that choice on every call — passing an empty array is the explicit way to clear all approvers. Each user_id must belong to the caller's buyer (see `settings company-user list`), or the request 404s before anything is deleted. Requires the admin role or above.",
+      "method": "PATCH",
+      "path": "/srm_settings/tiers/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_approval_steps_tier",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": false,
+          "desc": "New name of the tier.",
+          "in": "body"
+        },
+        {
+          "name": "setting_approval_steps_tiers_users_attributes",
+          "type": "array",
+          "required": true,
+          "desc": "JSON array of approver objects [{\"user_id\":\"<uuid>\"}] — the FULL desired list of approvers, not a delta. Pass [] to remove every approver. user_id comes from `settings company-user list` and must belong to the caller's buyer.",
+          "in": "body",
+          "item": "object"
+        }
+      ],
+      "response": "200 with the updated {id, display_name, user_ids}. 422 {errors} when display_name is blank — the whole update is wrapped in a transaction, so a rejected update leaves the existing approvers untouched; 400 Rails default {status, error} when the setting_approval_steps_tier root is missing; 404 Rails default {status, error} when the tier id is unknown, belongs to another buyer, OR any user_id in setting_approval_steps_tiers_users_attributes does not belong to the caller's buyer; 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps/tiers#update"
     },
     {
       "command": [
@@ -486,7 +745,7 @@
         "disable"
       ],
       "summary": "Disable (archive) a buyer document field",
-      "description": "Disables an enabled buyer document field for the buyer, archiving the setting. When `disable_buyer_documents` is true, the associated buyer documents are archived as well. The `id` identifies the enabled SettingBuyerDocument to disable — resolve it from `settings buyer-document list` (pending, plan P1).",
+      "description": "Disables an enabled buyer document field for the buyer, archiving the setting. When `disable_buyer_documents` is true, the associated buyer documents are archived as well. The `id` identifies the enabled SettingBuyerDocument to disable — resolve it from `settings buyer-document list` (pending, plan P1). A row lock serializes concurrent or retried disable calls for the same id: only the first one takes effect, and every later one 404s instead of re-running the cascade.",
       "method": "DELETE",
       "path": "/srm_settings/buyer_documents_enabling/:id",
       "path_params": [
@@ -501,7 +760,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with the disabled document {id, name, display_name, field_type, level, disabled, order}. 404 Rails default {status, error} if no enabled document matches the id; 400 Rails default {status, error} when disable_buyer_documents is missing; 403 {error} when the policy denies access (caller below admin); 401 (empty body) when unauthenticated.",
+      "response": "200 with the disabled document {id, name, display_name, field_type, level, disabled, order}. 404 Rails default {status, error} if no enabled document matches the id, including a concurrent/retried disable call for the same id that lost the race; 400 Rails default {status, error} when disable_buyer_documents is missing; 403 {error} when the policy denies access (caller below admin); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/buyer_documents_enabling#destroy"
     },
@@ -1484,14 +1743,14 @@
         "disable"
       ],
       "summary": "Disable (archive) a document",
-      "description": "Disables an enabled document (Settings::SettingDocument) of the buyer — certificate, bank information, form or check. This has a wide side effect, not a cosmetic toggle: it also marks every setting_risk associated with the document for destruction and enqueues an archive job (Settings::Risks::ArchiveDocumentsJob) per affected risk, which will archive the suppliers' documents tied to those risks. The `id` identifies the enabled document to disable — resolve it from the matching type's list command (e.g. `settings certificate list`, `settings bank-information list`, `settings supplier-field list`).",
+      "description": "Disables an enabled document (Settings::SettingDocument) of the buyer — certificate, bank information, form or check. This has a wide side effect, not a cosmetic toggle: it also marks every setting_risk associated with the document for destruction and enqueues an archive job (Settings::Risks::ArchiveDocumentsJob) per affected risk, which will archive the suppliers' documents tied to those risks. The `id` identifies the enabled document to disable — resolve it from the matching type's list command (e.g. `settings certificate list`, `settings bank-information list`, `settings supplier-field list`). A row lock serializes concurrent or retried disable calls for the same id (e.g. an agent retrying after a timeout): only the first one takes effect, and every later one 404s instead of re-marking the setting_risks or re-enqueuing the archive job.",
       "method": "DELETE",
       "path": "/srm_settings/documents_enabling/:id",
       "path_params": [
         "id"
       ],
       "params": [],
-      "response": "200 with the disabled document {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, name, type}. 404 Rails default {status, error} when the id is unknown, belongs to another buyer, or is already disabled (the lookup only matches enabled documents); 403 {error} when the policy denies access (requires admin role or above); 401 (empty body) when unauthenticated.",
+      "response": "200 with the disabled document {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, name, type}. 404 Rails default {status, error} when the id is unknown, belongs to another buyer, is already disabled, or lost a concurrent disable race for the same id (the lookup only matches enabled documents, and a retried/duplicate call never re-marks the setting_risks or re-enqueues Settings::Risks::ArchiveDocumentsJob); 403 {error} when the policy denies access (requires admin role or above); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/documents_enabling#destroy"
     },
