@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-05T21:36:45Z",
-  "source": "linkanalabs/linkana@3b67d67cae",
+  "generated_at": "2026-08-06T13:29:07Z",
+  "source": "linkanalabs/linkana@57280b8c33",
   "endpoints": [
     {
       "command": [
@@ -113,7 +113,7 @@
           "item": "object"
         }
       ],
-      "response": "200 with the updated {id, setting_category_ids} (same shape as `settings approval-step condition setting-category show`). 422 {errors} when a setting_category_id entry is present but null (fails the join's required association); 400 Rails default {status, error} when the setting_approval_step root is present but an empty object; 404 Rails default {status, error} when setting_approval_step_id is unknown, belongs to another buyer, OR any setting_category_id belongs to another buyer (both lookups are buyer-scoped); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "response": "200 with the updated {id, setting_category_ids} — including when the setting_approval_step root is absent or an empty object, which clears every link and still answers 200 (same shape as `settings approval-step condition setting-category show`). 422 {errors} when a setting_category_id entry is present but null (fails the join's required association); 404 Rails default {status, error} when setting_approval_step_id is unknown, belongs to another buyer, OR any setting_category_id belongs to another buyer (both lookups are buyer-scoped); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/setting_approval_steps/condition_setting_categories#update"
     },
@@ -163,7 +163,7 @@
           "item": "object"
         }
       ],
-      "response": "200 with the updated {id, setting_document_ids} (same shape as `settings approval-step condition setting-document show`). 422 {errors} when a setting_document_id entry is present but null (fails the join's required association); 400 Rails default {status, error} when the setting_approval_step root is present but an empty object; 404 Rails default {status, error} when setting_approval_step_id is unknown, belongs to another buyer, OR any setting_document_id belongs to another buyer (both lookups are buyer-scoped); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "response": "200 with the updated {id, setting_document_ids} — including when the setting_approval_step root is absent or an empty object, which clears every link and still answers 200 (same shape as `settings approval-step condition setting-document show`). 422 {errors} when a setting_document_id entry is present but null (fails the join's required association); 404 Rails default {status, error} when setting_approval_step_id is unknown, belongs to another buyer, OR any setting_document_id belongs to another buyer (both lookups are buyer-scoped); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/setting_approval_steps/condition_setting_documents#update"
     },
@@ -745,7 +745,7 @@
         "disable"
       ],
       "summary": "Disable (archive) a buyer document field",
-      "description": "Disables an enabled buyer document field for the buyer, archiving the setting. When `disable_buyer_documents` is true, the associated buyer documents are archived as well. The `id` identifies the enabled SettingBuyerDocument to disable — resolve it from `settings buyer-document list` (pending, plan P1).",
+      "description": "Disables an enabled buyer document field for the buyer, archiving the setting. When `disable_buyer_documents` is true, the associated buyer documents are archived as well. The `id` identifies the enabled SettingBuyerDocument to disable — resolve it from `settings buyer-document list` (pending, plan P1). A row lock serializes concurrent or retried disable calls for the same id: only the first one takes effect, and every later one 404s instead of re-running the cascade.",
       "method": "DELETE",
       "path": "/srm_settings/buyer_documents_enabling/:id",
       "path_params": [
@@ -760,7 +760,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with the disabled document {id, name, display_name, field_type, level, disabled, order}. 404 Rails default {status, error} if no enabled document matches the id; 400 Rails default {status, error} when disable_buyer_documents is missing; 403 {error} when the policy denies access (caller below admin); 401 (empty body) when unauthenticated.",
+      "response": "200 with the disabled document {id, name, display_name, field_type, level, disabled, order}. 404 Rails default {status, error} if no enabled document matches the id, including a concurrent/retried disable call for the same id that lost the race; 400 Rails default {status, error} when disable_buyer_documents is missing; 403 {error} when the policy denies access (caller below admin); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/buyer_documents_enabling#destroy"
     },
@@ -1743,14 +1743,14 @@
         "disable"
       ],
       "summary": "Disable (archive) a document",
-      "description": "Disables an enabled document (Settings::SettingDocument) of the buyer — certificate, bank information, form or check. This has a wide side effect, not a cosmetic toggle: it also marks every setting_risk associated with the document for destruction and enqueues an archive job (Settings::Risks::ArchiveDocumentsJob) per affected risk, which will archive the suppliers' documents tied to those risks. The `id` identifies the enabled document to disable — resolve it from the matching type's list command (e.g. `settings certificate list`, `settings bank-information list`, `settings supplier-field list`).",
+      "description": "Disables an enabled document (Settings::SettingDocument) of the buyer — certificate, bank information, form or check. This has a wide side effect, not a cosmetic toggle: it also marks every setting_risk associated with the document for destruction and enqueues an archive job (Settings::Risks::ArchiveDocumentsJob) per affected risk, which will archive the suppliers' documents tied to those risks. The `id` identifies the enabled document to disable — resolve it from the matching type's list command (e.g. `settings certificate list`, `settings bank-information list`, `settings supplier-field list`). A row lock serializes concurrent or retried disable calls for the same id (e.g. an agent retrying after a timeout): only the first one takes effect, and every later one 404s instead of re-marking the setting_risks or re-enqueuing the archive job.",
       "method": "DELETE",
       "path": "/srm_settings/documents_enabling/:id",
       "path_params": [
         "id"
       ],
       "params": [],
-      "response": "200 with the disabled document {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, name, type}. 404 Rails default {status, error} when the id is unknown, belongs to another buyer, or is already disabled (the lookup only matches enabled documents); 403 {error} when the policy denies access (requires admin role or above); 401 (empty body) when unauthenticated.",
+      "response": "200 with the disabled document {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, name, type}. 404 Rails default {status, error} when the id is unknown, belongs to another buyer, is already disabled, or lost a concurrent disable race for the same id (the lookup only matches enabled documents, and a retried/duplicate call never re-marks the setting_risks or re-enqueues Settings::Risks::ArchiveDocumentsJob); 403 {error} when the policy denies access (requires admin role or above); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/documents_enabling#destroy"
     },
