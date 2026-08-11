@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-11T17:08:50Z",
-  "source": "linkanalabs/linkana@72eb5a4b8b",
+  "generated_at": "2026-08-11T18:44:48Z",
+  "source": "linkanalabs/linkana@ef8d115174",
   "endpoints": [
     {
       "command": [
@@ -1792,7 +1792,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with the enabled document {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, name, type}. `type` is the raw Settings::SettingDocument STI value: Settings::SettingCertificate, Settings::SettingForm, Settings::SettingBankInformation or Settings::SettingCheck. 422 {errors} when enabling would break a model validation — most often another ENABLED document in the same review group already uses this document's name, since the uniqueness rule only applies to enabled documents; the document stays disabled. 400 Rails default {status, error} when setting_document_id is missing; 404 Rails default {status, error} when the id is unknown, belongs to another buyer, or is already enabled (the lookup only matches disabled documents); 403 {error} when the policy denies access (requires admin role or above); 401 (empty body) when unauthenticated.",
+      "response": "200 with the enabled document {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, name, type}. `type` is the raw Settings::SettingDocument STI value: Settings::SettingCertificate, Settings::SettingForm, Settings::SettingBankInformation or Settings::SettingCheck. 422 {errors} when enabling would break one of the TWO uniqueness rules, both of which only consider ENABLED documents, so a conflict only shows up at enable time and leaves the document disabled: (a) `display_name` must be unique across ALL enabled documents of the buyer, in ANY review group — the error reads `Nome já está em uso`; (b) `name` must be unique among the enabled documents of the SAME review group — the error reads `Name já está em uso` (`Nome` is display_name, `Name` is name; they are different rules despite the near-identical wording). Both rules are skipped for the documents whose name is INTERNAL_RESTRICTION_LISTS or CNAE_LISTS, which are allowed to repeat. To recover from (a), rename the enabled document that holds the display_name, or rename this one, before enabling. 400 Rails default {status, error} when setting_document_id is missing; 404 Rails default {status, error} when the id is unknown, belongs to another buyer, or is already enabled (the lookup only matches disabled documents); 403 {error} when the policy denies access (requires admin role or above); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/documents_enabling#create"
     },
