@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-11T15:53:58Z",
-  "source": "linkanalabs/linkana@1a0ae5e2df",
+  "generated_at": "2026-08-11T17:08:50Z",
+  "source": "linkanalabs/linkana@72eb5a4b8b",
   "endpoints": [
     {
       "command": [
@@ -832,7 +832,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with the reordered enabled documents as an array of {id, name, display_name, field_type, level, disabled, order}. 403 {error} when the policy denies access (caller below admin); 401 (empty body) when unauthenticated.",
+      "response": "200 with the reordered enabled documents as an array of {id, name, display_name, field_type, level, disabled, order}. Ids that do not belong to the buyer are skipped silently — the call still answers 200 and only the buyer's own documents are reordered, so resolve every id from `settings buyer-document list` first. 400 (bad request) when identifiers is missing, and no order is written; 403 {error} when the policy denies access (caller below admin); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/buyer_documents_reorderings#update"
     },
