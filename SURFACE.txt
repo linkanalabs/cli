@@ -79,6 +79,7 @@ lk settings company-user invite cancel
 lk settings company-user invite create
 lk settings company-user invite list
 lk settings company-user list
+lk settings company-user show
 lk settings company-user update
 lk settings document
 lk settings document change-grouper

@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-06T13:29:07Z",
-  "source": "linkanalabs/linkana@57280b8c33",
+  "generated_at": "2026-08-11T15:53:58Z",
+  "source": "linkanalabs/linkana@1a0ae5e2df",
   "endpoints": [
     {
       "command": [
@@ -1037,7 +1037,7 @@
         "id"
       ],
       "params": [],
-      "response": "200 with the affected category in the same shape as `settings category show` (disabled is now true). 404 Rails default {status, error} if the id is unknown; 403 {error} when the category belongs to another buyer or the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with the affected category in the same shape as `settings category show` (disabled is now true). 404 Rails default {status, error} if the id is unknown; 404 Rails default {status, error} when the category belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories_enabling#destroy"
     },
@@ -1061,7 +1061,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with the newly created duplicate in the same shape as `settings category show`. 404 Rails default {status, error} when setting_category_id is missing or unknown; 422 {errors} when the duplication fails; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with the newly created duplicate in the same shape as `settings category show`. 400 (bad request) when setting_category_id is missing; 404 Rails default {status, error} when it is unknown; 404 Rails default {status, error} when the category belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 422 {errors} when the duplication fails; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories_duplicate#create"
     },
@@ -1085,7 +1085,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with the affected category in the same shape as `settings category show` (disabled is now false). 404 Rails default {status, error} when setting_category_id is missing or unknown; 403 {error} when the category belongs to another buyer or the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with the affected category in the same shape as `settings category show` (disabled is now false). 400 (bad request) when setting_category_id is missing; 404 Rails default {status, error} when it is unknown; 404 Rails default {status, error} when the category belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories_enabling#create"
     },
@@ -1150,7 +1150,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with {id, setting_document_id, risk, setting_document:{id, display_name, type}}. 422 {errors} when the setting_document_id does not exist; 400 (bad request) when the setting_risk root is absent; 404 Rails default {status, error} when the category is unknown or belongs to another buyer; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, setting_document_id, risk, setting_document:{id, display_name, type}}. 422 {errors} when the SettingDocument is disabled (disabled documents cannot receive new risks — re-enable it first); 400 (bad request) when the setting_risk root is absent; 404 Rails default {status, error} when the category or the setting_document_id is unknown, and also when either belongs to another buyer (both lookups are scoped to the buyer, so neither confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories_risks#create"
     },
@@ -1169,7 +1169,7 @@
         "id"
       ],
       "params": [],
-      "response": "200 with the archived {id, setting_document_id, risk, setting_document:{id, display_name, type}}. 404 Rails default {status, error} when the id is unknown; 403 {error} when the risk belongs to another buyer or the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with the archived {id, setting_document_id, risk, setting_document:{id, display_name, type}}. 404 Rails default {status, error} when the id is unknown; 404 Rails default {status, error} when the risk belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories_risks#destroy"
     },
@@ -1223,7 +1223,7 @@
           ]
         }
       ],
-      "response": "200 with {id, setting_document_id, risk, setting_document:{id, display_name, type}}. 404 Rails default {status, error} when the id is unknown; 403 {error} when the risk belongs to another buyer or the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, setting_document_id, risk, setting_document:{id, display_name, type}}. 404 Rails default {status, error} when the id is unknown; 404 Rails default {status, error} when the risk belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories_risks#update"
     },
@@ -1241,7 +1241,7 @@
         "id"
       ],
       "params": [],
-      "response": "200 with {id, display_name, legal_entity, disabled, renew_at_in_days_after_approval, force_processing_on_renewal, monitor_on_qualification_start, monitor_after_approval, monitor_after_refusal, setting_risks:[{id, setting_document_id, risk}]}. `legal_entity` is one of PJ, PF, INTERNATIONAL. 404 Rails default {status, error} if the id is unknown; 403 {error} when the category belongs to another buyer or the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, display_name, legal_entity, disabled, renew_at_in_days_after_approval, force_processing_on_renewal, monitor_on_qualification_start, monitor_after_approval, monitor_after_refusal, setting_risks:[{id, setting_document_id, risk}]}. `legal_entity` is one of PJ, PF, INTERNATIONAL. 404 Rails default {status, error} if the id is unknown; 404 Rails default {status, error} when the category belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories#show"
     },
@@ -1315,7 +1315,7 @@
           "in": "body"
         }
       ],
-      "response": "200 with the updated category in the same shape as `settings category show`. 422 {errors} on validation (e.g. blank or duplicate display_name, or an invalid legal_entity); 404 Rails default {status, error} if the id is unknown; 403 {error} when the category belongs to another buyer or the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with the updated category in the same shape as `settings category show`. 422 {errors} on validation (e.g. blank or duplicate display_name, or an invalid legal_entity); 404 Rails default {status, error} if the id is unknown; 404 Rails default {status, error} when the category belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories#update"
     },
@@ -1672,6 +1672,24 @@
       "response": "200 with array of {id, name, email, role, discarded_at}. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (caller below admin).",
       "auth": "pat",
       "controller": "srm_settings/company_users#index"
+    },
+    {
+      "command": [
+        "settings",
+        "company-user",
+        "show"
+      ],
+      "summary": "Show a single buyer user",
+      "description": "Shows a single user of the current buyer by its id (see `settings company-user list` for available ids and to resolve one). Returns the same {id, name, email, role, discarded_at} shape as `settings company-user list`, without needing to list-and-filter client-side. Requires an admin (or above) credential.",
+      "method": "GET",
+      "path": "/srm_settings/company_users/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with {id, name, email, role, discarded_at}. 404 {status, error} when the id is unknown or belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access (caller below admin); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/company_users#show"
     },
     {
       "command": [
@@ -2895,7 +2913,7 @@
         "param": "page"
       },
       "params": [],
-      "response": "200 with one page of {id, name, identifier, legal_entity, state, tags:[{id, display_name}]}, plus the pagy headers (`total-count`, `total-pages`, `current-page`, `page-items`). A page past the last one returns an empty array (still 200). 401 (empty body) when unauthenticated; 403 {error} when the policy denies access.",
+      "response": "200 with one page of {id, name, identifier, legal_entity, state, tags:[{id, display_name}]}, plus the pagy headers (`total-count`, `total-pages`, `current-page`, `page-items`). A page past the last one returns an empty array (still 200). 400 {error} when --page is not a positive integer (e.g. 0 or non-numeric). 401 (empty body) when unauthenticated; 403 {error} when the policy denies access.",
       "auth": "pat",
       "controller": "srm/suppliers#index"
     },
