@@ -5,3 +5,6 @@ coverage.out
 *.out
 .DS_Store
 CLAUDE.local.md
+
+# Planos de trabalho da skill superpowers — locais de cada sessão, nunca versionados
+docs/superpowers/
