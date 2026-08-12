@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-12T19:31:53Z",
-  "source": "linkanalabs/linkana@7d075fa1de",
+  "generated_at": "2026-08-12T20:38:35Z",
+  "source": "linkanalabs/linkana@1bb0ee4c95",
   "endpoints": [
     {
       "command": [
@@ -3112,14 +3112,14 @@
         "show"
       ],
       "summary": "Show one supplier field with its review settings",
-      "description": "Shows one supplier field (campo de fornecedor — SettingForm) by its id; get the id from `settings supplier-field list`. Returns everything `settings supplier-field update` can change plus the nested `setting_document_review`. Requires the manager role or above.",
+      "description": "Shows one supplier field (campo de fornecedor — SettingForm) by its id; get the id from `settings supplier-field list`. Returns everything `settings supplier-field update` can change, the nested `setting_document_review`, and the `fields` array — the questions of the form, in display order, each with its answer `options`. THIS IS THE ONLY SOURCE OF FIELD IDS: there is no `field list` command, so every field-level command (`field show|update|delete`, `field answers update`, `field classification set|remove`, `field reorder`) and the keys of `answer-key set --weights` take their id from `fields[].id` here, and the option ids from `fields[].options[].id`. Questions already marked for deletion are left out. Requires the manager role or above.",
       "method": "GET",
       "path": "/srm_settings/supplier_fields/:id",
       "path_params": [
         "id"
       ],
       "params": [],
-      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order, hint, renew_at_in_days, webhook_reference, default_responsible_party, block_supplier_on_expiry, send_document_reviewed_event, setting_document_review:{id, review_type, expires_on_in_days, automatic_review_rule}}. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order, hint, renew_at_in_days, webhook_reference, default_responsible_party, block_supplier_on_expiry, send_document_reviewed_event, setting_document_review:{id, review_type, expires_on_in_days, automatic_review_rule, grade_threshold}, fields:[{id, display_name, hint, field_type, optional, order, has_answer_key, weight, marked_to_destroy, options:[{id, display_name, correct, requirement_type}]}]}. `fields` is [] on a form with no question yet and is where every field-level command gets its id. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/supplier_fields#show"
     },
