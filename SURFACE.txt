@@ -85,6 +85,7 @@ lk settings document
 lk settings document change-grouper
 lk settings document disable
 lk settings document enable
+lk settings document list
 lk settings email-message
 lk settings email-message list
 lk settings email-message show
@@ -119,7 +120,25 @@ lk settings setting-grouper update
 lk settings setting-grouper users
 lk settings setting-grouper users list
 lk settings supplier-field
+lk settings supplier-field answer-key
+lk settings supplier-field answer-key remove
+lk settings supplier-field answer-key set
+lk settings supplier-field create
+lk settings supplier-field duplicate
+lk settings supplier-field field
+lk settings supplier-field field answers
+lk settings supplier-field field answers update
+lk settings supplier-field field classification
+lk settings supplier-field field classification remove
+lk settings supplier-field field classification set
+lk settings supplier-field field create
+lk settings supplier-field field delete
+lk settings supplier-field field reorder
+lk settings supplier-field field show
+lk settings supplier-field field update
 lk settings supplier-field list
+lk settings supplier-field reorder
+lk settings supplier-field request-resend
 lk settings supplier-field show
 lk settings supplier-field update
 lk settings tag

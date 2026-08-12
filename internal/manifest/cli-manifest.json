@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-11T18:44:48Z",
-  "source": "linkanalabs/linkana@ef8d115174",
+  "generated_at": "2026-08-12T19:31:53Z",
+  "source": "linkanalabs/linkana@7d075fa1de",
   "endpoints": [
     {
       "command": [
@@ -545,7 +545,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id}. The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the document applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order}. The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the document applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
       "auth": "pat",
       "controller": "srm_settings/bank_informations#index"
     },
@@ -563,7 +563,7 @@
         "id"
       ],
       "params": [],
-      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, renew_at_in_days, allow_pf_bank_account, block_supplier_on_expiry, send_document_reviewed_event, webhook_reference, setting_document_review:{id, review_type, expires_on_in_days}}. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (scoped lookup); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order, renew_at_in_days, allow_pf_bank_account, block_supplier_on_expiry, send_document_reviewed_event, webhook_reference, setting_document_review:{id, review_type, expires_on_in_days}}. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (scoped lookup); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/bank_informations#show"
     },
@@ -1339,7 +1339,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id}. The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the certificate applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order}. The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the certificate applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
       "auth": "pat",
       "controller": "srm_settings/certificates#index"
     },
@@ -1357,7 +1357,7 @@
         "id"
       ],
       "params": [],
-      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, name, default_responsible_party, setting_document_review:{id, automatic_review_rule}}. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (scoped lookup); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order, name, default_responsible_party, setting_document_review:{id, automatic_review_rule}}. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (scoped lookup); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/certificates#show"
     },
@@ -1433,7 +1433,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id}. The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the check applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order}. The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the check applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
       "auth": "pat",
       "controller": "srm_settings/checks#index"
     },
@@ -1451,7 +1451,7 @@
         "id"
       ],
       "params": [],
-      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, setting_document_review:{id, review_type, automatic_review_rule, expires_on_in_days}}. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (scoped lookup); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order, setting_document_review:{id, review_type, automatic_review_rule, expires_on_in_days}}. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (scoped lookup); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/checks#show"
     },
@@ -1795,6 +1795,30 @@
       "response": "200 with the enabled document {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, name, type}. `type` is the raw Settings::SettingDocument STI value: Settings::SettingCertificate, Settings::SettingForm, Settings::SettingBankInformation or Settings::SettingCheck. 422 {errors} when enabling would break one of the TWO uniqueness rules, both of which only consider ENABLED documents, so a conflict only shows up at enable time and leaves the document disabled: (a) `display_name` must be unique across ALL enabled documents of the buyer, in ANY review group — the error reads `Nome já está em uso`; (b) `name` must be unique among the enabled documents of the SAME review group — the error reads `Name já está em uso` (`Nome` is display_name, `Name` is name; they are different rules despite the near-identical wording). Both rules are skipped for the documents whose name is INTERNAL_RESTRICTION_LISTS or CNAE_LISTS, which are allowed to repeat. To recover from (a), rename the enabled document that holds the display_name, or rename this one, before enabling. 400 Rails default {status, error} when setting_document_id is missing; 404 Rails default {status, error} when the id is unknown, belongs to another buyer, or is already enabled (the lookup only matches disabled documents); 403 {error} when the policy denies access (requires admin role or above); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/documents_enabling#create"
+    },
+    {
+      "command": [
+        "settings",
+        "document",
+        "list"
+      ],
+      "summary": "List the buyer's documents of every type in one place",
+      "description": "Lists the buyer's documents across ALL four types in a single call — SettingForm (Formulário), SettingCheck (Consulta), SettingCertificate (Base pública) and SettingBankInformation (Informações bancárias). This is the unified listing behind the new documents screen; the per-type commands (`settings check list`, `settings certificate list`, `settings bank-information list`) still exist and return the same rows filtered to one type. Ordered by display_name. By default returns the enabled documents; pass --tab disabled to list the archived (disabled) ones instead. Each row carries `type` (the STI class) and `type_humanize` (its label in the buyer's locale) so a mixed list stays unambiguous. Filters (all optional, combinable) go under the `search` key: `search[types][]` restricts to one or more types — repeat it, each value one of Settings::SettingForm, Settings::SettingCheck, Settings::SettingCertificate, Settings::SettingBankInformation; `search[display_name]` is a partial (ILIKE) match on the name; `search[setting_grouper_id]` restricts to one review group (id from `settings setting-grouper list`). Rows always come back ordered by display_name. Requires the manager role or above.",
+      "method": "GET",
+      "path": "/srm_settings/documents",
+      "path_params": [],
+      "params": [
+        {
+          "name": "tab",
+          "type": "string",
+          "required": false,
+          "desc": "Which set to list: omit (or any value other than 'disabled') for enabled documents, or 'disabled' for archived ones.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order}. `type` is the STI class (e.g. Settings::SettingForm) and `type_humanize` its localized label; `national_pj/national_pf/international` mark the category legal_entities a document applies to (relevant for checks/certificates). 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "auth": "pat",
+      "controller": "srm_settings/documents#index"
     },
     {
       "command": [
@@ -2580,6 +2604,437 @@
       "command": [
         "settings",
         "supplier-field",
+        "answer-key",
+        "remove"
+      ],
+      "summary": "Remove the answer key of a form",
+      "description": "Removes the answer key of a form: zeroes every field weight and the grade threshold. Refused (403) while the form's review_type is answer_key, since the review would have no key to grade against — switch the review type with `settings supplier-field update` first. supplier_field_id comes from `settings supplier-field list`.",
+      "method": "DELETE",
+      "path": "/srm_settings/supplier_fields/:supplier_field_id/answer_keys",
+      "path_params": [
+        "supplier_field_id"
+      ],
+      "params": [],
+      "response": "200 with the form in the same shape as `settings supplier-field show`, weights and grade_threshold zeroed. 422 {errors} when the operation refuses the removal; 404 Rails default {status, error} when supplier_field_id is unknown or belongs to another buyer; 403 {error} when the policy denies access — review_type is answer_key, or caller below manager; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_fields_answer_keys#destroy"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-field",
+        "answer-key",
+        "set"
+      ],
+      "summary": "Set the answer-key weights and the passing grade of a form",
+      "description": "Sets, in one call, how much each question is worth and the grade a supplier must reach to pass. Keys of --weights are FIELD ids (from the `fields` array of `settings supplier-field show`). Only fields that already carry a classification are eligible — that is, has_answer_key true, which `settings supplier-field field classification set` turns on; sending any other field id answers 422 naming it. At least one weight must be positive, grade_threshold must be greater than zero and cannot exceed the sum of the weights sent.",
+      "method": "PATCH",
+      "path": "/srm_settings/supplier_fields/:supplier_field_id/answer_keys",
+      "path_params": [
+        "supplier_field_id"
+      ],
+      "body_root": "answer_key",
+      "params": [
+        {
+          "name": "weights",
+          "type": "object",
+          "required": true,
+          "desc": "Weight by field id: '{\"<field_id>\": 30, \"<other_field_id>\": 70}'. Every key must be a scorable field of this form.",
+          "in": "body"
+        },
+        {
+          "name": "grade_threshold",
+          "type": "integer",
+          "required": true,
+          "desc": "Minimum grade for the supplier to pass, in the same scale as the sum of the weights.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the form in the same shape as `settings supplier-field show`, fields carrying the new weights and setting_document_review.grade_threshold updated. 422 {errors} when a field is not scorable, a weight is invalid, or no weight was sent; 404 Rails default {status, error} when supplier_field_id is unknown or belongs to another buyer; 400 Rails default {status, error} when the answer_key root is missing; 403 {error} when the policy denies access (requires manager or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_fields_answer_keys#update"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-field",
+        "create"
+      ],
+      "summary": "Create a supplier form",
+      "description": "Creates a supplier form (Settings::SettingForm) for the buyer. The form is created WITHOUT inner fields (questions), and `at_least_one_field` is validated on update — so a form with no field cannot be updated until it has one. Right after creating, add at least one field with `settings supplier-field field create`; otherwise every `settings supplier-field update` on it answers 422. Requires the admin role or above.",
+      "method": "POST",
+      "path": "/srm_settings/supplier_fields",
+      "path_params": [],
+      "body_root": "setting_form",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": true,
+          "desc": "Label shown to the supplier. Must be unique among the buyer's ENABLED documents (any review group).",
+          "in": "body"
+        },
+        {
+          "name": "setting_grouper_id",
+          "type": "string",
+          "required": true,
+          "desc": "Review group that owns the form; comes from `settings setting-grouper list`. A group from another buyer answers 404.",
+          "in": "body"
+        },
+        {
+          "name": "hint",
+          "type": "string",
+          "required": false,
+          "desc": "Helper text shown to the supplier.",
+          "in": "body"
+        },
+        {
+          "name": "national_pj",
+          "type": "boolean",
+          "required": false,
+          "desc": "Applies to Brazilian companies (PJ).",
+          "in": "body"
+        },
+        {
+          "name": "national_pf",
+          "type": "boolean",
+          "required": false,
+          "desc": "Applies to Brazilian individuals (PF).",
+          "in": "body"
+        },
+        {
+          "name": "international",
+          "type": "boolean",
+          "required": false,
+          "desc": "Applies to international suppliers.",
+          "in": "body"
+        },
+        {
+          "name": "renew_at_in_days",
+          "type": "integer",
+          "required": false,
+          "desc": "Days until the form must be answered again (0 = never).",
+          "in": "body"
+        },
+        {
+          "name": "default_responsible_party",
+          "type": "string",
+          "required": false,
+          "desc": "Who is expected to fill the form by default.",
+          "in": "body"
+        },
+        {
+          "name": "block_supplier_on_expiry",
+          "type": "boolean",
+          "required": false,
+          "desc": "Block the supplier when the answer expires.",
+          "in": "body"
+        },
+        {
+          "name": "send_document_reviewed_event",
+          "type": "boolean",
+          "required": false,
+          "desc": "Emit a webhook event when the form is reviewed. Requires webhook_reference.",
+          "in": "body"
+        },
+        {
+          "name": "webhook_reference",
+          "type": "string",
+          "required": false,
+          "desc": "Free-text reference sent along with the webhook event.",
+          "in": "body"
+        },
+        {
+          "name": "setting_document_review_attributes",
+          "type": "object",
+          "required": false,
+          "desc": "JSON object with the nested review settings, e.g. '{\"review_type\":\"manual_review\",\"expires_on_in_days\":90}'. No `id` on create — the review is built with the form.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the created form in the same shape as `settings supplier-field show` (fields is [] on a fresh create). 422 {errors} on validation (blank or duplicate display_name); 404 Rails default {status, error} when setting_grouper_id is unknown or belongs to another buyer; 400 Rails default {status, error} when the setting_form root is missing; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_fields#create"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-field",
+        "duplicate"
+      ],
+      "summary": "Duplicate a supplier form",
+      "description": "Creates a copy of an enabled form with all of its fields, options and classification, naming it with a \"(cópia)\" suffix. The copy is created enabled and does NOT inherit the risks (category attachments) of the original — attach it where needed with `settings category risk create`. supplier_field_id comes from `settings supplier-field list`; a disabled form answers 404.",
+      "method": "POST",
+      "path": "/srm_settings/supplier_fields/:supplier_field_id/duplications",
+      "path_params": [
+        "supplier_field_id"
+      ],
+      "params": [],
+      "response": "200 with the CREATED copy in the same shape as `settings supplier-field show` (note the id is the copy's, not the original's). 422 {errors} when the duplication fails validation (most often the display_name of the copy colliding with an enabled document); 404 Rails default {status, error} when supplier_field_id is unknown, disabled, or belongs to another buyer; 403 {error} when the policy denies access (requires the admin role or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_fields_duplications#create"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-field",
+        "field",
+        "answers",
+        "update"
+      ],
+      "summary": "Replace the answer options of a field",
+      "description": "Manages the answer options of a field in one call: sending an option WITHOUT `id` creates it, WITH `id` renames it, and with `_destroy: true` removes it. Send the full intended set — an option you omit stays untouched, so removals must be explicit. Types that carry options (check_box, radio_button, select) must keep at least 2 options, so a removal that would leave fewer answers 422. The FIELD id comes from the `fields` array of `settings supplier-field show`, and the option ids come from `settings supplier-field field show`.",
+      "method": "PATCH",
+      "path": "/srm_settings/fields/:supplier_fields_field_id/answers",
+      "path_params": [
+        "supplier_fields_field_id"
+      ],
+      "body_root": "setting_form_field",
+      "params": [
+        {
+          "name": "options_attributes",
+          "type": "array",
+          "required": true,
+          "desc": "JSON array of option objects: '[{\"id\":\"<option_id>\",\"display_name\":\"Sim\"},{\"display_name\":\"Talvez\"},{\"id\":\"<other_id>\",\"_destroy\":true}]'. An empty array is refused (422).",
+          "in": "body",
+          "item": "object"
+        }
+      ],
+      "response": "200 with the field in the same shape as `settings supplier-field field show`. 422 {errors} when options_attributes is empty or the change would leave a type-with-options with fewer than 2 options; 404 Rails default {status, error} when the field id is unknown or belongs to another buyer; 400 Rails default {status, error} when the setting_form_field root is missing; 403 {error} when the policy denies access (requires admin); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_fields_fields_answers#update"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-field",
+        "field",
+        "classification",
+        "remove"
+      ],
+      "summary": "Remove the classification of a field",
+      "description": "Clears the classification of a field: every option goes back to correct with requirement_type none, the field's answer-key weight is zeroed and the form's grade threshold is reset. Refused (422) while the form's review_type is answer_key — switch the review type with `settings supplier-field update` first, or remove the whole answer key with `settings supplier-field answer-key remove`. The FIELD id comes from the `fields` array of `settings supplier-field show`.",
+      "method": "DELETE",
+      "path": "/srm_settings/fields/:supplier_fields_field_id/classification",
+      "path_params": [
+        "supplier_fields_field_id"
+      ],
+      "params": [],
+      "response": "200 with the field in the same shape as `settings supplier-field field show`. 422 {errors} when the form is still reviewed by answer key; 404 Rails default {status, error} when the field id is unknown or belongs to another buyer; 403 {error} when the policy denies access (requires manager or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_fields_fields_classifications#destroy"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-field",
+        "field",
+        "classification",
+        "set"
+      ],
+      "summary": "Mark which answers are correct and what each one requires",
+      "description": "Defines, for a field with options, which options count as correct and what extra evidence each one demands. Keys of --classification are OPTION ids (from `settings supplier-field field show`), and the value of each is an object: {\"correct\": true|false, \"requirement_type\": \"none|comment|evidence|comment_and_evidence\"}. requirement_type is optional per option and, when omitted, the option keeps what it had. Setting a classification marks the field as part of the answer key (has_answer_key becomes true) — the score itself is set by `settings supplier-field answer-key set`. Send every option of the field in the same call: an option you omit keeps its previous classification.",
+      "method": "PATCH",
+      "path": "/srm_settings/fields/:supplier_fields_field_id/classification",
+      "path_params": [
+        "supplier_fields_field_id"
+      ],
+      "body_root": "classification",
+      "params": [
+        {
+          "name": "classification",
+          "type": "object",
+          "required": true,
+          "desc": "Classification by option id: {\"<option_id>\": {\"correct\": true, \"requirement_type\": \"comment\"}, ...}. requirement_type must be one of none, comment, evidence, comment_and_evidence.",
+          "in": "body",
+          "spread": true
+        }
+      ],
+      "response": "200 with the field in the same shape as `settings supplier-field field show`, options carrying the new correct/requirement_type. 422 {errors} when a requirement_type is outside none/comment/evidence/comment_and_evidence; 404 Rails default {status, error} when the field id is unknown or belongs to another buyer; 400 Rails default {status, error} when the classification root is missing; 403 {error} when the policy denies access (requires manager or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_fields_fields_classifications#update"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-field",
+        "field",
+        "create"
+      ],
+      "summary": "Add a field (question) to a form",
+      "description": "Adds a field (question) to a supplier form. supplier_field_id comes from `settings supplier-field list`. `name` and `order` are assigned by the server (a UUID and last position) — do not send them. Creating a field enqueues a job that adds it retroactively to the suppliers' existing answers. Field types that carry options (check_box, radio_button, select) REQUIRE at least 2 options in the same call, otherwise the response is 422. Requires the admin role or above; forms created from the Linkana template refuse new fields (403).",
+      "method": "POST",
+      "path": "/srm_settings/supplier_fields/:supplier_field_id/fields",
+      "path_params": [
+        "supplier_field_id"
+      ],
+      "body_root": "setting_form_field",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": true,
+          "desc": "The question as the supplier reads it.",
+          "in": "body"
+        },
+        {
+          "name": "field_type",
+          "type": "string",
+          "required": true,
+          "desc": "How the supplier answers. check_box, radio_button and select require options_attributes with at least 2 entries.",
+          "in": "body",
+          "enum": [
+            "check_box",
+            "cpf_input",
+            "currency",
+            "email_input",
+            "long_text_input",
+            "multiple_uploads",
+            "number_input",
+            "radio_button",
+            "select",
+            "text_input",
+            "upload"
+          ]
+        },
+        {
+          "name": "hint",
+          "type": "string",
+          "required": false,
+          "desc": "Helper text shown under the question.",
+          "in": "body"
+        },
+        {
+          "name": "optional",
+          "type": "boolean",
+          "required": false,
+          "desc": "When true the supplier may leave it blank. An optional field never scores in the answer key.",
+          "in": "body"
+        },
+        {
+          "name": "options_attributes",
+          "type": "array",
+          "required": false,
+          "desc": "Answer options, as a JSON array of objects with display_name, e.g. '[{\"display_name\":\"Sim\"},{\"display_name\":\"Não\"}]'. Required (min 2) for check_box, radio_button and select; ignored by the other types.",
+          "in": "body",
+          "item": "object"
+        }
+      ],
+      "response": "200 with the created field in the same shape as `settings supplier-field field show`. 422 {errors} on validation (blank display_name, invalid field_type, or fewer than 2 options on a type that requires them); 404 Rails default {status, error} when supplier_field_id is unknown or belongs to another buyer; 400 Rails default {status, error} when the setting_form_field root is missing; 403 {error} when the policy denies access (requires admin, and the form must not come from the template); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_fields_fields#create"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-field",
+        "field",
+        "delete"
+      ],
+      "summary": "Delete a field (question) of a form",
+      "description": "Marks a field for deletion by the FIELD id (from the `fields` array of `settings supplier-field show`) and enqueues the job that removes it from the suppliers' existing answers. The response still carries the field, now with marked_to_destroy true. Refused (403) when it is the last field of an enabled form, when the field scores in the answer key (zero its weight with `settings supplier-field answer-key set` first), or when the form comes from the Linkana template.",
+      "method": "DELETE",
+      "path": "/srm_settings/fields/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with the field in the same shape as `settings supplier-field field show`, marked_to_destroy now true. 404 Rails default {status, error} when the id is unknown or belongs to another buyer; 403 {error} when the policy denies access — last field of an enabled form, field with a positive answer-key weight, template-created form, or caller below admin; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_fields_fields#destroy"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-field",
+        "field",
+        "reorder"
+      ],
+      "summary": "Reorder the fields (questions) of a form",
+      "description": "Sets the order in which the questions of one form are shown to the supplier. --identifiers is a comma-separated list of FIELD ids (from the `fields` array of `settings supplier-field show`) in the desired final order. Send every field of the form: a field left out keeps its previous order number and may end up sharing a position. The form must have at least 2 fields.",
+      "method": "PATCH",
+      "path": "/srm_settings/supplier_fields/:supplier_field_id/fields_reordering",
+      "path_params": [
+        "supplier_field_id"
+      ],
+      "params": [
+        {
+          "name": "identifiers",
+          "type": "string",
+          "required": true,
+          "desc": "Comma-separated field ids in the desired final order (e.g. \"id1,id2,id3\").",
+          "in": "query"
+        }
+      ],
+      "response": "200 with the form in the same shape as `settings supplier-field show`, fields in the new order. 400 (bad request) when identifiers is missing; 404 Rails default {status, error} when supplier_field_id is unknown or belongs to another buyer, or when an id in identifiers is not a field of this form; 403 {error} when the policy denies access — form with fewer than 2 fields, or caller below admin; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_fields_fields_reorderings#update"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-field",
+        "field",
+        "show"
+      ],
+      "summary": "Show one field (question) of a form",
+      "description": "Shows a single field (question) of a supplier form by the FIELD id — not the form id. Get the id from the `fields` array embedded in `settings supplier-field show <supplier_field_id>`. Returns the field with its options, the answer-key weight and the classification of each option.",
+      "method": "GET",
+      "path": "/srm_settings/fields/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with {id, display_name, hint, field_type, optional, order, has_answer_key, weight, marked_to_destroy, options:[{id, display_name, correct, requirement_type}], supplier_field_id}. 404 Rails default {status, error} when the id is unknown or the field belongs to another buyer (the lookup is scoped to the buyer); 403 {error} when the policy denies access (requires member or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_fields_fields#show"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-field",
+        "field",
+        "update"
+      ],
+      "summary": "Update the wording of a field (question)",
+      "description": "Updates only the wording of a field: display_name, hint and optional. The answer options are managed by `settings supplier-field field answers update`, the classification by `settings supplier-field field classification set`. Marking a field as optional automatically drops it from the answer key (has_answer_key becomes false). The FIELD id comes from the `fields` array of `settings supplier-field show`.",
+      "method": "PATCH",
+      "path": "/srm_settings/fields/:supplier_fields_field_id/questions",
+      "path_params": [
+        "supplier_fields_field_id"
+      ],
+      "body_root": "setting_form_field",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": false,
+          "desc": "New text of the question.",
+          "in": "body"
+        },
+        {
+          "name": "hint",
+          "type": "string",
+          "required": false,
+          "desc": "New helper text.",
+          "in": "body"
+        },
+        {
+          "name": "optional",
+          "type": "boolean",
+          "required": false,
+          "desc": "When set to true, the field also stops scoring in the answer key.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the updated field in the same shape as `settings supplier-field field show`. 422 {errors} on validation (e.g. blank display_name); 404 Rails default {status, error} when the field id is unknown or belongs to another buyer; 400 Rails default {status, error} when the setting_form_field root is missing; 403 {error} when the policy denies access (requires admin); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_fields_fields_questions#update"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-field",
         "list"
       ],
       "summary": "List the buyer's supplier form documents",
@@ -2596,9 +3051,59 @@
           "in": "query"
         }
       ],
-      "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id}. The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the document applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order}. The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the document applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
       "auth": "pat",
       "controller": "srm_settings/supplier_fields#index"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-field",
+        "reorder"
+      ],
+      "summary": "Reorder the supplier forms among themselves",
+      "description": "Sets the order in which the forms (and bank information documents) appear to the supplier — this is the list level, not the questions inside a form. --identifiers is a comma-separated list of document ids from `settings supplier-field list`, in the desired final order. Ids that do not belong to the buyer make the call answer 404 without reordering anything.",
+      "method": "PATCH",
+      "path": "/srm_settings/supplier_fields_reordering",
+      "path_params": [],
+      "params": [
+        {
+          "name": "identifiers",
+          "type": "string",
+          "required": true,
+          "desc": "Comma-separated supplier-field ids in the desired final order (e.g. \"id1,id2,id3\").",
+          "in": "query"
+        }
+      ],
+      "response": "200 with the enabled forms in the new order, same shape as `settings supplier-field list`. 400 (bad request) when identifiers is missing; 404 Rails default {status, error} when an id is unknown or belongs to another buyer; 403 {error} when the policy denies access (requires admin); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_fields_reorderings#update"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-field",
+        "request-resend"
+      ],
+      "summary": "Ask every supplier to answer the form again",
+      "description": "Bulk write: marks the answers of this form for resubmission across the buyer's approved and monitored suppliers, so each of them is asked to fill it again. There is no dry-run and no undo — the response tells how many documents were marked (requested_documents_count). Use it deliberately, not to test connectivity. supplier_field_id comes from `settings supplier-field list`; a disabled form answers 404.",
+      "method": "POST",
+      "path": "/srm_settings/supplier_fields/:supplier_field_id/synchronizations",
+      "path_params": [
+        "supplier_field_id"
+      ],
+      "params": [
+        {
+          "name": "new_requested_comment",
+          "type": "string",
+          "required": false,
+          "desc": "Message stored with the request, shown to the supplier as the reason for the resubmission.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with {id, display_name, requested_documents_count} — the number of supplier documents marked for resubmission (0 when no supplier qualifies). 404 Rails default {status, error} when supplier_field_id is unknown, disabled, or belongs to another buyer; 403 {error} when the policy denies access (requires the admin role or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_fields_synchronizations#create"
     },
     {
       "command": [
@@ -2614,7 +3119,7 @@
         "id"
       ],
       "params": [],
-      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, hint, renew_at_in_days, webhook_reference, default_responsible_party, block_supplier_on_expiry, send_document_reviewed_event, setting_document_review:{id, review_type, expires_on_in_days, automatic_review_rule}}. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order, hint, renew_at_in_days, webhook_reference, default_responsible_party, block_supplier_on_expiry, send_document_reviewed_event, setting_document_review:{id, review_type, expires_on_in_days, automatic_review_rule}}. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/supplier_fields#show"
     },
