@@ -31,7 +31,7 @@ Algum falhou → não anuncia. Reporta o furo primeiro.
 
 ## 2. Monte a mensagem neste padrão
 
-```
+````
 **`lk` vX.Y.Z no ar** 🚀
 Destaque: <uma linha, non-tech, sobre o que a pessoa passa a conseguir fazer>
 
@@ -46,7 +46,7 @@ O que dá pra fazer agora:
 lk <comando novo>
 ```
 <uma frase dizendo o que esse comando resolve, na língua de quem usa>
-```
+````
 
 O bloco "O que dá pra fazer agora" é opcional numa release só de correção, e
 obrigatório quando entram comandos: o time quer ver o que passou a ser possível,
