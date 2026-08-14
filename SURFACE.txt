@@ -63,7 +63,11 @@ lk settings category risk update
 lk settings category show
 lk settings category update
 lk settings certificate
+lk settings certificate cnae-list
+lk settings certificate cnae-list import
 lk settings certificate list
+lk settings certificate restriction-list
+lk settings certificate restriction-list import
 lk settings certificate show
 lk settings certificate update
 lk settings check
