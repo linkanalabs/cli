@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-12T20:38:35Z",
-  "source": "linkanalabs/linkana@1bb0ee4c95",
+  "generated_at": "2026-08-14T18:33:21Z",
+  "source": "linkanalabs/linkana@2d6c090e0f",
   "endpoints": [
     {
       "command": [
@@ -1323,6 +1323,147 @@
       "command": [
         "settings",
         "certificate",
+        "cnae-list",
+        "clear"
+      ],
+      "summary": "Wipe the CNAE lists of a certificate",
+      "description": "Removes EVERY CNAE row of a certificate, asynchronously, and marks every CsvImport of this certificate as `deleted` — the import history disappears from `settings certificate import list`. No undo, no dry-run. The id is a positional argument, from `settings certificate list`. Requires the admin role or above.",
+      "method": "DELETE",
+      "path": "/srm_settings/certificates_cnae_lists_csv_imports/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with {id, name, display_name, lists_reset_enqueued: true} — the job was enqueued, the rows are not gone yet. 404 Rails default {status, error} when the id is unknown or belongs to another buyer; 403 {error} when the policy denies access (requires admin or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/certificates_cnae_lists_csv_imports#destroy"
+    },
+    {
+      "command": [
+        "settings",
+        "certificate",
+        "cnae-list",
+        "export"
+      ],
+      "summary": "Export the CNAE lists to CSV",
+      "description": "Starts the CSV export of the CNAE list of a certificate. Same shape as the restriction-list export: background job, PURGES the previous file immediately, and the finished file appears in `settings certificate show <id>` as `cnae_lists_export_csv_url`. Only enabled certificates. Requires the admin role or above.",
+      "method": "POST",
+      "path": "/srm_settings/certificates_cnae_lists_csv_exports",
+      "path_params": [],
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "desc": "Id of the CNAE_LISTS certificate; comes from `settings certificate list`.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with {id, name, display_name, export_enqueued: true}. The file URL shows up later in `settings certificate show` as `cnae_lists_export_csv_url`. 404 Rails default {status, error} when the id is unknown, disabled, or belongs to another buyer; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/certificates_cnae_lists_csv_exports#create"
+    },
+    {
+      "command": [
+        "settings",
+        "certificate",
+        "cnae-list",
+        "import-chunk"
+      ],
+      "summary": "Send one chunk of a CNAE list CSV",
+      "description": "Same mechanics as `settings certificate restriction-list import-chunk`, for the CNAE_LISTS certificate: one chunk per call, chunks grouped by `identifier`, processing asynchronous. Prefer the higher-level `lk settings certificate cnae-list import --file <csv>`. Each row carries a single `cnae` value. The `id` flag is the certificate id from `settings certificate list` filtered by name CNAE_LISTS.",
+      "method": "POST",
+      "path": "/srm_settings/certificates_cnae_lists_csv_imports",
+      "path_params": [],
+      "body_root": "certificates_cnae_lists_csv_import",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "desc": "Id of the CNAE_LISTS certificate; comes from `settings certificate list`.",
+          "in": "query"
+        },
+        {
+          "name": "identifier",
+          "type": "string",
+          "required": true,
+          "desc": "Groups the chunks of one file. Same value for every chunk of the same CSV, a new UUID for a new CSV. Reusing an identifier from another certificate answers 422.",
+          "in": "body"
+        },
+        {
+          "name": "filename",
+          "type": "string",
+          "required": true,
+          "desc": "Name of the CSV being imported, shown in the progress listing.",
+          "in": "body"
+        },
+        {
+          "name": "total_count",
+          "type": "integer",
+          "required": true,
+          "desc": "Total number of rows in the WHOLE file (not in this chunk).",
+          "in": "body"
+        },
+        {
+          "name": "data",
+          "type": "array",
+          "required": true,
+          "desc": "Rows of this chunk: '[{\"index\":0,\"values\":{\"cnae\":\"6201-5/00\"}}]'.",
+          "in": "body",
+          "item": "object"
+        }
+      ],
+      "response": "200 with the import in the same shape as `settings certificate import show`. 422 {errors} when the identifier already belongs to another certificate, or when filename/total_count are missing; 404 Rails default {status, error} when the certificate id is unknown or belongs to another buyer; 400 Rails default {status, error} when the certificate `id` flag is missing; 403 {error} when the policy denies access (requires the operator role or above); 401 (empty body) when unauthenticated. Note there is no 400 for a missing body root: Rails wraps a JSON body under the expected root, so leaving the fields out answers 422 naming them (`Filename não pode ficar em branco`).",
+      "auth": "pat",
+      "controller": "srm_settings/certificates_cnae_lists_csv_imports#create"
+    },
+    {
+      "command": [
+        "settings",
+        "certificate",
+        "import",
+        "list"
+      ],
+      "summary": "List the CSV imports of a certificate (one page per call)",
+      "description": "Lists the CSV imports of one certificate, newest first, with the progress counters of each. `certificate_id` comes from `settings certificate list`. Imports wiped by a `clear` show up with status `deleted`. The response is PAGINATED: the body carries one page and the metadata comes in headers (`total-count`, `total-pages`, `current-page`, `page-items`); use `--page N` for a specific page. Requires the operator role or above.",
+      "method": "GET",
+      "path": "/srm_settings/certificates/:certificate_id/csv_imports",
+      "path_params": [
+        "certificate_id"
+      ],
+      "pagination": {
+        "param": "page"
+      },
+      "params": [],
+      "response": "200 with one page of {identifier, filename, status, total_count, imported_count, failed_count, duplicated_count, completed_at, setting_certificate_id, failed_rows_file_url}, plus the pagy headers. A page past the last one returns an empty array (still 200). `status` is one of pending, processing, completed, failed, deleted. `failed_rows_file_url` is present only after the import finishes with rejected rows. 404 Rails default {status, error} when certificate_id is unknown or belongs to another buyer; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/certificates_csv_imports#index"
+    },
+    {
+      "command": [
+        "settings",
+        "certificate",
+        "import",
+        "show"
+      ],
+      "summary": "Follow the progress of one CSV import",
+      "description": "Shows one CSV import by its `identifier` — the same value sent in the import chunks, NOT a uuid primary key. This is how a chunked import is followed to the end: the rows are processed on the within_5_minutes queue, so poll every 30-60 seconds and stop on `completed`, `failed` or `deleted`. Do not poll faster: the queue is measured in minutes and a tight loop just burns calls. `deleted` shows up when someone ran a `clear` on the certificate while the import was running. When the import finishes with rejected rows, `failed_count` is positive and `failed_rows_file_url` points at a CSV listing each rejected row with its error — the rows themselves are NOT in this payload.",
+      "method": "GET",
+      "path": "/srm_settings/certificates/:certificate_id/csv_imports/:id",
+      "path_params": [
+        "certificate_id",
+        "id"
+      ],
+      "params": [],
+      "response": "200 with {identifier, filename, status, total_count, imported_count, failed_count, duplicated_count, completed_at, setting_certificate_id, failed_rows_file_url}. 404 Rails default {status, error} when the identifier is unknown, belongs to another certificate, or the certificate belongs to another buyer; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/certificates_csv_imports#show"
+    },
+    {
+      "command": [
+        "settings",
+        "certificate",
         "list"
       ],
       "summary": "List the buyer's certificates",
@@ -1342,6 +1483,105 @@
       "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order}. The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the certificate applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
       "auth": "pat",
       "controller": "srm_settings/certificates#index"
+    },
+    {
+      "command": [
+        "settings",
+        "certificate",
+        "restriction-list",
+        "clear"
+      ],
+      "summary": "Wipe the internal restriction lists of a certificate",
+      "description": "Removes EVERY row of the internal restriction list of a certificate, asynchronously. Two effects the caller has to know about: the restriction rows are destroyed, and every CsvImport of this certificate is marked `deleted`, so the import history disappears from `settings certificate import list`. There is no undo and no dry-run — re-importing the CSV is the only way back. The id is a positional argument (the certificate id, from `settings certificate list`). Requires the admin role or above.",
+      "method": "DELETE",
+      "path": "/srm_settings/certificates_internal_restriction_lists_csv_imports/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with {id, name, display_name, lists_reset_enqueued: true} — the job was enqueued, the rows are not gone yet. 404 Rails default {status, error} when the id is unknown or belongs to another buyer; 403 {error} when the policy denies access (requires admin or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/certificates_internal_restriction_lists_csv_imports#destroy"
+    },
+    {
+      "command": [
+        "settings",
+        "certificate",
+        "restriction-list",
+        "export"
+      ],
+      "summary": "Export the internal restriction lists to CSV",
+      "description": "Starts the CSV export of the internal restriction list of a certificate. The export runs in background and PURGES the previously exported file at once, so the old link stops working the moment this is called. The finished file is not in this response: poll `settings certificate show <id>` until `restriction_lists_export_csv_url` appears, and download from there. The `id` flag is the certificate id, from `settings certificate list`. Only enabled certificates. Requires the admin role or above.",
+      "method": "POST",
+      "path": "/srm_settings/certificates_internal_restriction_lists_csv_exports",
+      "path_params": [],
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "desc": "Id of the INTERNAL_RESTRICTION_LISTS certificate; comes from `settings certificate list`.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with {id, name, display_name, export_enqueued: true}. The file URL shows up later in `settings certificate show` as `restriction_lists_export_csv_url`. 404 Rails default {status, error} when the id is unknown, disabled, or belongs to another buyer; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/certificates_internal_restriction_lists_csv_exports#create"
+    },
+    {
+      "command": [
+        "settings",
+        "certificate",
+        "restriction-list",
+        "import-chunk"
+      ],
+      "summary": "Send one chunk of an internal restriction list CSV",
+      "description": "Sends ONE chunk of rows to the INTERNAL_RESTRICTION_LISTS certificate. This is the raw endpoint: the caller splits the CSV and repeats the call with the same `identifier` until every row is sent. Prefer the higher-level `lk settings certificate restriction-list import --file <csv>`, which does the splitting; use this one to debug or to resume a specific chunk. The `id` flag is the certificate id, from `settings certificate list` filtered by name INTERNAL_RESTRICTION_LISTS. `identifier` groups the chunks into one import: reuse it across chunks of the same file and pick a NEW one (a UUID) for every new file — an identifier already used by another certificate answers 422, because it is unique across the whole install. Rows are processed asynchronously (queue within_5_minutes), so a 200 here means accepted, not imported: follow with `settings certificate import show`.",
+      "method": "POST",
+      "path": "/srm_settings/certificates_internal_restriction_lists_csv_imports",
+      "path_params": [],
+      "body_root": "certificates_internal_restriction_lists_csv_import",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "desc": "Id of the INTERNAL_RESTRICTION_LISTS certificate; comes from `settings certificate list`.",
+          "in": "query"
+        },
+        {
+          "name": "identifier",
+          "type": "string",
+          "required": true,
+          "desc": "Groups the chunks of one file. Same value for every chunk of the same CSV, a new UUID for a new CSV. Reusing an identifier from another certificate answers 422.",
+          "in": "body"
+        },
+        {
+          "name": "filename",
+          "type": "string",
+          "required": true,
+          "desc": "Name of the CSV being imported, shown in the progress listing.",
+          "in": "body"
+        },
+        {
+          "name": "total_count",
+          "type": "integer",
+          "required": true,
+          "desc": "Total number of rows in the WHOLE file (not in this chunk), so the progress can be computed.",
+          "in": "body"
+        },
+        {
+          "name": "data",
+          "type": "array",
+          "required": true,
+          "desc": "Rows of this chunk: '[{\"index\":0,\"values\":{\"cnpj\":\"52.710.793/0001-36\",\"cpf\":null,\"nome\":\"ACME\"}}]'. Each row carries cnpj, cpf and nome; send the fields the CSV has.",
+          "in": "body",
+          "item": "object"
+        }
+      ],
+      "response": "200 with the import in the same shape as `settings certificate import show` — use its `identifier` to follow the progress. 422 {errors} when the identifier already belongs to another certificate, or when filename/total_count are missing; 404 Rails default {status, error} when the certificate id is unknown or belongs to another buyer; 400 Rails default {status, error} when the certificate `id` flag is missing; 403 {error} when the policy denies access (requires the operator role or above); 401 (empty body) when unauthenticated. Note there is no 400 for a missing body root: Rails wraps a JSON body under the expected root, so leaving the fields out answers 422 naming them (`Filename não pode ficar em branco`).",
+      "auth": "pat",
+      "controller": "srm_settings/certificates_internal_restriction_lists_csv_imports#create"
     },
     {
       "command": [
@@ -1819,6 +2059,24 @@
       "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order}. `type` is the STI class (e.g. Settings::SettingForm) and `type_humanize` its localized label; `national_pj/national_pf/international` mark the category legal_entities a document applies to (relevant for checks/certificates). 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
       "auth": "pat",
       "controller": "srm_settings/documents#index"
+    },
+    {
+      "command": [
+        "settings",
+        "document",
+        "show"
+      ],
+      "summary": "Show one document of any type by its id",
+      "description": "Shows one document (Settings::SettingDocument of any of the four types — Formulário, Consulta, Base pública, Informações bancárias) by its id; get the id from `settings document list`. This is the unified read endpoint behind the new document screen — it accepts an id of any type, unlike the per-type `settings <type> show` commands. Returns the document's shared attributes; `type` (the STI class) and `type_humanize` (its localized label) disambiguate which type came back. Requires the manager role or above.",
+      "method": "GET",
+      "path": "/srm_settings/documents/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order}. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/documents#show"
     },
     {
       "command": [
