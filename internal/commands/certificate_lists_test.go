@@ -221,7 +221,8 @@ func TestCertificateListImportNoWaitSkipsPolling(t *testing.T) {
 }
 
 // TestCertificateListImportStopsOnDeleted covers the `clear`-while-importing
-// case: without `deleted` in the terminal set the poll would never return.
+// case: `deleted` ends the poll (without it the loop would never return) and
+// exits non-zero, because nothing was applied.
 func TestCertificateListImportStopsOnDeleted(t *testing.T) {
 	authEnv(t)
 	fastImportPoll(t)
@@ -234,11 +235,39 @@ func TestCertificateListImportStopsOnDeleted(t *testing.T) {
 	if code := run([]string{
 		"settings", "certificate", "restriction-list", "import",
 		"--id", "cert_1", "--file", csvPath, "--format", "json",
-	}, &out, &errOut); code != 0 {
-		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}, &out, &errOut); code == 0 {
+		t.Fatalf("exit = 0, want a failure; stdout = %q", out.String())
 	}
 	if !strings.Contains(out.String(), `"status": "deleted"`) {
-		t.Errorf("stdout = %q, want the deleted status", out.String())
+		t.Errorf("stdout = %q, want the deleted status printed anyway", out.String())
+	}
+	if !strings.Contains(errOut.String(), "marcado como deleted") {
+		t.Errorf("stderr = %q, want the deleted explanation", errOut.String())
+	}
+}
+
+// TestCertificateListImportFailsOnFailedStatus keeps automation from reading an
+// import that applied nothing as a success.
+func TestCertificateListImportFailsOnFailedStatus(t *testing.T) {
+	authEnv(t)
+	fastImportPoll(t)
+	server, _ := importServer(t, []string{"failed"})
+	t.Setenv("LK_API_URL", server.URL)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+	csvPath := writeCSV(t, "cnpj\n52.710.793/0001-36\n")
+
+	var out, errOut bytes.Buffer
+	if code := run([]string{
+		"settings", "certificate", "restriction-list", "import",
+		"--id", "cert_1", "--file", csvPath, "--format", "json",
+	}, &out, &errOut); code == 0 {
+		t.Fatalf("exit = 0, want a failure; stdout = %q", out.String())
+	}
+	if !strings.Contains(out.String(), `"status": "failed"`) {
+		t.Errorf("stdout = %q, want the failed status printed anyway", out.String())
+	}
+	if !strings.Contains(errOut.String(), "terminou em failed") {
+		t.Errorf("stderr = %q, want the failure reported", errOut.String())
 	}
 }
 
@@ -297,25 +326,35 @@ func TestCertificateListImportUnauthorized(t *testing.T) {
 }
 
 // TestCertificateListImportGivesUpAtTimeout keeps a never-finishing import from
-// blocking forever: the command returns the last state it saw and points at the
-// command that follows the rest.
+// blocking forever: the command prints the last state it saw, points at the
+// command that follows the rest, and exits non-zero because the outcome is
+// unknown. The sleep is bounded by the remaining timeout, so a --timeout shorter
+// than the poll interval does not overshoot it.
 func TestCertificateListImportGivesUpAtTimeout(t *testing.T) {
 	authEnv(t)
-	fastImportPoll(t)
+	previous := importPollInterval
+	importPollInterval = time.Hour
+	t.Cleanup(func() { importPollInterval = previous })
 	server, _ := importServer(t, []string{"processing"})
 	t.Setenv("LK_API_URL", server.URL)
 	t.Setenv("LK_TOKEN", "lkn_abc_def")
 	csvPath := writeCSV(t, "cnpj\n52.710.793/0001-36\n")
 
 	var out, errOut bytes.Buffer
-	if code := run([]string{
+	started := time.Now()
+	code := run([]string{
 		"settings", "certificate", "restriction-list", "import",
-		"--id", "cert_1", "--file", csvPath, "--timeout", "1ns", "--format", "json",
-	}, &out, &errOut); code != 0 {
-		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+		"--id", "cert_1", "--file", csvPath, "--timeout", "20ms", "--format", "json",
+	}, &out, &errOut)
+	elapsed := time.Since(started)
+	if code == 0 {
+		t.Fatalf("exit = 0, want a failure; stdout = %q", out.String())
 	}
-	if !strings.Contains(errOut.String(), "settings certificate import show") {
-		t.Errorf("stderr = %q, want it to point at the progress command", errOut.String())
+	if elapsed > 5*time.Second {
+		t.Errorf("took %s, want it bounded by the 20ms timeout, not the 1h poll interval", elapsed)
+	}
+	if !strings.Contains(errOut.String(), "settings certificate import show cert_1") {
+		t.Errorf("stderr = %q, want it to point at the progress command with both args", errOut.String())
 	}
 	if !strings.Contains(out.String(), `"status": "processing"`) {
 		t.Errorf("stdout = %q, want the last status it saw", out.String())

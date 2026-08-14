@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -75,6 +76,11 @@ var terminalImportStatuses = map[string]bool{"completed": true, "failed": true, 
 
 // importPollInterval is a variable so tests do not wait on it.
 var importPollInterval = 10 * time.Second
+
+// errImportUnfinished marks an import that did not end in `completed`. The
+// command still prints the final state, then exits non-zero, so the caller sees
+// what happened and anything chaining on the exit code stops.
+var errImportUnfinished = errors.New("o import não terminou em completed")
 
 // newCertificateListsCmds builds the `settings certificate <list> import` group
 // chain. It mounts before registerDynamic, which then reuses these groups and
@@ -165,11 +171,14 @@ func runCertificateListImport(cmd *cobra.Command, kind certificateListKind) erro
 		return output.Render(cmd.OutOrStdout(), formatFlag(cmd), accepted)
 	}
 
-	final, err := followCertificateListImport(cmd, api, imp, certificateID, identifier, timeout)
-	if err != nil {
+	final, followErr := followCertificateListImport(cmd, api, imp, certificateID, identifier, timeout)
+	if followErr != nil && !errors.Is(followErr, errImportUnfinished) {
+		return followErr
+	}
+	if err := output.Render(cmd.OutOrStdout(), formatFlag(cmd), final); err != nil {
 		return err
 	}
-	return output.Render(cmd.OutOrStdout(), formatFlag(cmd), final)
+	return followErr
 }
 
 // openCSVSource resolves --file / --stdin into a reader, refusing both or neither.
@@ -350,20 +359,37 @@ func followCertificateListImport(
 			return view, fmt.Errorf("acompanhando o import %s: a resposta não trouxe status", identifier)
 		}
 		if terminalImportStatuses[view.Status] {
-			return view, nil
+			return view, terminalImportOutcome(view, identifier)
 		}
-		if time.Now().After(deadline) {
-			_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
-				"o import %s ainda está em %s depois de %s; acompanhe com `lk settings certificate import show %s`\n",
-				identifier, view.Status, timeout, identifier)
-			return view, nil
+
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			return view, fmt.Errorf("%w: o import %s ainda está em %s depois de %s; acompanhe com "+
+				"`lk settings certificate import show %s %s`",
+				errImportUnfinished, identifier, view.Status, timeout, certificateID, identifier)
 		}
 
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "status %s (%d de %d)\n", view.Status, view.ImportedCount, view.TotalCount)
-		if err := sleepContext(cmd.Context(), importPollInterval); err != nil {
+		if err := sleepContext(cmd.Context(), min(importPollInterval, remaining)); err != nil {
 			return view, err
 		}
 	}
+}
+
+// terminalImportOutcome decides the exit status of a finished import. Only
+// `completed` is success: `failed` means nothing was applied and `deleted` means
+// a `clear` wiped the import mid-flight, and both would be read as success by
+// anything chaining commands on the exit code. Rejected rows are not a failure
+// here — they come back as `completed` plus a `failed_rows_file_url`.
+func terminalImportOutcome(view csvImportView, identifier string) error {
+	switch view.Status {
+	case "failed":
+		return fmt.Errorf("%w: o import %s terminou em failed", errImportUnfinished, identifier)
+	case "deleted":
+		return fmt.Errorf("%w: o import %s foi marcado como deleted, provavelmente por um `clear` no certificado",
+			errImportUnfinished, identifier)
+	}
+	return nil
 }
 
 func sleepContext(ctx context.Context, d time.Duration) error {
