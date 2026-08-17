@@ -100,6 +100,9 @@ lk settings document disable
 lk settings document enable
 lk settings document list
 lk settings document show
+lk settings document update-attrs
+lk settings document update-monitoring
+lk settings document update-review
 lk settings email-message
 lk settings email-message list
 lk settings email-message show

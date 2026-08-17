@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-14T18:33:21Z",
-  "source": "linkanalabs/linkana@2d6c090e0f",
+  "generated_at": "2026-08-17T15:22:37Z",
+  "source": "linkanalabs/linkana@19bdd02d45",
   "endpoints": [
     {
       "command": [
@@ -2074,9 +2074,150 @@
         "id"
       ],
       "params": [],
-      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order}. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order, hint, renew_at_in_days, block_supplier_on_expiry, default_responsible_party, send_document_reviewed_event, webhook_reference} plus a nested setting_document_review {id, review_type, automatic_review_rule, expires_on_in_days}. The review `id` is what makes an update EDIT the review instead of replacing it, so read it here before any command that sends setting_document_review_attributes. `settings document list` stays thin (the item shape only), so a field beyond that list comes from this show. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/documents#show"
+    },
+    {
+      "command": [
+        "settings",
+        "document",
+        "update-attrs"
+      ],
+      "summary": "Edit the identity fields of a document of any type",
+      "description": "Writes the Atributos tab of ANY `SettingDocument` — certificate, check, form or bank information — which is why it exists next to the per-type `update`: `settings certificate update` accepts only display_name, default_responsible_party and the grouper, so `hint`, `national_pj`, `national_pf` and `international` on a certificate can only be set here. Every field is optional; send only what changes. The id is a positional argument, from `settings document list` or from the per-type `list`. Read the result back with `settings document show`. Requires the admin role or above.",
+      "method": "PATCH",
+      "path": "/srm_settings/documents_attrs/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_document",
+      "params": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": false,
+          "desc": "Label shown to the supplier. Cannot be blank — an empty string answers 422.",
+          "in": "body"
+        },
+        {
+          "name": "hint",
+          "type": "string",
+          "required": false,
+          "desc": "Instruction text shown under the document when the supplier fills it.",
+          "in": "body"
+        },
+        {
+          "name": "national_pj",
+          "type": "boolean",
+          "required": false,
+          "desc": "Applies to Brazilian companies (PJ).",
+          "in": "body"
+        },
+        {
+          "name": "national_pf",
+          "type": "boolean",
+          "required": false,
+          "desc": "Applies to Brazilian individuals (PF).",
+          "in": "body"
+        },
+        {
+          "name": "international",
+          "type": "boolean",
+          "required": false,
+          "desc": "Applies to suppliers outside Brazil.",
+          "in": "body"
+        },
+        {
+          "name": "default_responsible_party",
+          "type": "string",
+          "required": false,
+          "desc": "Who fills the document by default.",
+          "in": "body",
+          "enum": [
+            "supplier",
+            "buyer"
+          ]
+        }
+      ],
+      "response": "200 with the same payload as `settings document show`, already reflecting the change. 422 {errors} on validation (e.g. blank display_name); 404 Rails default {status, error} when the id is unknown or belongs to another buyer; 400 Rails default {status, error} when the `setting_document` root is missing from the body (it is REQUIRED: wrap_parameters derives its key from the controller name, never `setting_document`, so sending the fields at the top level answers 400); 403 {error} for a role below admin; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/documents_attrs#update"
+    },
+    {
+      "command": [
+        "settings",
+        "document",
+        "update-monitoring"
+      ],
+      "summary": "Edit the renewal and expiry rules of a document of any type",
+      "description": "Writes the Monitoramento tab of ANY `SettingDocument`. This is the only way to set the renewal window of a certificate or a check through the CLI — `settings certificate update` does not accept `renew_at_in_days`. `expires_on_in_days` lives on the nested review and REQUIRES the review `id` from `settings document show`: without it Rails replaces the review instead of editing it, and a review id belonging to another document answers 404. Requires the admin role or above.",
+      "method": "PATCH",
+      "path": "/srm_settings/documents_monitorings/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_document",
+      "params": [
+        {
+          "name": "renew_at_in_days",
+          "type": "integer",
+          "required": false,
+          "desc": "How many days before expiry the document is requested again.",
+          "in": "body"
+        },
+        {
+          "name": "block_supplier_on_expiry",
+          "type": "boolean",
+          "required": false,
+          "desc": "Blocks the supplier when the document expires.",
+          "in": "body"
+        },
+        {
+          "name": "setting_document_review_attributes",
+          "type": "object",
+          "required": false,
+          "desc": "Nested review: '{\"id\":\"<review-id-from-show>\",\"expires_on_in_days\":0}'. The id is mandatory in practice.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the same payload as `settings document show`. 422 {errors} on validation (e.g. expires_on_in_days outside the accepted set); 404 Rails default {status, error} when the document id is unknown, belongs to another buyer, OR when the nested review id belongs to another document; 400 Rails default {status, error} when the `setting_document` root is missing from the body; 403 {error} for a role below admin; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/documents_monitorings#update"
+    },
+    {
+      "command": [
+        "settings",
+        "document",
+        "update-review"
+      ],
+      "summary": "Edit the review rules and the review group of a document of any type",
+      "description": "Writes the Revisão tab of ANY `SettingDocument`: the review group (`setting_grouper_id`) and the nested review's `review_type` and `automatic_review_rule`. The grouper is validated against the caller's buyer, so a grouper from another buyer answers 404 and the document does NOT move. As in `update-monitoring`, the nested review needs its `id` from `settings document show`, otherwise Rails replaces the review. Requires the admin role or above.",
+      "method": "PATCH",
+      "path": "/srm_settings/documents_reviews/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_document",
+      "params": [
+        {
+          "name": "setting_grouper_id",
+          "type": "string",
+          "required": false,
+          "desc": "Target review group; comes from `settings setting-grouper list`. Must belong to the caller's buyer.",
+          "in": "body"
+        },
+        {
+          "name": "setting_document_review_attributes",
+          "type": "object",
+          "required": false,
+          "desc": "Nested review: '{\"id\":\"<review-id-from-show>\",\"review_type\":\"manual_review\",\"automatic_review_rule\":\"only_refused\"}'.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the same payload as `settings document show`. 422 {errors} when review_type or automatic_review_rule is outside its enum; 404 Rails default {status, error} when the document id is unknown or from another buyer, when setting_grouper_id belongs to another buyer, or when the nested review id belongs to another document; 400 Rails default {status, error} when the `setting_document` root is missing from the body; 403 {error} for a role below admin; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/documents_reviews#update"
     },
     {
       "command": [
