@@ -38,6 +38,7 @@ lk settings approval-step tier list
 lk settings approval-step tier update
 lk settings approval-step update
 lk settings bank-information
+lk settings bank-information export-report
 lk settings bank-information list
 lk settings bank-information show
 lk settings bank-information update
@@ -142,6 +143,7 @@ lk settings supplier-field answer-key remove
 lk settings supplier-field answer-key set
 lk settings supplier-field create
 lk settings supplier-field duplicate
+lk settings supplier-field export-report
 lk settings supplier-field field
 lk settings supplier-field field answers
 lk settings supplier-field field answers update
@@ -158,6 +160,9 @@ lk settings supplier-field reorder
 lk settings supplier-field request-resend
 lk settings supplier-field show
 lk settings supplier-field update
+lk settings supplier-invite
+lk settings supplier-invite show
+lk settings supplier-invite update
 lk settings tag
 lk settings tag create
 lk settings tag delete

@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-17T15:22:37Z",
-  "source": "linkanalabs/linkana@19bdd02d45",
+  "generated_at": "2026-08-17T21:55:00Z",
+  "source": "linkanalabs/linkana@fbc7878a48",
   "endpoints": [
     {
       "command": [
@@ -529,6 +529,24 @@
       "command": [
         "settings",
         "bank-information",
+        "export-report"
+      ],
+      "summary": "Export the suppliers' bank information answers to CSV",
+      "description": "Starts the CSV export of every supplier's bank information answer to this document. The export runs in background and REPLACES the previously attached file (has_one_attached), so the old `report_csv_url` stops working the moment this is called. The CSV carries sensitive data — each supplier's account CPF/CNPJ, branch, account number and a one-week signed link to the bank statement — so it is admin-only: the finished file is not in this response, poll `settings bank-information show <id>` until `report_csv_url` appears (returned only to an admin) and download from there. bank_information_id comes from `settings bank-information list`; only the enabled document exports (a disabled one answers 404). Requires the admin role or above.",
+      "method": "POST",
+      "path": "/srm_settings/bank_informations/:bank_information_id/csv_reports",
+      "path_params": [
+        "bank_information_id"
+      ],
+      "params": [],
+      "response": "200 with {id, name, display_name, export_enqueued: true}. The file URL shows up later in `settings bank-information show` as `report_csv_url`, only for an admin. 404 Rails default {status, error} when bank_information_id is unknown, disabled, or belongs to another buyer; 403 {error} when the policy denies access (requires the admin role or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/bank_informations/csv_reports#create"
+    },
+    {
+      "command": [
+        "settings",
+        "bank-information",
         "list"
       ],
       "summary": "List the buyer's bank information documents",
@@ -563,7 +581,7 @@
         "id"
       ],
       "params": [],
-      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order, renew_at_in_days, allow_pf_bank_account, block_supplier_on_expiry, send_document_reviewed_event, webhook_reference, setting_document_review:{id, review_type, expires_on_in_days}}. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (scoped lookup); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order, renew_at_in_days, allow_pf_bank_account, block_supplier_on_expiry, send_document_reviewed_event, webhook_reference, setting_document_review:{id, review_type, expires_on_in_days}}. `report_csv_url` is returned only to an admin who has run `settings bank-information export-report` and only while the export is attached — the CSV carries each supplier's account CPF/CNPJ, branch, account number and a one-week signed link to the bank statement, so it stays behind the admin-only export gate rather than the manager-level read. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (scoped lookup); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/bank_informations#show"
     },
@@ -3177,6 +3195,24 @@
       "command": [
         "settings",
         "supplier-field",
+        "export-report"
+      ],
+      "summary": "Export every supplier answer of a form to CSV",
+      "description": "Starts the CSV export of every supplier answer to one supplier form (SettingForm). The export runs in background and REPLACES the previously attached file (has_one_attached), so the old `report_csv_url` stops working the moment this is called. The finished file is not in this response: poll `settings supplier-field show <id>` until `report_csv_url` appears and download from there — that key is returned only to an admin. supplier_field_id comes from `settings supplier-field list`; only enabled forms export (a disabled one answers 404). Requires the admin role or above.",
+      "method": "POST",
+      "path": "/srm_settings/supplier_fields/:supplier_field_id/csv_reports",
+      "path_params": [
+        "supplier_field_id"
+      ],
+      "params": [],
+      "response": "200 with {id, name, display_name, export_enqueued: true}. The file URL shows up later in `settings supplier-field show` as `report_csv_url`, only for an admin. 404 Rails default {status, error} when supplier_field_id is unknown, disabled, or belongs to another buyer; 403 {error} when the policy denies access (requires the admin role or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_fields_csv_reports#create"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-field",
         "field",
         "answers",
         "update"
@@ -3518,7 +3554,7 @@
         "id"
       ],
       "params": [],
-      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order, hint, renew_at_in_days, webhook_reference, default_responsible_party, block_supplier_on_expiry, send_document_reviewed_event, setting_document_review:{id, review_type, expires_on_in_days, automatic_review_rule, grade_threshold}, fields:[{id, display_name, hint, field_type, optional, order, has_answer_key, weight, marked_to_destroy, options:[{id, display_name, correct, requirement_type}]}]}. `fields` is [] on a form with no question yet and is where every field-level command gets its id. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order, hint, renew_at_in_days, webhook_reference, default_responsible_party, block_supplier_on_expiry, send_document_reviewed_event, setting_document_review:{id, review_type, expires_on_in_days, automatic_review_rule, grade_threshold}, fields:[{id, display_name, hint, field_type, optional, order, has_answer_key, weight, marked_to_destroy, options:[{id, display_name, correct, requirement_type}]}]}. `fields` is [] on a form with no question yet and is where every field-level command gets its id. `report_csv_url` is returned only to an admin who has run `settings supplier-field export-report` and only while the export is attached — it points at the CSV of every supplier answer, so it stays behind the admin-only export gate rather than the manager-level read. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/supplier_fields#show"
     },
@@ -3636,6 +3672,47 @@
       "response": "200 with the updated field in the same shape as `settings supplier-field show`. 422 {errors} on validation; 404 Rails default {status, error} when the id is unknown, belongs to another buyer, or the setting_grouper_id is from another buyer; 400 Rails default {status, error} when the setting_form root is missing; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/supplier_fields#update"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-invite",
+        "show"
+      ],
+      "summary": "Show the supplier invite expiry setting of the buyer",
+      "description": "Shows the supplier invite configuration of the authenticated buyer — there is no id, the target is always the caller's own buyer. Today the only setting is `suppliers_invite_expires_at_in_days`, the number of days an invite sent to a supplier stays valid before it expires. A null value means the buyer never set it and the platform default applies. Requires the operator role or above.",
+      "method": "GET",
+      "path": "/srm_settings/supplier_invites",
+      "path_params": [],
+      "params": [],
+      "response": "200 with {suppliers_invite_expires_at_in_days}, an integer or null. 403 {error} when the policy denies access (requires operator or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_invites#show"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-invite",
+        "update"
+      ],
+      "summary": "Update the supplier invite expiry setting of the buyer",
+      "description": "Sets how many days an invite sent to a supplier stays valid before it expires, on the authenticated buyer (no id — the target is always the caller's own buyer). This affects people OUTSIDE the platform: shortening it can expire invites suppliers have not opened yet. `suppliers_invite_expires_at_in_days` must be a positive integer; zero, a negative or a non-integer answers 422. Sending it blank/null clears the custom expiry and the platform default takes over (answers 200, not 422). Requires the admin role or above (reading is operator+).",
+      "method": "PATCH",
+      "path": "/srm_settings/supplier_invites",
+      "path_params": [],
+      "body_root": "buyer",
+      "params": [
+        {
+          "name": "suppliers_invite_expires_at_in_days",
+          "type": "integer",
+          "required": false,
+          "desc": "Days an invite stays valid before expiring. A positive integer (> 0); zero, negative or non-integer answers 422. Sending it blank/null clears the custom expiry and the platform default takes over.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the updated setting in the same shape as `settings supplier-invite show`. 422 {errors} when the value is zero, negative or not an integer; 400 Rails default {status, error} when the buyer root is missing; 403 {error} when the policy denies access (requires admin or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_invites#update"
     },
     {
       "command": [
