@@ -63,7 +63,20 @@ lk settings category risk update
 lk settings category show
 lk settings category update
 lk settings certificate
+lk settings certificate cnae-list
+lk settings certificate cnae-list clear
+lk settings certificate cnae-list export
+lk settings certificate cnae-list import
+lk settings certificate cnae-list import-chunk
+lk settings certificate import
+lk settings certificate import list
+lk settings certificate import show
 lk settings certificate list
+lk settings certificate restriction-list
+lk settings certificate restriction-list clear
+lk settings certificate restriction-list export
+lk settings certificate restriction-list import
+lk settings certificate restriction-list import-chunk
 lk settings certificate show
 lk settings certificate update
 lk settings check
@@ -86,6 +99,7 @@ lk settings document change-grouper
 lk settings document disable
 lk settings document enable
 lk settings document list
+lk settings document show
 lk settings email-message
 lk settings email-message list
 lk settings email-message show
