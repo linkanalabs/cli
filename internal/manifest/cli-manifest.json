@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-19T16:48:11Z",
-  "source": "linkanalabs/linkana@f7eb31c40f",
+  "generated_at": "2026-08-19T21:18:00Z",
+  "source": "linkanalabs/linkana@43165af45e",
   "endpoints": [
     {
       "command": [
@@ -2861,6 +2861,47 @@
       "response": "200 with {id, evaluation_id, display_name, description, weight, require_comment_per_answer, require_evidence_per_answer, asks:[...]}. 422 {errors} on validation (e.g. duplicated display_name); 404 Rails default {status, error} if the id is unknown or belongs to another buyer; 403 {error} when the policy denies access (requires admin or above — update is NOT gated by an active performance cycle, unlike create/destroy); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/performance_pillars#update"
+    },
+    {
+      "command": [
+        "settings",
+        "registration",
+        "show"
+      ],
+      "summary": "Show whether the buyer requires supplier registration",
+      "description": "Shows the supplier registration requirement of the authenticated buyer — there is no id, the target is always the caller's own buyer. When `requires_supplier_registration` is true, suppliers must complete a registration form before qualifying. Requires the manager role or above, and the supplier contacts feature enabled for the buyer (403 otherwise).",
+      "method": "GET",
+      "path": "/srm_settings/registration",
+      "path_params": [],
+      "params": [],
+      "response": "200 with {requires_supplier_registration}, a boolean (false when the buyer never configured it). 403 {error} when the policy denies access (requires manager or above, and the supplier contacts feature enabled for the buyer); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/registrations#show"
+    },
+    {
+      "command": [
+        "settings",
+        "registration",
+        "update"
+      ],
+      "summary": "Update whether the buyer requires supplier registration",
+      "description": "Turns the supplier registration requirement on or off, on the authenticated buyer (no id — the target is always the caller's own buyer). When turned on, suppliers must complete a registration form before qualifying — this changes what suppliers OUTSIDE the platform are asked to do. The change is audited (who changed it and when). Sending the same value already set is a no-op that still answers 200. Requires the admin role or above (reading is manager+), and the supplier contacts feature enabled for the buyer.",
+      "method": "PATCH",
+      "path": "/srm_settings/registration",
+      "path_params": [],
+      "body_root": "buyer",
+      "params": [
+        {
+          "name": "requires_supplier_registration",
+          "type": "boolean",
+          "required": true,
+          "desc": "true to require suppliers to complete a registration form before qualifying, false to make it optional.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the updated setting in the same shape as `settings registration show`. 400 Rails default {status, error} when the buyer root is missing; 403 {error} when the policy denies access (requires admin or above, and the supplier contacts feature enabled for the buyer); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/registrations#update"
     },
     {
       "command": [
