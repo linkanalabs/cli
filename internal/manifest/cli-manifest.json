@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-17T21:55:00Z",
-  "source": "linkanalabs/linkana@fbc7878a48",
+  "generated_at": "2026-08-18T14:59:13Z",
+  "source": "linkanalabs/linkana@5dae0abc60",
   "endpoints": [
     {
       "command": [
@@ -1131,7 +1131,7 @@
         "create"
       ],
       "summary": "Attach a document to a category as a risk",
-      "description": "Attaches a SettingDocument to a category with a risk score (creates a risk). `category_id` comes from `settings category list`. `setting_document_id` is the id of a SettingDocument (a supplier field / check / certificate / bank information) — obtain it from the document-list commands (`settings supplier-field list`, `settings check list`, `settings certificate list`, `settings bank-information list`), which list every enabled document with its applicability flags; `settings category risk list` only lists documents already attached to a category. IMPORTANT: the API does NOT filter by legal entity. The web screen only offers documents whose applicability matches the category's `legal_entity` (PJ / PF / INTERNATIONAL), but this endpoint accepts ANY existing document regardless of that match — attach only documents compatible with the category's legal entity. Attaching a `setting_document_id` already present in the category is idempotent: it updates that risk's score instead of creating a second one (200).",
+      "description": "Attaches a SettingDocument to a category with a risk score (creates a risk). `category_id` comes from `settings category list`. `setting_document_id` is the id of a SettingDocument (a supplier field / check / certificate / bank information) — obtain it from the document-list commands (`settings supplier-field list`, `settings check list`, `settings certificate list`, `settings bank-information list`), which list every enabled document with its applicability flags; `settings category risk list` only lists documents already attached to a category. The document's applicability must match the category's `legal_entity` (PJ requires `national_pj`, PF requires `national_pf`, INTERNATIONAL requires `international`); a mismatching document is rejected with 422. Attaching a `setting_document_id` already present in the category is idempotent: it updates that risk's score instead of creating a second one (200).",
       "method": "POST",
       "path": "/srm_settings/categories/:category_id/risks",
       "path_params": [
@@ -1143,7 +1143,7 @@
           "name": "setting_document_id",
           "type": "string",
           "required": true,
-          "desc": "UUID of the SettingDocument to attach. Get it from the document-list commands — `settings supplier-field list`, `settings check list`, `settings certificate list`, `settings bank-information list` — which list every enabled document with its applicability flags (national_pj / national_pf / international); pick a document whose applicability matches the category's legal_entity (the API does NOT enforce it). `settings category risk list` only returns documents ALREADY attached to a category, so it is not the source for a new attachment (re-attaching an already-present document just updates its score).",
+          "desc": "UUID of the SettingDocument to attach. Get it from the document-list commands — `settings supplier-field list`, `settings check list`, `settings certificate list`, `settings bank-information list` — which list every enabled document with its applicability flags (national_pj / national_pf / international); pick a document whose applicability matches the category's legal_entity (a mismatch is rejected with 422). `settings category risk list` only returns documents ALREADY attached to a category, so it is not the source for a new attachment (re-attaching an already-present document just updates its score).",
           "in": "body"
         },
         {
@@ -1168,7 +1168,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with {id, setting_document_id, risk, setting_document:{id, display_name, type}}. 422 {errors} when the SettingDocument is disabled (disabled documents cannot receive new risks — re-enable it first); 400 (bad request) when the setting_risk root is absent; 404 Rails default {status, error} when the category or the setting_document_id is unknown, and also when either belongs to another buyer (both lookups are scoped to the buyer, so neither confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, setting_document_id, risk, setting_document:{id, display_name, type}}. 422 {errors} when the SettingDocument is disabled (disabled documents cannot receive new risks — re-enable it first) or when its applicability does not cover the category's legal_entity (PJ requires national_pj, PF requires national_pf, INTERNATIONAL requires international — pick a compatible document from the document-list commands); 400 (bad request) when the setting_risk root is absent; 404 Rails default {status, error} when the category or the setting_document_id is unknown, and also when either belongs to another buyer (both lookups are scoped to the buyer, so neither confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories_risks#create"
     },
