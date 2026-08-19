@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-18T14:59:13Z",
-  "source": "linkanalabs/linkana@5dae0abc60",
+  "generated_at": "2026-08-19T16:48:11Z",
+  "source": "linkanalabs/linkana@f7eb31c40f",
   "endpoints": [
     {
       "command": [
@@ -1289,7 +1289,7 @@
           "name": "legal_entity",
           "type": "string",
           "required": false,
-          "desc": "Legal entity the category applies to.",
+          "desc": "Legal entity the category applies to. Changing it is rejected with 422 when the category already has an attached document whose applicability does not cover the new type (PJ needs national_pj, PF needs national_pf, INTERNATIONAL needs international) — detach the incompatible risks with `settings category risk delete` first.",
           "in": "body",
           "enum": [
             "PJ",
@@ -1333,7 +1333,7 @@
           "in": "body"
         }
       ],
-      "response": "200 with the updated category in the same shape as `settings category show`. 422 {errors} on validation (e.g. blank or duplicate display_name, or an invalid legal_entity); 404 Rails default {status, error} if the id is unknown; 404 Rails default {status, error} when the category belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with the updated category in the same shape as `settings category show`. 422 {errors} on validation (e.g. blank or duplicate display_name, an invalid legal_entity, or a legal_entity change that leaves an attached document not covering the new type — detach it with `settings category risk delete` first); 404 Rails default {status, error} if the id is unknown; 404 Rails default {status, error} when the category belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories#update"
     },
