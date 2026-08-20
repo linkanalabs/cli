@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-20T12:07:21Z",
-  "source": "linkanalabs/linkana@f277b738ea",
+  "generated_at": "2026-08-20T14:58:05Z",
+  "source": "linkanalabs/linkana@e42039669c",
   "endpoints": [
     {
       "command": [
@@ -17,6 +17,47 @@
       "response": "200 with {id, email, name, role, buyer_id, is_staff}.",
       "auth": "pat",
       "controller": "my/identity#show"
+    },
+    {
+      "command": [
+        "settings",
+        "access-configuration",
+        "show"
+      ],
+      "summary": "Show whether the buyer allows Linkana support access",
+      "description": "Shows the Linkana support access configuration of the authenticated buyer — there is no id, the target is always the caller's own buyer. When `allow_linkana_support` is true, Linkana's support staff may access the buyer's account to help with operations. Also returns when the setting last changed and by whom. Requires the manager role or above.",
+      "method": "GET",
+      "path": "/srm_settings/access_configurations",
+      "path_params": [],
+      "params": [],
+      "response": "200 with {allow_linkana_support (boolean), allow_linkana_support_at (datetime or null), allow_linkana_support_by (email string or null)}. 403 {error} when the policy denies access (requires manager or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/access_configurations#show"
+    },
+    {
+      "command": [
+        "settings",
+        "access-configuration",
+        "update"
+      ],
+      "summary": "Update whether the buyer allows Linkana support access",
+      "description": "Turns Linkana support access on or off, on the authenticated buyer (no id — the target is always the caller's own buyer). This is a SENSITIVE setting: turning it on lets Linkana's support staff access the buyer's account. Always confirm with the person before changing it. The change is stamped (when and by whose email) and audited. Requires the admin role or above (reading is manager+).",
+      "method": "PATCH",
+      "path": "/srm_settings/access_configurations",
+      "path_params": [],
+      "body_root": "buyer",
+      "params": [
+        {
+          "name": "allow_linkana_support",
+          "type": "boolean",
+          "required": true,
+          "desc": "true to let Linkana support staff access the buyer's account, false to revoke it.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the updated configuration in the same shape as `settings access-configuration show`. 400 Rails default {status, error} when the buyer root is missing; 403 {error} when the policy denies access (requires admin or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/access_configurations#update"
     },
     {
       "command": [

@@ -12,6 +12,9 @@ lk impersonate
 lk impersonate status
 lk impersonate stop
 lk settings
+lk settings access-configuration
+lk settings access-configuration show
+lk settings access-configuration update
 lk settings approval-step
 lk settings approval-step condition
 lk settings approval-step condition risk-score
