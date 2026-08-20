@@ -84,6 +84,9 @@ lk settings check
 lk settings check list
 lk settings check show
 lk settings check update
+lk settings company
+lk settings company show
+lk settings company update
 lk settings company-user
 lk settings company-user create
 lk settings company-user disable
@@ -176,5 +179,6 @@ lk supplier create
 lk supplier list
 lk supplier show
 lk update
+lk upload
 lk version
 lk whoami

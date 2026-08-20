@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-19T21:18:00Z",
-  "source": "linkanalabs/linkana@43165af45e",
+  "generated_at": "2026-08-20T12:07:21Z",
+  "source": "linkanalabs/linkana@f277b738ea",
   "endpoints": [
     {
       "command": [
@@ -1746,6 +1746,68 @@
       "response": "200 with the updated check in the same shape as `settings check show`. 422 {errors} on validation (e.g. an automatic_review_rule outside disabled/only_refused/all_reviews); 400 Rails default {status, error} when the setting_check root is missing; 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (scoped lookup); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/checks#update"
+    },
+    {
+      "command": [
+        "settings",
+        "company",
+        "show"
+      ],
+      "summary": "Show the company profile of the buyer (name and image URLs)",
+      "description": "Shows the company profile of the authenticated buyer — there is no id, the target is always the caller's own buyer. Returns the display name and the URLs (relative paths, null when never uploaded) of the three images: `logo_url` (system icon), `sidebar_logo_url` (e-mail identity) and `signup_img_url` (signup screen image). Requires the operator role or above.",
+      "method": "GET",
+      "path": "/srm_settings/companies",
+      "path_params": [],
+      "params": [],
+      "response": "200 with {name, logo_url, sidebar_logo_url, signup_img_url} — the URLs are relative paths or null. 403 {error} when the policy denies access (requires operator or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/companies#show"
+    },
+    {
+      "command": [
+        "settings",
+        "company",
+        "update"
+      ],
+      "summary": "Update the company profile of the buyer (name and images)",
+      "description": "Updates the company profile of the authenticated buyer (no id — the target is always the caller's own buyer). `name` is the display name shown across the product. The three image params (`logo`, `sidebar_logo`, `signup_img`) take an Active Storage signed_id, NOT a file path or raw bytes: first upload the file with a direct upload (POST /rails/active_storage/direct_uploads with filename, byte_size, MD5 checksum and content_type, then PUT the bytes to the returned URL), then pass the returned signed_id here. Images must be of an allowed image content type — anything else answers 422. Only send the params being changed. Requires the admin role or above (reading is operator+).",
+      "method": "PATCH",
+      "path": "/srm_settings/companies",
+      "path_params": [],
+      "body_root": "buyer",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "required": false,
+          "desc": "Display name of the buyer's company, shown across the product.",
+          "in": "body"
+        },
+        {
+          "name": "logo",
+          "type": "string",
+          "required": false,
+          "desc": "Active Storage signed_id of an uploaded image, used as the system icon. Obtain it via direct upload first — this is not a file path.",
+          "in": "body"
+        },
+        {
+          "name": "sidebar_logo",
+          "type": "string",
+          "required": false,
+          "desc": "Active Storage signed_id of an uploaded image, used as the identity in e-mails. Obtain it via direct upload first — this is not a file path.",
+          "in": "body"
+        },
+        {
+          "name": "signup_img",
+          "type": "string",
+          "required": false,
+          "desc": "Active Storage signed_id of an uploaded image, shown on the signup screen. Obtain it via direct upload first — this is not a file path.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the updated profile in the same shape as `settings company show`. 422 {errors} when an image has a disallowed content type or the name is invalid; 400 Rails default {status, error} when the buyer root is missing; 403 {error} when the policy denies access (requires admin or above); 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/companies#update"
     },
     {
       "command": [
