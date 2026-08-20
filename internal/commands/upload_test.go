@@ -2,6 +2,7 @@ package commands
 
 import (
 	"bytes"
+	"crypto/md5" //nolint:gosec // Active Storage direct upload contract.
 	"encoding/base64"
 	"encoding/json"
 	"io"
@@ -82,10 +83,9 @@ func TestUploadFromFilePostsMetadataPutsBytesAndPrintsSignedID(t *testing.T) {
 	if blob["byte_size"].(float64) != float64(len(content)) {
 		t.Errorf("byte_size = %v, want %d", blob["byte_size"], len(content))
 	}
-	if checksum, ok := blob["checksum"].(string); !ok || checksum == "" {
-		t.Errorf("checksum missing")
-	} else if _, err := base64.StdEncoding.DecodeString(checksum); err != nil {
-		t.Errorf("checksum not base64: %v", err)
+	sum := md5.Sum(content) //nolint:gosec // mirrors the Active Storage contract under test
+	if blob["checksum"] != base64.StdEncoding.EncodeToString(sum[:]) {
+		t.Errorf("checksum = %v, want MD5 of the file content", blob["checksum"])
 	}
 
 	if !bytes.Equal(*putBody, content) {

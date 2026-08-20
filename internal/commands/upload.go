@@ -50,6 +50,7 @@ func newUploadCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "upload",
+		Args:  cobra.NoArgs,
 		Short: "Sobe um arquivo via direct upload e imprime o signed_id",
 		Long: "Sobe um arquivo para o storage da Linkana via direct upload (Active Storage) " +
 			"e imprime o signed_id resultante. O signed_id é o valor que os comandos de update " +
@@ -91,6 +92,7 @@ func runUpload(cmd *cobra.Command, filePath string, fromStdin bool, filename, co
 	}
 
 	return output.Render(cmd.OutOrStdout(), formatFlag(cmd), map[string]any{
+		"id":           blob.SignedID,
 		"signed_id":    blob.SignedID,
 		"filename":     blob.Filename,
 		"byte_size":    blob.ByteSize,
