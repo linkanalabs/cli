@@ -1037,7 +1037,7 @@
           "in": "body"
         }
       ],
-      "response": "200 with the created {id, display_name, legal_entity, disabled, renew_at_in_days_after_approval, force_processing_on_renewal, monitor_on_qualification_start, monitor_after_approval, monitor_after_refusal, setting_risks} (setting_risks is [] on a fresh create). 422 {errors} on validation (e.g. blank or duplicate display_name, or a legal_entity outside PJ/PF/INTERNATIONAL); 400 Rails default {status, error} when the setting_category root is missing; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with the created {id, display_name, legal_entity, active, renew_at_in_days_after_approval, force_processing_on_renewal, monitor_on_qualification_start, monitor_after_approval, monitor_after_refusal, setting_risks} (setting_risks is [] on a fresh create). 422 {errors} on validation (e.g. blank or duplicate display_name, or a legal_entity outside PJ/PF/INTERNATIONAL); 400 Rails default {status, error} when the setting_category root is missing; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories#create"
     },
@@ -1055,7 +1055,7 @@
         "id"
       ],
       "params": [],
-      "response": "200 with the affected category in the same shape as `settings category show` (disabled is now true). 404 Rails default {status, error} if the id is unknown; 404 Rails default {status, error} when the category belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with the affected category in the same shape as `settings category show` (active is now false). 404 Rails default {status, error} if the id is unknown; 404 Rails default {status, error} when the category belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories_enabling#destroy"
     },
@@ -1103,7 +1103,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with the affected category in the same shape as `settings category show` (disabled is now false). 400 (bad request) when setting_category_id is missing; 404 Rails default {status, error} when it is unknown; 404 Rails default {status, error} when the category belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with the affected category in the same shape as `settings category show` (active is now true). 400 (bad request) when setting_category_id is missing; 404 Rails default {status, error} when it is unknown; 404 Rails default {status, error} when the category belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories_enabling#create"
     },
@@ -1119,7 +1119,7 @@
       "path": "/srm_settings/categories",
       "path_params": [],
       "params": [],
-      "response": "200 with an array of {id, display_name, legal_entity, disabled}. `legal_entity` is one of PJ, PF, INTERNATIONAL. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires the manager role or above).",
+      "response": "200 with an array of {id, display_name, legal_entity, active}. `legal_entity` is one of PJ, PF, INTERNATIONAL. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires the manager role or above).",
       "auth": "pat",
       "controller": "srm_settings/categories#index"
     },
@@ -1259,7 +1259,7 @@
         "id"
       ],
       "params": [],
-      "response": "200 with {id, display_name, legal_entity, disabled, renew_at_in_days_after_approval, force_processing_on_renewal, monitor_on_qualification_start, monitor_after_approval, monitor_after_refusal, setting_risks:[{id, setting_document_id, risk}]}. `legal_entity` is one of PJ, PF, INTERNATIONAL. 404 Rails default {status, error} if the id is unknown; 404 Rails default {status, error} when the category belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, display_name, legal_entity, active, renew_at_in_days_after_approval, force_processing_on_renewal, monitor_on_qualification_start, monitor_after_approval, monitor_after_refusal, setting_risks:[{id, setting_document_id, risk}]}. `legal_entity` is one of PJ, PF, INTERNATIONAL. 404 Rails default {status, error} if the id is unknown; 404 Rails default {status, error} when the category belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories#show"
     },
