@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-21T18:56:43Z",
-  "source": "linkanalabs/linkana@83e54dd9e7",
+  "generated_at": "2026-08-21T20:59:06Z",
+  "source": "linkanalabs/linkana@2d68b214b8",
   "endpoints": [
     {
       "command": [
@@ -2270,7 +2270,7 @@
           "name": "fallback_responsible_party_rule",
           "type": "string",
           "required": false,
-          "desc": "Only meaningful for a certificate (Consulta) with emission automation whose default_responsible_party is buyer, on a buyer with the `certificate_fallback_rule` feature flag: what to do when the certificate cannot be issued at all. `supplier` asks the supplier for the document, `buyer` keeps it as the buyer's own pending upload, `refuse` records it as refused without asking the supplier (going through the review queue first when the buyer requires human confirmation of refusals). Defaults to supplier.",
+          "desc": "Only meaningful for a certificate (Consulta) with emission automation whose default_responsible_party is buyer, on a buyer with the `certificate_fallback_rule` feature flag: what to do when the certificate cannot be issued at all. `supplier` asks the supplier for the document, `buyer` keeps it as the buyer's own pending upload, `refuse` records it as refused without asking the supplier (going through the review queue first when the buyer requires human confirmation of refusals). Defaults to buyer.",
           "in": "body",
           "enum": [
             "supplier",
