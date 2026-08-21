@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-20T14:58:05Z",
-  "source": "linkanalabs/linkana@e42039669c",
+  "generated_at": "2026-08-21T18:56:43Z",
+  "source": "linkanalabs/linkana@83e54dd9e7",
   "endpoints": [
     {
       "command": [
@@ -361,11 +361,14 @@
         "approval-step",
         "list"
       ],
-      "summary": "List the buyer's approval steps",
-      "description": "Lists the buyer's approval steps (etapas de aprovação), newest first. By default returns the steps NOT in use (drafts); pass --current_tab with any value to list the ones in use instead. Optional --search filters by display_name (partial match). Returns the whole collection — this list is not paginated. Requires the manager role or above.",
+      "summary": "List the buyer's approval steps (one page per call; total comes in headers)",
+      "description": "Lists the buyer's approval steps (etapas de aprovação), newest first. By default returns the steps NOT in use (drafts); pass --current_tab with any value to list the ones in use instead. Optional --search filters by display_name (partial match). Requires the manager role or above. The response is PAGINATED: the body carries one page and the page metadata comes back in headers; use `--page N` to fetch a specific page, and `--format count` reads the buyer's TOTAL from the header.",
       "method": "GET",
       "path": "/srm_settings/setting_approval_steps",
       "path_params": [],
+      "pagination": {
+        "param": "page"
+      },
       "params": [
         {
           "name": "current_tab",
@@ -375,7 +378,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with an array of {id, display_name, condition, action, being_used}. `condition` and `action` come back as lowercase keys (e.g. risk_score, automatic_approval) even when created with the uppercase form. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "response": "200 with one page of {id, display_name, condition, action, being_used}, plus the pagy headers (`total-count`, `total-pages`, `current-page`, `page-items`). A page past the last one returns an empty array (still 200). 400 {error} when --page is not a positive integer (e.g. 0 or non-numeric). `condition` and `action` come back as lowercase keys (e.g. risk_score, automatic_approval) even when created with the uppercase form. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
       "auth": "pat",
       "controller": "srm_settings/setting_approval_steps#index"
     },
@@ -853,11 +856,14 @@
         "buyer-document",
         "list"
       ],
-      "summary": "List the buyer's document fields",
-      "description": "Lists the buyer's supplier/qualification document fields (SettingBuyerDocument), ordered by their display order. By default returns the enabled fields; pass --tab disabled to list the archived (disabled) ones instead. This command is the source of the <id> consumed by `settings buyer-document show` and `settings buyer-document update`.",
+      "summary": "List the buyer's document fields (one page per call; total comes in headers)",
+      "description": "Lists the buyer's supplier/qualification document fields (SettingBuyerDocument), ordered by their display order. By default returns the enabled fields; pass --tab disabled to list the archived (disabled) ones instead. This command is the source of the <id> consumed by `settings buyer-document show` and `settings buyer-document update`. The response is PAGINATED: the body carries one page and the page metadata comes back in headers; use `--page N` to fetch a specific page, and `--format count` reads the buyer's TOTAL from the header.",
       "method": "GET",
       "path": "/srm_settings/buyer_documents",
       "path_params": [],
+      "pagination": {
+        "param": "page"
+      },
       "params": [
         {
           "name": "tab",
@@ -867,7 +873,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with an array of {id, name, display_name, field_type, level, disabled, order}. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "response": "200 with one page of {id, name, display_name, field_type, level, disabled, order}, plus the pagy headers (`total-count`, `total-pages`, `current-page`, `page-items`). A page past the last one returns an empty array (still 200). 400 {error} when --page is not a positive integer (e.g. 0 or non-numeric). 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
       "auth": "pat",
       "controller": "srm_settings/buyer_documents#index"
     },
@@ -1017,7 +1023,7 @@
         "create"
       ],
       "summary": "Create a supplier category",
-      "description": "Creates a supplier category for the buyer. Only the category's own settings are set here — risks (documents) are attached by a separate command. Requires the admin role or above.",
+      "description": "Creates a supplier category for the buyer. Only the category's name and legal entity are set here — monitoring/re-qualification settings default and are edited afterwards with `settings category update-monitoring`; risks (documents) are attached by a separate command. Requires the admin role or above.",
       "method": "POST",
       "path": "/srm_settings/categories",
       "path_params": [],
@@ -1041,44 +1047,9 @@
             "PF",
             "INTERNATIONAL"
           ]
-        },
-        {
-          "name": "renew_at_in_days_after_approval",
-          "type": "integer",
-          "required": false,
-          "desc": "Days after approval to schedule the qualification renewal (0 = never renew). Defaults to 0.",
-          "in": "body"
-        },
-        {
-          "name": "force_processing_on_renewal",
-          "type": "boolean",
-          "required": false,
-          "desc": "On re-qualification, force expired renewable documents into a new blocking processing version. Defaults to false.",
-          "in": "body"
-        },
-        {
-          "name": "monitor_on_qualification_start",
-          "type": "boolean",
-          "required": false,
-          "desc": "Enable supplier monitoring at the start of qualification. Defaults to false.",
-          "in": "body"
-        },
-        {
-          "name": "monitor_after_approval",
-          "type": "boolean",
-          "required": false,
-          "desc": "Enable supplier monitoring after the qualification is approved. Defaults to false.",
-          "in": "body"
-        },
-        {
-          "name": "monitor_after_refusal",
-          "type": "boolean",
-          "required": false,
-          "desc": "Enable supplier monitoring after the qualification is refused. Defaults to false.",
-          "in": "body"
         }
       ],
-      "response": "200 with the created {id, display_name, legal_entity, active, renew_at_in_days_after_approval, force_processing_on_renewal, monitor_on_qualification_start, monitor_after_approval, monitor_after_refusal, setting_risks} (setting_risks is [] on a fresh create). 422 {errors} on validation (e.g. blank or duplicate display_name, or a legal_entity outside PJ/PF/INTERNATIONAL); 400 Rails default {status, error} when the setting_category root is missing; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with the created {id, display_name, legal_entity, active, renew_at_in_days_after_approval, force_processing_on_renewal, monitor_on_qualification_start, monitor_after_approval, monitor_after_refusal, setting_risks} (setting_risks is [] on a fresh create; the monitoring fields carry their defaults — edit them with `settings category update-monitoring`). 422 {errors} on validation (e.g. blank or duplicate display_name, or a legal_entity outside PJ/PF/INTERNATIONAL); 400 Rails default {status, error} when the setting_category root is missing; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories#create"
     },
@@ -1154,13 +1125,16 @@
         "category",
         "list"
       ],
-      "summary": "List the buyer's supplier categories",
-      "description": "Lists the buyer's supplier categories (both enabled and disabled). Each category carries the `id` used as `category_id` when creating a supplier (see `supplier create`). v1 returns every category unfiltered — filter over the JSON on the client side. Future query filters: tab (disabled), search[display_name], search[legal_entity], page.",
+      "summary": "List the buyer's supplier categories (one page per call; total comes in headers)",
+      "description": "Lists the buyer's supplier categories (both enabled and disabled). Each category carries the `id` used as `category_id` when creating a supplier (see `supplier create`). v1 returns every category unfiltered — filter over the JSON on the client side. Future query filters: tab (disabled), search[display_name], search[legal_entity]. The response is PAGINATED: the body carries one page and the page metadata comes back in headers; use `--page N` to fetch a specific page, and `--format count` reads the buyer's TOTAL from the header.",
       "method": "GET",
       "path": "/srm_settings/categories",
       "path_params": [],
+      "pagination": {
+        "param": "page"
+      },
       "params": [],
-      "response": "200 with an array of {id, display_name, legal_entity, active}. `legal_entity` is one of PJ, PF, INTERNATIONAL. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires the manager role or above).",
+      "response": "200 with one page of {id, display_name, legal_entity, active}, plus the pagy headers (`total-count`, `total-pages`, `current-page`, `page-items`). A page past the last one returns an empty array (still 200). 400 {error} when --page is not a positive integer (e.g. 0 or non-numeric). `legal_entity` is one of PJ, PF, INTERNATIONAL. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires the manager role or above).",
       "auth": "pat",
       "controller": "srm_settings/categories#index"
     },
@@ -1311,7 +1285,7 @@
         "update"
       ],
       "summary": "Update a supplier category",
-      "description": "Updates a supplier category by its id (see `settings category list`). Only the fields you pass are changed. Risks (documents) are managed by a separate command. Requires the admin role or above.",
+      "description": "Updates a supplier category by its id (see `settings category list`). Only the fields you pass are changed. Monitoring/re-qualification settings are edited separately with `settings category update-monitoring`; risks (documents) are managed by a separate command. Requires the admin role or above.",
       "method": "PATCH",
       "path": "/srm_settings/categories/:id",
       "path_params": [
@@ -1337,7 +1311,27 @@
             "PF",
             "INTERNATIONAL"
           ]
-        },
+        }
+      ],
+      "response": "200 with the updated category in the same shape as `settings category show`. 422 {errors} on validation (e.g. blank or duplicate display_name, an invalid legal_entity, or a legal_entity change that leaves an attached document not covering the new type — detach it with `settings category risk delete` first); 404 Rails default {status, error} if the id is unknown; 404 Rails default {status, error} when the category belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/categories#update"
+    },
+    {
+      "command": [
+        "settings",
+        "category",
+        "update-monitoring"
+      ],
+      "summary": "Edit the monitoring and re-qualification rules of a category",
+      "description": "Writes the dedicated monitoring screen of a category: the three automatic-monitoring triggers and the re-qualification rules. This is the only command that changes these fields — `settings category create` and `settings category update` no longer accept them. Requires the admin role or above.",
+      "method": "PATCH",
+      "path": "/srm_settings/categories_monitorings/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_category",
+      "params": [
         {
           "name": "renew_at_in_days_after_approval",
           "type": "integer",
@@ -1374,9 +1368,9 @@
           "in": "body"
         }
       ],
-      "response": "200 with the updated category in the same shape as `settings category show`. 422 {errors} on validation (e.g. blank or duplicate display_name, an invalid legal_entity, or a legal_entity change that leaves an attached document not covering the new type — detach it with `settings category risk delete` first); 404 Rails default {status, error} if the id is unknown; 404 Rails default {status, error} when the category belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with the updated category in the same shape as `settings category show`. 422 {errors} on validation; 404 Rails default {status, error} if the id is unknown; 404 Rails default {status, error} when the category belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
-      "controller": "srm_settings/categories#update"
+      "controller": "srm_settings/categories_monitorings#update"
     },
     {
       "command": [
@@ -1525,11 +1519,14 @@
         "certificate",
         "list"
       ],
-      "summary": "List the buyer's certificates",
-      "description": "Lists the buyer's certificate documents (SettingCertificate), ordered by display order then display_name. By default returns the enabled certificates; pass --tab disabled to list the archived (disabled) ones instead. Each item carries the applicability flags national_pj/national_pf/international, which tell for which category legal_entity (PJ / PF / INTERNATIONAL) the certificate is available. This is a source of the `setting_document_id` a future `settings category risk create` will need: pick a certificate whose applicability flag matches the category's legal_entity (national_pj for a PJ category, national_pf for PF, international for INTERNATIONAL).",
+      "summary": "List the buyer's certificates (one page per call; total comes in headers)",
+      "description": "Lists the buyer's certificate documents (SettingCertificate), ordered by display order then display_name. By default returns the enabled certificates; pass --tab disabled to list the archived (disabled) ones instead. Each item carries the applicability flags national_pj/national_pf/international, which tell for which category legal_entity (PJ / PF / INTERNATIONAL) the certificate is available. This is a source of the `setting_document_id` a future `settings category risk create` will need: pick a certificate whose applicability flag matches the category's legal_entity (national_pj for a PJ category, national_pf for PF, international for INTERNATIONAL). The response is PAGINATED: the body carries one page and the page metadata comes back in headers; use `--page N` to fetch a specific page, and `--format count` reads the buyer's TOTAL from the header.",
       "method": "GET",
       "path": "/srm_settings/certificates",
       "path_params": [],
+      "pagination": {
+        "param": "page"
+      },
       "params": [
         {
           "name": "tab",
@@ -1539,7 +1536,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order}. The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the certificate applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "response": "200 with one page of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order}, plus the pagy headers (`total-count`, `total-pages`, `current-page`, `page-items`). A page past the last one returns an empty array (still 200). 400 {error} when --page is not a positive integer (e.g. 0 or non-numeric). The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the certificate applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
       "auth": "pat",
       "controller": "srm_settings/certificates#index"
     },
@@ -1718,11 +1715,14 @@
         "check",
         "list"
       ],
-      "summary": "List the buyer's checks (consultas)",
-      "description": "Lists the buyer's check documents (consultas — SettingCheck), ordered by display order then display_name. By default returns the enabled checks; pass --tab disabled to list the archived (disabled) ones instead. Each item carries the applicability flags national_pj/national_pf/international, which tell for which category legal_entity (PJ / PF / INTERNATIONAL) the check is available. This is a source of the `setting_document_id` a future `settings category risk create` will need: pick a check whose applicability flag matches the category's legal_entity (national_pj for a PJ category, national_pf for PF, international for INTERNATIONAL).",
+      "summary": "List the buyer's checks (consultas; one page per call, total comes in headers)",
+      "description": "Lists the buyer's check documents (consultas — SettingCheck), ordered by display order then display_name. By default returns the enabled checks; pass --tab disabled to list the archived (disabled) ones instead. Each item carries the applicability flags national_pj/national_pf/international, which tell for which category legal_entity (PJ / PF / INTERNATIONAL) the check is available. This is a source of the `setting_document_id` a future `settings category risk create` will need: pick a check whose applicability flag matches the category's legal_entity (national_pj for a PJ category, national_pf for PF, international for INTERNATIONAL). The response is PAGINATED: the body carries one page and the page metadata comes back in headers; use `--page N` to fetch a specific page, and `--format count` reads the buyer's TOTAL from the header.",
       "method": "GET",
       "path": "/srm_settings/checks",
       "path_params": [],
+      "pagination": {
+        "param": "page"
+      },
       "params": [
         {
           "name": "tab",
@@ -1732,7 +1732,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order}. The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the check applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "response": "200 with one page of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order}, plus the pagy headers (`total-count`, `total-pages`, `current-page`, `page-items`). A page past the last one returns an empty array (still 200). 400 {error} when --page is not a positive integer (e.g. 0 or non-numeric). The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the check applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
       "auth": "pat",
       "controller": "srm_settings/checks#index"
     },
@@ -2024,13 +2024,16 @@
         "company-user",
         "list"
       ],
-      "summary": "List the buyer's users",
-      "description": "Lists the active users of the current buyer with id, name, email, role and soft-delete state, ordered by name. A user is active when discarded_at is null. Use it to resolve a user_id needed by other commands (e.g. adding a user to a review group). Requires an admin (or above) credential.",
+      "summary": "List the buyer's users (one page per call; total comes in headers)",
+      "description": "Lists the active users of the current buyer with id, name, email, role and soft-delete state, ordered by name. A user is active when discarded_at is null. Use it to resolve a user_id needed by other commands (e.g. adding a user to a review group). Requires an admin (or above) credential. The response is PAGINATED: the body carries one page and the page metadata comes back in headers; use `--page N` to fetch a specific page, and `--format count` reads the buyer's TOTAL from the header.",
       "method": "GET",
       "path": "/srm_settings/company_users",
       "path_params": [],
+      "pagination": {
+        "param": "page"
+      },
       "params": [],
-      "response": "200 with array of {id, name, email, role, discarded_at}. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (caller below admin).",
+      "response": "200 with one page of {id, name, email, role, discarded_at}, plus the pagy headers (`total-count`, `total-pages`, `current-page`, `page-items`). A page past the last one returns an empty array (still 200). 400 {error} when --page is not a positive integer (e.g. 0 or non-numeric). 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (caller below admin).",
       "auth": "pat",
       "controller": "srm_settings/company_users#index"
     },
@@ -2163,11 +2166,14 @@
         "document",
         "list"
       ],
-      "summary": "List the buyer's documents of every type in one place",
-      "description": "Lists the buyer's documents across ALL four types in a single call — SettingForm (Formulário), SettingCheck (Consulta), SettingCertificate (Base pública) and SettingBankInformation (Informações bancárias). This is the unified listing behind the new documents screen; the per-type commands (`settings check list`, `settings certificate list`, `settings bank-information list`) still exist and return the same rows filtered to one type. Ordered by display_name. By default returns the enabled documents; pass --tab disabled to list the archived (disabled) ones instead. Each row carries `type` (the STI class) and `type_humanize` (its label in the buyer's locale) so a mixed list stays unambiguous. Filters (all optional, combinable) go under the `search` key: `search[types][]` restricts to one or more types — repeat it, each value one of Settings::SettingForm, Settings::SettingCheck, Settings::SettingCertificate, Settings::SettingBankInformation; `search[display_name]` is a partial (ILIKE) match on the name; `search[setting_grouper_id]` restricts to one review group (id from `settings setting-grouper list`). Rows always come back ordered by display_name. Requires the manager role or above.",
+      "summary": "List the buyer's documents of every type in one place (one page per call; total comes in headers)",
+      "description": "Lists the buyer's documents across ALL four types in a single call — SettingForm (Formulário), SettingCheck (Consulta), SettingCertificate (Base pública) and SettingBankInformation (Informações bancárias). This is the unified listing behind the new documents screen; the per-type commands (`settings check list`, `settings certificate list`, `settings bank-information list`) still exist and return the same rows filtered to one type. Ordered by display_name. By default returns the enabled documents; pass --tab disabled to list the archived (disabled) ones instead. Each row carries `type` (the STI class) and `type_humanize` (its label in the buyer's locale) so a mixed list stays unambiguous. Filters (all optional, combinable) go under the `search` key: `search[types][]` restricts to one or more types — repeat it, each value one of Settings::SettingForm, Settings::SettingCheck, Settings::SettingCertificate, Settings::SettingBankInformation; `search[display_name]` is a partial (ILIKE) match on the name; `search[setting_grouper_id]` restricts to one review group (id from `settings setting-grouper list`). Rows always come back ordered by display_name. Requires the manager role or above. The response is PAGINATED: the body carries one page and the page metadata comes back in headers; use `--page N` to fetch a specific page, and `--format count` reads the buyer's TOTAL from the header.",
       "method": "GET",
       "path": "/srm_settings/documents",
       "path_params": [],
+      "pagination": {
+        "param": "page"
+      },
       "params": [
         {
           "name": "tab",
@@ -2177,7 +2183,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order}. `type` is the STI class (e.g. Settings::SettingForm) and `type_humanize` its localized label; `national_pj/national_pf/international` mark the category legal_entities a document applies to (relevant for checks/certificates). 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "response": "200 with one page of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order}, plus the pagy headers (`total-count`, `total-pages`, `current-page`, `page-items`). A page past the last one returns an empty array (still 200). 400 {error} when --page is not a positive integer (e.g. 0 or non-numeric). `type` is the STI class (e.g. Settings::SettingForm) and `type_humanize` its localized label; `national_pj/national_pf/international` mark the category legal_entities a document applies to (relevant for checks/certificates). 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
       "auth": "pat",
       "controller": "srm_settings/documents#index"
     },
@@ -2188,14 +2194,14 @@
         "show"
       ],
       "summary": "Show one document of any type by its id",
-      "description": "Shows one document (Settings::SettingDocument of any of the four types — Formulário, Consulta, Base pública, Informações bancárias) by its id; get the id from `settings document list`. This is the unified read endpoint behind the new document screen — it accepts an id of any type, unlike the per-type `settings <type> show` commands. Returns the document's shared attributes; `type` (the STI class) and `type_humanize` (its localized label) disambiguate which type came back. Requires the manager role or above.",
+      "description": "Shows one document (Settings::SettingDocument of any of the four types — Formulário, Consulta, Base pública, Informações bancárias) by its id; get the id from `settings document list`. This is the unified read endpoint behind the new document screen — it accepts an id of any type, unlike the per-type `settings <type> show` commands, and returns the union of what those four used to return: the shared attributes plus the keys that only make sense for the type that came back (`type` and `type_humanize` disambiguate which one that is). A key missing from the payload is therefore normal — it means this type does not have it, or the caller's role does not see it — not an error to retry. Requires the manager role or above.",
       "method": "GET",
       "path": "/srm_settings/documents/:id",
       "path_params": [
         "id"
       ],
       "params": [],
-      "response": "200 with {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order, hint, renew_at_in_days, block_supplier_on_expiry, default_responsible_party, send_document_reviewed_event, webhook_reference} plus a nested setting_document_review {id, review_type, automatic_review_rule, expires_on_in_days}. The review `id` is what makes an update EDIT the review instead of replacing it, so read it here before any command that sends setting_document_review_attributes. `settings document list` stays thin (the item shape only), so a field beyond that list comes from this show. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "response": "200 with the attributes every type shares — {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order, name, hint, renew_at_in_days, block_supplier_on_expiry, default_responsible_party, send_document_reviewed_event, webhook_reference} plus a nested setting_document_review {id, review_type, automatic_review_rule, expires_on_in_days}. `name` is the fixed internal identifier of the document (e.g. CND_FEDERAL), not the editable label. A Consulta (certificate) also carries `fallback_responsible_party_rule` — what happens when the certificate cannot be issued at all (`supplier`, `buyer` or `refuse`), written by `settings document update-attrs`. The review `id` is what makes an update EDIT the review instead of replacing it, so read it here before any command that sends setting_document_review_attributes. SIX keys are conditional, and their absence is the document's type or the caller's role — never an error to retry: `fields` and `setting_document_review.grade_threshold` come only for Settings::SettingForm; `fallback_responsible_party_rule` only for a Settings::SettingCertificate answered by the buyer, with emission automation, on a buyer with the `certificate_fallback_rule` feature flag; `report_csv_url` only when a form or bank information document has a generated report attached; `restriction_lists_export_csv_url` and `cnae_lists_export_csv_url` only on the certificate that owns that list. The three *_csv_url keys additionally require the export permission (admin), so a manager gets the show without them even when the file is attached — the same rule as the per-type shows. Each entry of `fields` is {id, display_name, hint, field_type, optional, order, has_answer_key, weight, marked_to_destroy, options: [{id, display_name, correct, requirement_type}]}, ordered by `order` and with fields marked for destruction left out; it is the same shape `settings supplier-field show` returns, so this is where the field_id and option_id consumed by every `settings supplier-field field ...` command come from. `settings document list` stays thin (the item shape only), so a field beyond that list comes from this show. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/documents#show"
     },
@@ -2258,6 +2264,18 @@
           "enum": [
             "supplier",
             "buyer"
+          ]
+        },
+        {
+          "name": "fallback_responsible_party_rule",
+          "type": "string",
+          "required": false,
+          "desc": "Only meaningful for a certificate (Consulta) with emission automation whose default_responsible_party is buyer, on a buyer with the `certificate_fallback_rule` feature flag: what to do when the certificate cannot be issued at all. `supplier` asks the supplier for the document, `buyer` keeps it as the buyer's own pending upload, `refuse` records it as refused without asking the supplier (going through the review queue first when the buyer requires human confirmation of refusals). Defaults to supplier.",
+          "in": "body",
+          "enum": [
+            "supplier",
+            "buyer",
+            "refuse"
           ]
         }
       ],
@@ -2339,6 +2357,40 @@
       "response": "200 with the same payload as `settings document show`. 422 {errors} when review_type or automatic_review_rule is outside its enum; 404 Rails default {status, error} when the document id is unknown or from another buyer, when setting_grouper_id belongs to another buyer, or when the nested review id belongs to another document; 400 Rails default {status, error} when the `setting_document` root is missing from the body; 403 {error} for a role below admin; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/documents_reviews#update"
+    },
+    {
+      "command": [
+        "settings",
+        "document",
+        "update-webhook"
+      ],
+      "summary": "Edit the integration code of a document of any type",
+      "description": "Writes the integration settings of ANY `SettingDocument`: `webhook_reference` (the Código de integração) and `send_document_reviewed_event`. The `webhook_reference` is what identifies this document inside the webhook payload the buyer receives — it is the KEY under `documents` in the event body, and a document without it is left out of the payload entirely. `send_document_reviewed_event` turns the per-review event on, and REQUIRES `webhook_reference` to be present: enabling it on a document without the code answers 422. Read the current values with `settings document show`. Requires the admin role or above.",
+      "method": "PATCH",
+      "path": "/srm_settings/documents_webhooks/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "setting_document",
+      "params": [
+        {
+          "name": "webhook_reference",
+          "type": "string",
+          "required": false,
+          "desc": "The integration code that identifies this document in the webhook payload. Send an empty string to clear it.",
+          "in": "body"
+        },
+        {
+          "name": "send_document_reviewed_event",
+          "type": "boolean",
+          "required": false,
+          "desc": "Sends the integration event after each review. Requires webhook_reference to be filled.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the same payload as `settings document show`. 422 {errors} when `send_document_reviewed_event` is enabled without a `webhook_reference`; 404 Rails default {status, error} when the document id is unknown or belongs to another buyer; 400 Rails default {status, error} when the `setting_document` root is missing from the body; 403 {error} for a role below admin; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/documents_webhooks#update"
     },
     {
       "command": [
@@ -3616,11 +3668,14 @@
         "supplier-field",
         "list"
       ],
-      "summary": "List the buyer's supplier form documents",
-      "description": "Lists the buyer's supplier form documents (the 'Formulários' settings — SettingForm plus the bank-information document), ordered by display order then display_name. By default returns the enabled documents; pass --tab disabled to list the archived (disabled) ones instead. Each item carries the applicability flags national_pj/national_pf/international, which tell for which category legal_entity (PJ / PF / INTERNATIONAL) the document is available. This is a source of the `setting_document_id` a future `settings category risk create` will need: pick a document whose applicability flag matches the category's legal_entity (national_pj for a PJ category, national_pf for PF, international for INTERNATIONAL).",
+      "summary": "List the buyer's supplier form documents (one page per call; total comes in headers)",
+      "description": "Lists the buyer's supplier form documents (the 'Formulários' settings — SettingForm plus the bank-information document), ordered by display order then display_name. By default returns the enabled documents; pass --tab disabled to list the archived (disabled) ones instead. Each item carries the applicability flags national_pj/national_pf/international, which tell for which category legal_entity (PJ / PF / INTERNATIONAL) the document is available. This is a source of the `setting_document_id` a future `settings category risk create` will need: pick a document whose applicability flag matches the category's legal_entity (national_pj for a PJ category, national_pf for PF, international for INTERNATIONAL). The response is PAGINATED: the body carries one page and the page metadata comes back in headers; use `--page N` to fetch a specific page, and `--format count` reads the buyer's TOTAL from the header.",
       "method": "GET",
       "path": "/srm_settings/supplier_fields",
       "path_params": [],
+      "pagination": {
+        "param": "page"
+      },
       "params": [
         {
           "name": "tab",
@@ -3630,7 +3685,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with an array of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order}. The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the document applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "response": "200 with one page of {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order}, plus the pagy headers (`total-count`, `total-pages`, `current-page`, `page-items`). A page past the last one returns an empty array (still 200). 400 {error} when --page is not a positive integer (e.g. 0 or non-numeric). The three boolean flags mark the category legal_entities (PJ / PF / INTERNATIONAL) the document applies to. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
       "auth": "pat",
       "controller": "srm_settings/supplier_fields#index"
     },
@@ -3907,13 +3962,16 @@
         "tag",
         "list"
       ],
-      "summary": "List the buyer's setting tags",
-      "description": "Lists the buyer's setting tags (marcadores) as {id, display_name}, ordered by display_name. This is the source of the `setting_tag_ids` accepted by `supplier create`: resolve the id of each tag here before assigning tags to a supplier.",
+      "summary": "List the buyer's setting tags (one page per call; total comes in headers)",
+      "description": "Lists the buyer's setting tags (marcadores) as {id, display_name}, ordered by display_name. This is the source of the `setting_tag_ids` accepted by `supplier create`: resolve the id of each tag here before assigning tags to a supplier. The response is PAGINATED: the body carries one page and the page metadata comes back in headers; use `--page N` to fetch a specific page, and `--format count` reads the buyer's TOTAL from the header.",
       "method": "GET",
       "path": "/srm_settings/setting_tags",
       "path_params": [],
+      "pagination": {
+        "param": "page"
+      },
       "params": [],
-      "response": "200 with array of {id, display_name}. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires operator role or above).",
+      "response": "200 with one page of {id, display_name}, plus the pagy headers (`total-count`, `total-pages`, `current-page`, `page-items`). A page past the last one returns an empty array (still 200). 400 {error} when --page is not a positive integer (e.g. 0 or non-numeric). 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires operator role or above).",
       "auth": "pat",
       "controller": "srm_settings/setting_tags#index"
     },
