@@ -66,6 +66,7 @@ lk settings category risk list
 lk settings category risk update
 lk settings category show
 lk settings category update
+lk settings category update-monitoring
 lk settings certificate
 lk settings certificate cnae-list
 lk settings certificate cnae-list clear
@@ -110,6 +111,7 @@ lk settings document show
 lk settings document update-attrs
 lk settings document update-monitoring
 lk settings document update-review
+lk settings document update-webhook
 lk settings email-message
 lk settings email-message list
 lk settings email-message show
