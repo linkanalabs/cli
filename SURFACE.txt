@@ -42,9 +42,6 @@ lk settings approval-step tier update
 lk settings approval-step update
 lk settings bank-information
 lk settings bank-information export-report
-lk settings bank-information list
-lk settings bank-information show
-lk settings bank-information update
 lk settings buyer-document
 lk settings buyer-document create
 lk settings buyer-document disable
@@ -76,18 +73,11 @@ lk settings certificate cnae-list import-chunk
 lk settings certificate import
 lk settings certificate import list
 lk settings certificate import show
-lk settings certificate list
 lk settings certificate restriction-list
 lk settings certificate restriction-list clear
 lk settings certificate restriction-list export
 lk settings certificate restriction-list import
 lk settings certificate restriction-list import-chunk
-lk settings certificate show
-lk settings certificate update
-lk settings check
-lk settings check list
-lk settings check show
-lk settings check update
 lk settings company
 lk settings company show
 lk settings company update
@@ -166,11 +156,8 @@ lk settings supplier-field field delete
 lk settings supplier-field field reorder
 lk settings supplier-field field show
 lk settings supplier-field field update
-lk settings supplier-field list
 lk settings supplier-field reorder
 lk settings supplier-field request-resend
-lk settings supplier-field show
-lk settings supplier-field update
 lk settings supplier-invite
 lk settings supplier-invite show
 lk settings supplier-invite update
