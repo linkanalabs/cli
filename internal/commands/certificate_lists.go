@@ -116,7 +116,7 @@ func newCertificateListImportCmd(kind certificateListKind) *cobra.Command {
 			return runCertificateListImport(cmd, kind)
 		},
 	}
-	cmd.Flags().String("id", "", "id do certificado, de `lk settings certificate list`")
+	cmd.Flags().String("id", "", "id do certificado, de: lk settings document list")
 	cmd.Flags().String("file", "", "caminho do CSV a importar")
 	cmd.Flags().Bool("stdin", false, "lê o CSV da entrada padrão")
 	cmd.Flags().Int("chunk-size", 500, "linhas por request")

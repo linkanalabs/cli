@@ -94,11 +94,22 @@ func addPaginationFlags(cmd *cobra.Command, e *manifest.Endpoint) {
 		"1-based page number; omit for the first page (the response reports the total and how many pages there are)")
 }
 
+// flagUsage prepares a param description for a flag's usage string. Backticks
+// go away because pflag reads the first backquoted word of the usage as the
+// flag's VALUE PLACEHOLDER: a description mentioning `national_pf` renders as
+// "--allow_pf_bank_account national_pf", which reads like the flag takes that
+// value — and on a boolean it takes none. Dropping them lets pflag fall back to
+// the placeholder derived from the flag's own type. The Long help keeps the
+// backticks (see dynamicLong), where nothing parses them.
+func flagUsage(desc string) string {
+	return strings.ReplaceAll(desc, "`", "")
+}
+
 // addDynamicFlag registers one manifest param as a cobra flag. Native types
 // map to native flags; date/datetime/decimal ride as strings; arrays of
 // scalars repeat the flag; objects (and arrays of objects) take a JSON string.
 func addDynamicFlag(cmd *cobra.Command, p *manifest.Param) {
-	usage := p.Desc
+	usage := flagUsage(p.Desc)
 	if len(p.Enum) > 0 {
 		usage += " (one of: " + strings.Join(p.Enum, "|") + ")"
 	}

@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/pflag"
+
 	"github.com/linkanalabs/cli/internal/manifest"
 )
 
@@ -496,5 +498,25 @@ func TestNewImportIdentifierIsUnique(t *testing.T) {
 	}
 	if first == second {
 		t.Errorf("identifier = %q twice, want a new value per import", first)
+	}
+}
+
+// The --id usage must not backquote a command name: pflag would take the first
+// backquoted word as the flag's value placeholder, rendering "--id lk settings
+// certificate list" as if that whole string were the value.
+func TestCertificateListImportIDFlagPlaceholderIsItsType(t *testing.T) {
+	root := newRootCmd()
+	cmd := findCommand(root, "settings", "certificate", "restriction-list", "import")
+	if cmd == nil {
+		t.Fatal("import command not found")
+	}
+
+	name, usage := pflag.UnquoteUsage(cmd.Flags().Lookup("id"))
+
+	if name != "string" {
+		t.Errorf("--id placeholder = %q, want %q", name, "string")
+	}
+	if strings.Contains(usage, "`") {
+		t.Errorf("--id usage keeps a backtick: %q", usage)
 	}
 }
