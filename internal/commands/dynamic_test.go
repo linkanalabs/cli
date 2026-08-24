@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/linkanalabs/cli/internal/manifest"
 )
@@ -243,5 +244,38 @@ func TestDynamicHelpListsPositionalArgs(t *testing.T) {
 		if !strings.Contains(help, want) {
 			t.Errorf("help missing %q:\n%s", want, help)
 		}
+	}
+}
+
+func TestDynamicFlagUsageDropsBackticks(t *testing.T) {
+	cmd := &cobra.Command{Use: "x"}
+	addDynamicFlag(cmd, &manifest.Param{
+		Name: "allow_pf_bank_account",
+		Type: manifest.TypeBoolean,
+		Desc: "Whether a PJ supplier may declare a PF account. Different from `national_pf`, which decides availability.",
+	})
+	addDynamicFlag(cmd, &manifest.Param{
+		Name: "webhook_reference",
+		Type: manifest.TypeString,
+		Desc: "The key under `documents` in the webhook payload.",
+	})
+
+	boolName, boolUsage := pflag.UnquoteUsage(cmd.Flags().Lookup("allow_pf_bank_account"))
+	if boolName != "" {
+		t.Errorf("boolean placeholder = %q, want empty", boolName)
+	}
+	if strings.Contains(boolUsage, "`") {
+		t.Errorf("boolean usage keeps a backtick: %q", boolUsage)
+	}
+	if !strings.Contains(boolUsage, "national_pf") {
+		t.Errorf("boolean usage lost the identifier: %q", boolUsage)
+	}
+
+	strName, strUsage := pflag.UnquoteUsage(cmd.Flags().Lookup("webhook_reference"))
+	if strName != "string" {
+		t.Errorf("string placeholder = %q, want %q", strName, "string")
+	}
+	if strings.Contains(strUsage, "`") {
+		t.Errorf("string usage keeps a backtick: %q", strUsage)
 	}
 }
