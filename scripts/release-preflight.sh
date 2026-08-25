@@ -8,6 +8,9 @@
 #   scripts/release-preflight.sh --bump-only [--base <tag>]
 #       Só imprime a versão derivada (leitura pura, nenhum gate). `--base` troca
 #       a tag de referência — serve para conferir a derivação contra o histórico.
+#   scripts/release-preflight.sh --manifest-only
+#       Só compara o manifest vendorado com a main da linkana. Exit 1 quando
+#       estiver defasado.
 #
 # Exit 0 = todos os gates passaram (e só então os comandos de tag são impressos).
 # Exit 1 = algum FAIL. Exit 2 = erro de uso.
@@ -85,14 +88,65 @@ derive_bump() {
   fi
 }
 
+# --- manifest vendorado x main da linkana ---
+
+# O manifest é gerado na linkana e vendorado aqui; o `cli:manifest:check` de lá
+# valida o arquivo dentro daquele repositório, nunca a cópia deste. Sem esta
+# comparação, um comando desligado no backend continua na árvore do binário
+# publicado até alguém lembrar de rodar `make update-manifest` (LIN-7115).
+#
+# Compara só `manifest_version` + `endpoints`: `generated_at` e `source` mudam a
+# cada regeração na linkana e reprovariam a release sem nenhuma diferença real de
+# contrato.
+manifest_in_sync() {
+  local remote rc=0
+  remote=$(mktemp)
+  if ! gh api repos/linkanalabs/linkana/contents/cli-manifest.json --jq .content 2>/dev/null \
+    | base64 -d >"$remote" 2>/dev/null; then
+    rm -f "$remote"
+    return 2
+  fi
+  if ! jq -e '.manifest_version >= 1 and (.endpoints | type == "array")' "$remote" >/dev/null 2>&1; then
+    rm -f "$remote"
+    return 2
+  fi
+  diff -q \
+    <(jq -S '{manifest_version, endpoints}' "$remote") \
+    <(jq -S '{manifest_version, endpoints}' internal/manifest/cli-manifest.json) \
+    >/dev/null 2>&1 || rc=1
+  rm -f "$remote"
+  return $rc
+}
+
+check_manifest_step() {
+  step 'Manifest vendorado'
+  if ! command -v gh >/dev/null 2>&1; then
+    fail 'gh não instalado — sem ele não dá para comparar o manifest com a linkana'
+    return
+  fi
+  if ! command -v jq >/dev/null 2>&1; then
+    fail 'jq não instalado — sem ele não dá para comparar o manifest com a linkana'
+    return
+  fi
+  local rc=0
+  manifest_in_sync || rc=$?
+  case $rc in
+    0) pass 'manifest vendorado em dia com a main da linkana' ;;
+    1) fail 'manifest vendorado difere da main da linkana — rode `make update-manifest`, commite e refaça o preflight' ;;
+    *) fail 'não deu para ler o manifest da linkana (gh autenticado? acesso ao repositório?)' ;;
+  esac
+}
+
 # --- argumentos ---
 BUMP_ONLY=0
+MANIFEST_ONLY=0
 BASE_TAG=""
 WANTED=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --bump-only) BUMP_ONLY=1 ;;
+    --manifest-only) MANIFEST_ONLY=1 ;;
     --base)
       shift
       [ $# -gt 0 ] || die "--base exige uma tag"
@@ -112,6 +166,12 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+
+if [ "$MANIFEST_ONLY" -eq 1 ]; then
+  check_manifest_step
+  [ "$FAILURES" -eq 0 ] || exit 1
+  exit 0
+fi
 
 if [ -n "$BASE_TAG" ] && [ "$BUMP_ONLY" -eq 0 ]; then
   die "--base só vale com --bump-only (o gate sempre usa a última tag)"
@@ -202,6 +262,8 @@ if [ -n "$WANTED" ]; then
 fi
 
 # --- 3. golden da superfície ---
+check_manifest_step
+
 step 'Golden da superfície'
 if go test ./internal/commands -run TestSurfaceGolden >/dev/null 2>&1; then
   pass 'SURFACE.txt corresponde à árvore de comandos'
