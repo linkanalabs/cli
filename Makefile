@@ -38,7 +38,7 @@ tidy:
 # copy.
 update-manifest:
 	@tmp=$$(mktemp); \
-	if gh api repos/linkanalabs/linkana/contents/cli-manifest.json --jq .content 2>/dev/null | base64 -d > $$tmp 2>/dev/null \
+	if gh api repos/linkanalabs/linkana/contents/cli-manifest.json --jq .content 2>/dev/null | tr -d '\n' | openssl base64 -d -A > $$tmp 2>/dev/null \
 		&& jq -e '.manifest_version >= 1 and (.endpoints | type == "array")' $$tmp > /dev/null 2>&1; then \
 		mv $$tmp internal/manifest/cli-manifest.json; \
 		echo "internal/manifest/cli-manifest.json updated from linkanalabs/linkana"; \

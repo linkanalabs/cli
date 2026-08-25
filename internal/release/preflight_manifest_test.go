@@ -16,6 +16,10 @@ import (
 func runManifestGate(t *testing.T, remote map[string]any) (string, int) {
 	t.Helper()
 
+	if _, err := exec.LookPath("jq"); err != nil {
+		t.Skip("jq não instalado — o gate do preflight depende dele")
+	}
+
 	repoRoot, err := filepath.Abs("../..")
 	if err != nil {
 		t.Fatalf("resolving repo root: %v", err)

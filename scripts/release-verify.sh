@@ -112,7 +112,7 @@ step "Cask em $TAP_REPO"
 # Via API de contents, não pela raw.githubusercontent: a raw passa por CDN e
 # poderia devolver o cask antigo em cache logo depois da release, gerando um
 # falso negativo justo na janela que mais importa.
-CASK=$(gh api "repos/$TAP_REPO/contents/$CASK_PATH" --jq .content 2>/dev/null | base64 -d 2>/dev/null || true)
+CASK=$(gh api "repos/$TAP_REPO/contents/$CASK_PATH" --jq .content 2>/dev/null | tr -d '\n' | openssl base64 -d -A 2>/dev/null || true)
 if [ -z "$CASK" ]; then
   fail "não consegui ler $CASK_PATH em $TAP_REPO"
 else

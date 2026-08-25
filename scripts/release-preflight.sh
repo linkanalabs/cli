@@ -88,6 +88,20 @@ derive_bump() {
   fi
 }
 
+# Decodifica base64 de forma portatil. O `-d` do GNU coreutils nao existe no
+# base64 do macOS (que usa `-D`), e a mensagem de erro resultante culparia o
+# manifest em vez do flag. O openssl esta nos dois e aceita a entrada em uma
+# linha so.
+b64_decode() {
+  if command -v openssl >/dev/null 2>&1; then
+    tr -d '\n' | openssl base64 -d -A
+  elif printf '' | base64 -d >/dev/null 2>&1; then
+    base64 -d
+  else
+    base64 -D
+  fi
+}
+
 # --- manifest vendorado x main da linkana ---
 
 # O manifest é gerado na linkana e vendorado aqui; o `cli:manifest:check` de lá
@@ -102,7 +116,7 @@ manifest_in_sync() {
   local remote rc=0
   remote=$(mktemp)
   if ! gh api repos/linkanalabs/linkana/contents/cli-manifest.json --jq .content 2>/dev/null \
-    | base64 -d >"$remote" 2>/dev/null; then
+    | b64_decode >"$remote" 2>/dev/null; then
     rm -f "$remote"
     return 2
   fi
