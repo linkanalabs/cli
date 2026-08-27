@@ -62,8 +62,11 @@ func TestRateLimitError(t *testing.T) {
 					t.Errorf("error %q missing %q", got, w)
 				}
 			}
-			if tc.name == "message and retry-after" && strings.Contains(got, "..") {
-				t.Errorf("message should not double the period: %q", got)
+			if tc.name == "message and retry-after" {
+				want := "Limite de requisições excedido. Tente de novo em 30s"
+				if got != want {
+					t.Errorf("error = %q, want %q", got, want)
+				}
 			}
 		})
 	}

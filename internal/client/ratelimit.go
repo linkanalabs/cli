@@ -22,7 +22,7 @@ func RateLimitError(resp *Response) error {
 	retry := retryAfterSeconds(resp.Header)
 	switch {
 	case msg != "" && retry != "":
-		return fmt.Errorf("%s Tente de novo em %ss", strings.TrimRight(msg, "."), retry)
+		return fmt.Errorf("%s. Tente de novo em %ss", strings.TrimRight(msg, "."), retry)
 	case msg != "":
 		return fmt.Errorf("%s", msg)
 	case retry != "":
