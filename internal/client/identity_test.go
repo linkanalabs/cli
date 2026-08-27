@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -81,6 +82,23 @@ func TestGetIdentityBadJSON(t *testing.T) {
 
 	if _, err := New(srv.URL).GetIdentity(context.Background()); err == nil {
 		t.Error("expected JSON decode error")
+	}
+}
+
+func TestGetIdentityRateLimited(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Retry-After", "42")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"error":"Limite de requisições excedido."}`))
+	}))
+	defer srv.Close()
+
+	_, err := New(srv.URL).GetIdentity(context.Background())
+	if err == nil {
+		t.Fatal("expected error on 429")
+	}
+	if got := err.Error(); !strings.Contains(got, "Tente de novo em 42s") {
+		t.Errorf("429 error should carry retry-after, got %q", got)
 	}
 }
 

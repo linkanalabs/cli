@@ -32,6 +32,9 @@ func (c *Client) GetIdentity(ctx context.Context) (*Identity, error) {
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, ErrUnauthorized
 	}
+	if IsRateLimited(resp) {
+		return nil, RateLimitError(resp)
+	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("identity request returned %d", resp.StatusCode)
 	}
