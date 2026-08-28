@@ -42,7 +42,7 @@ func retryAfterSeconds(h http.Header) string {
 	if v == "" {
 		return ""
 	}
-	if _, err := strconv.Atoi(v); err != nil {
+	if n, err := strconv.Atoi(v); err != nil || n < 0 {
 		return ""
 	}
 	return v

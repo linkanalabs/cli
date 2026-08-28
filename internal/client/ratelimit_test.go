@@ -53,6 +53,11 @@ func TestRateLimitError(t *testing.T) {
 			resp: &Response{Body: []byte(`{"error":"Devagar"}`), Header: header("Mon, 01 Jan 2035 00:00:00 GMT")},
 			want: []string{"Devagar"},
 		},
+		{
+			name: "negative retry-after is ignored",
+			resp: &Response{Body: []byte(`{"error":"Devagar"}`), Header: header("-30")},
+			want: []string{"Devagar"},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -67,6 +72,9 @@ func TestRateLimitError(t *testing.T) {
 				if got != want {
 					t.Errorf("error = %q, want %q", got, want)
 				}
+			}
+			if strings.Contains(tc.name, "ignored") && strings.Contains(got, "Tente de novo") {
+				t.Errorf("malformed retry-after should give no retry hint: %q", got)
 			}
 		})
 	}
