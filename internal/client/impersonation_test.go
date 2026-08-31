@@ -210,3 +210,37 @@ func TestStartImpersonationRejectsNegativeTTL(t *testing.T) {
 		t.Errorf("error = %v, want mention of negative", err)
 	}
 }
+
+func TestStartImpersonationRateLimited(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Retry-After", "60")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"error":"Limite de requisições excedido."}`))
+	}))
+	defer srv.Close()
+
+	_, err := New(srv.URL).StartImpersonation(context.Background(), "x@linkana.com", 0)
+	if err == nil {
+		t.Fatal("expected error on 429")
+	}
+	if got := err.Error(); !strings.Contains(got, "Tente de novo em 60s") {
+		t.Errorf("429 error should carry retry-after, got %q", got)
+	}
+}
+
+func TestStopImpersonationRateLimited(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Retry-After", "5")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"error":"Limite de requisições excedido."}`))
+	}))
+	defer srv.Close()
+
+	err := New(srv.URL).StopImpersonation(context.Background())
+	if err == nil {
+		t.Fatal("expected error on 429")
+	}
+	if got := err.Error(); !strings.Contains(got, "Tente de novo em 5s") {
+		t.Errorf("429 error should carry retry-after, got %q", got)
+	}
+}

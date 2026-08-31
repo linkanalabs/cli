@@ -507,6 +507,37 @@ func TestDynamicExecNon2xxWritesBodyToStderr(t *testing.T) {
 	}
 }
 
+func TestDynamicExecRateLimitedWritesRetryToStderr(t *testing.T) {
+	swapFixtureManifest(t)
+	authEnv(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Retry-After", "30")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"error":"Limite de requisições excedido."}`))
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("LK_API_URL", srv.URL)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+
+	var out, errOut bytes.Buffer
+	code := run([]string{"widget", "list"}, &out, &errOut)
+	if code != 1 {
+		t.Fatalf("exit = %d, want 1", code)
+	}
+	if !strings.Contains(errOut.String(), "Tente de novo em 30s") {
+		t.Errorf("stderr should carry the retry hint, got %q", errOut.String())
+	}
+	if !strings.Contains(errOut.String(), "Limite de requisições excedido") {
+		t.Errorf("stderr should carry the backend message, got %q", errOut.String())
+	}
+	if strings.Contains(errOut.String(), "returned 429") {
+		t.Errorf("429 should not fall into the generic branch, got %q", errOut.String())
+	}
+	if out.String() != "" {
+		t.Errorf("stdout must stay clean on failure, got %q", out.String())
+	}
+}
+
 func TestDynamicExecTransportError(t *testing.T) {
 	swapFixtureManifest(t)
 	authEnv(t)

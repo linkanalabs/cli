@@ -42,6 +42,9 @@ func (c *Client) StartImpersonation(ctx context.Context, userRef string, ttl tim
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, ErrUnauthorized
 	}
+	if IsRateLimited(resp) {
+		return nil, RateLimitError(resp)
+	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("impersonation request returned %d: %s", resp.StatusCode, serverError(resp.Body))
 	}
@@ -63,6 +66,9 @@ func (c *Client) StopImpersonation(ctx context.Context) error {
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil
+	}
+	if IsRateLimited(resp) {
+		return RateLimitError(resp)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("stop impersonation returned %d", resp.StatusCode)

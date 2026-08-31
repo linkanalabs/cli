@@ -70,6 +70,9 @@ func successBody(cmd *cobra.Command, e *manifest.Endpoint, resp *client.Response
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, unauthorizedErr(imp)
 	}
+	if client.IsRateLimited(resp) {
+		return nil, client.RateLimitError(resp)
+	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		if len(resp.Body) > 0 {
 			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), strings.TrimSpace(string(resp.Body)))
