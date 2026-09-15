@@ -1,0 +1,21 @@
+SURFACE.txt
+  s_3e2548192a3155::t_a5452de34bd077 14-15,31-33
+internal/manifest/cli-manifest.json
+  s_3e2548192a3155::t_e8b65b0ed76b5e 3-4,21-45,236-284,292,309,315,474,614,620,992,1077,1089,1101-1113,1137,1149,1156,1168,1175,1187,1210,1228,1894,1952,2010,3091,3686,3693
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fe60cd8479d8e505fd0af47abff6a41d38b34877",
+  "prompts": {},
+  "sessions": {
+    "s_3e2548192a3155": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "613a5bba-727a-4266-aad7-9bbf3fcd0559",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jean Mendonça <pierrybm@gmail.com>"
+    }
+  }
+}
