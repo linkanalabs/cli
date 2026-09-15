@@ -11,6 +11,8 @@ lk identity show
 lk impersonate
 lk impersonate status
 lk impersonate stop
+lk qualification
+lk qualification versionate
 lk settings
 lk settings access-configuration
 lk settings access-configuration show
@@ -26,6 +28,9 @@ lk settings approval-step condition setting-category update
 lk settings approval-step condition setting-document
 lk settings approval-step condition setting-document show
 lk settings approval-step condition setting-document update
+lk settings approval-step condition setting-tag
+lk settings approval-step condition setting-tag show
+lk settings approval-step condition setting-tag update
 lk settings approval-step create
 lk settings approval-step decision-reason
 lk settings approval-step decision-reason create
@@ -40,8 +45,6 @@ lk settings approval-step tier delete
 lk settings approval-step tier list
 lk settings approval-step tier update
 lk settings approval-step update
-lk settings bank-information
-lk settings bank-information export-report
 lk settings buyer-document
 lk settings buyer-document create
 lk settings buyer-document disable
@@ -93,7 +96,6 @@ lk settings company-user list
 lk settings company-user show
 lk settings company-user update
 lk settings document
-lk settings document change-grouper
 lk settings document disable
 lk settings document enable
 lk settings document list
@@ -144,7 +146,6 @@ lk settings supplier-field answer-key remove
 lk settings supplier-field answer-key set
 lk settings supplier-field create
 lk settings supplier-field duplicate
-lk settings supplier-field export-report
 lk settings supplier-field field
 lk settings supplier-field field answers
 lk settings supplier-field field answers update
