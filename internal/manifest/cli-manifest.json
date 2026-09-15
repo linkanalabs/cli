@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-08-24T18:18:19Z",
-  "source": "linkanalabs/linkana@81bfc2579a",
+  "generated_at": "2026-09-11T19:32:22Z",
+  "source": "linkanalabs/linkana@4a37932e40",
   "endpoints": [
     {
       "command": [
@@ -17,6 +17,31 @@
       "response": "200 with {id, email, name, role, buyer_id, is_staff}.",
       "auth": "pat",
       "controller": "my/identity#show"
+    },
+    {
+      "command": [
+        "qualification",
+        "versionate"
+      ],
+      "summary": "Restart the qualification of a supplier in one category (re-homologação)",
+      "description": "Starts a NEW qualification cycle for a supplier in ONE category — the same action as the 'Iniciar re-homologação' button on the qualification panel. The cycle that is active today stops being the active one and a new cycle is created in the SAME category, back at the approval-steps stage; nothing ever changes category. The positional id is the qualification id of the CURRENT cycle, taken from the `qualifications` array of `supplier show` — never the id of the cycle this command creates. Only a cycle already decided (aprovada or reprovada) can be restarted: one still in progress is refused, and so is an archived one. Requires the member role or above. TWO SIDE EFFECTS MATTER BEFORE LOOPING OVER MANY SUPPLIERS: the supplier gets a 'Re-homologação iniciada por {email}' event carrying the authenticated user's email, and every follower of that supplier who has qualification alerts enabled RECEIVES AN EMAIL. There is no way to mute the email from this command — one call sends one message per follower, so a loop over hundreds of suppliers is a mailing of that size. A bulk restart of a whole client base is not this command's job.",
+      "method": "PATCH",
+      "path": "/srm/qualifications/versionate/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [
+        {
+          "name": "force_processing",
+          "type": "boolean",
+          "required": false,
+          "desc": "What happens to the supplier's overdue renewable documents: true asks the supplier to update them before the new decision, false leaves them as they are. Defaults to FALSE here, while the web dialog pre-selects true when the supplier has overdue documents — pass it explicitly to reproduce what the button does.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with the NEW cycle: {id, state, active, supplier_id, supplier_category_id, category_id, category_display_name, initiated_by_email, created_at}. `state` comes back `in_progress` (the three values are `in_progress`, `approved` and `refused`) and `active` true — this id is the one `supplier show` returns from now on. `initiated_by_email` is the authenticated user, and it is the email that appears in the supplier event and in the notification to the followers. 422 {error} when the id is no longer the active cycle, which is what a repeated call answers — nothing is created, so retrying is safe. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer). 403 {error} when the policy denies it: cycle still in progress, cycle archived, or role below member. 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm/qualifications/versionate#update"
     },
     {
       "command": [
@@ -212,10 +237,59 @@
       "command": [
         "settings",
         "approval-step",
+        "condition",
+        "setting-tag",
+        "show"
+      ],
+      "summary": "Show the SETTING_TAG condition of an approval step",
+      "description": "Shows the marcadores (tags) that trigger a SETTING_TAG approval step. Get the setting_approval_step_id from `settings approval-step list|show`. Requires the manager role or above.",
+      "method": "GET",
+      "path": "/srm_settings/setting_approval_steps/:setting_approval_step_id/condition_setting_tag/edit",
+      "path_params": [
+        "setting_approval_step_id"
+      ],
+      "params": [],
+      "response": "200 with {id, setting_tag_ids}, ordered by id. setting_tag_ids come from `settings tag list`. 404 Rails default {status, error} when setting_approval_step_id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps/condition_setting_tags#edit"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
+        "condition",
+        "setting-tag",
+        "update"
+      ],
+      "summary": "Replace the marcadores linked to a SETTING_TAG approval step",
+      "description": "Replaces the FULL list of marcadores (tags) that trigger one SETTING_TAG approval step — this is a total replacement, never a merge: send every setting_tag_id you want linked, because the ones you leave out are unlinked. To add one marcador to a step that already has two linked, resend all three ids. Each setting_tag_id comes from `settings tag list` and must belong to the caller's buyer, or the request 404s before anything changes. Pass an empty array to clear every link. Unlike the setting-category and setting-document commands, there is no silent-clear path here: omitting the setting_approval_step root, or sending it without setting_tag_ids, is rejected with 400 instead of wiping the links. Also unlike the other conditions, a SETTING_TAG step with no link never triggers — an empty list is not read as \"every marcador\". Requires the manager role or above, same as show.",
+      "method": "PATCH",
+      "path": "/srm_settings/setting_approval_steps/:setting_approval_step_id/condition_setting_tag",
+      "path_params": [
+        "setting_approval_step_id"
+      ],
+      "body_root": "setting_approval_step",
+      "params": [
+        {
+          "name": "setting_tag_ids",
+          "type": "array",
+          "required": true,
+          "desc": "Full list of setting_tag ids that trigger the step (e.g. [\"<uuid>\",\"<uuid>\"]) — the FULL desired list, not a delta. Pass [] to clear every link. Each id comes from `settings tag list` and must belong to the caller's buyer, or the whole request 404s.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the updated {id, setting_tag_ids} (same shape as `settings approval-step condition setting-tag show`). 400 Rails default {status, error} when the setting_approval_step root or setting_tag_ids is missing; 404 Rails default {status, error} when setting_approval_step_id is unknown, belongs to another buyer, OR any setting_tag_id belongs to another buyer (both lookups are buyer-scoped); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/setting_approval_steps/condition_setting_tags#update"
+    },
+    {
+      "command": [
+        "settings",
+        "approval-step",
         "create"
       ],
       "summary": "Create an approval step",
-      "description": "Creates an approval step for the buyer. IMPORTANT: when `action` is TIERS_APPROVAL the backend automatically seeds one default tier (\"Nível Único Padrão\") — you do not pass tiers here, and a tiers step without a tier would be invalid. A step is created NOT in use; putting it to work is done elsewhere. Both the uppercase value (RISK_SCORE) and the lowercase key (risk_score) are accepted on input, and the response always reads back the lowercase form. Requires the manager role or above.",
+      "description": "Creates an approval step for the buyer. IMPORTANT: when `action` is TIERS_APPROVAL the backend automatically seeds one default tier (\"Nível Único Padrão\") — you do not pass tiers here, and a tiers step without a tier would be invalid. A step is created NOT in use; putting it to work is done elsewhere. With condition SETTING_TAG the step is created without any marcador linked and does not trigger until you link at least one with `settings approval-step condition setting-tag update`. Both the uppercase value (RISK_SCORE) and the lowercase key (risk_score) are accepted on input, and the response always reads back the lowercase form. Requires the manager role or above.",
       "method": "POST",
       "path": "/srm_settings/setting_approval_steps",
       "path_params": [],
@@ -232,12 +306,13 @@
           "name": "condition",
           "type": "string",
           "required": true,
-          "desc": "What triggers the step. One of SETTING_CATEGORY, RISK_SCORE, SETTING_DOCUMENT, EXCEPTION_APPROVAL (the lowercase key is also accepted).",
+          "desc": "What triggers the step. One of SETTING_CATEGORY, RISK_SCORE, SETTING_DOCUMENT, SETTING_TAG, EXCEPTION_APPROVAL (the lowercase key is also accepted). SETTING_TAG is accepted from any caller: the feature flag that still gates it only decides whether the option shows up in the web form, so the CLI is the intended path while the flag is internal.",
           "in": "body",
           "enum": [
             "SETTING_CATEGORY",
             "RISK_SCORE",
             "SETTING_DOCUMENT",
+            "SETTING_TAG",
             "EXCEPTION_APPROVAL"
           ]
         },
@@ -396,7 +471,7 @@
         "id"
       ],
       "params": [],
-      "response": "200 with {id, display_name, condition, action, being_used, rating_labels, setting_category_ids, setting_document_ids, tiers}. `rating_labels` is the risk score labels that trigger the step (only meaningful when condition is RISK_SCORE; otherwise it still comes back with its default [A, B, C, D, E]). `setting_category_ids` / `setting_document_ids` are the ids linked to the step's condition (only meaningful when condition is SETTING_CATEGORY / SETTING_DOCUMENT respectively; empty array otherwise, never omitted). `tiers` is an array of {id, display_name, user_ids} — only populated when action is TIERS_APPROVAL; a tier just seeded by `settings approval-step create` comes back with an empty user_ids and needs `settings approval-step tier update` to gain approvers. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer, so a foreign id never resolves); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, display_name, condition, action, being_used, rating_labels, setting_category_ids, setting_document_ids, tiers}. `rating_labels` is the risk score labels that trigger the step (only meaningful when condition is RISK_SCORE; otherwise it still comes back with its default [A, B, C, D, E]). `setting_category_ids` / `setting_document_ids` / `setting_tag_ids` are the ids linked to the step's condition (only meaningful when condition is SETTING_CATEGORY / SETTING_DOCUMENT / SETTING_TAG respectively; empty array otherwise, never omitted). `tiers` is an array of {id, display_name, user_ids} — only populated when action is TIERS_APPROVAL; a tier just seeded by `settings approval-step create` comes back with an empty user_ids and needs `settings approval-step tier update` to gain approvers. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer, so a foreign id never resolves); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/setting_approval_steps#show"
     },
@@ -536,12 +611,13 @@
           "name": "condition",
           "type": "string",
           "required": false,
-          "desc": "What triggers the step. One of SETTING_CATEGORY, RISK_SCORE, SETTING_DOCUMENT, EXCEPTION_APPROVAL (the lowercase key is also accepted).",
+          "desc": "What triggers the step. One of SETTING_CATEGORY, RISK_SCORE, SETTING_DOCUMENT, SETTING_TAG, EXCEPTION_APPROVAL (the lowercase key is also accepted). SETTING_TAG is accepted from any caller: the feature flag that still gates it only decides whether the option shows up in the web form, so the CLI is the intended path while the flag is internal.",
           "in": "body",
           "enum": [
             "SETTING_CATEGORY",
             "RISK_SCORE",
             "SETTING_DOCUMENT",
+            "SETTING_TAG",
             "EXCEPTION_APPROVAL"
           ]
         },
@@ -568,24 +644,6 @@
       "response": "200 with the updated {id, display_name, condition, action, being_used}. 422 {errors} on validation (e.g. a blank display_name); 400 Rails default {status, error} when the setting_approval_step root is missing; 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (scoped lookup); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/setting_approval_steps#update"
-    },
-    {
-      "command": [
-        "settings",
-        "bank-information",
-        "export-report"
-      ],
-      "summary": "Export the suppliers' bank information answers to CSV",
-      "description": "Starts the CSV export of every supplier's bank information answer to this document. The export runs in background and REPLACES the previously attached file, so the old `report_csv_url` stops working the moment this is called. The CSV carries sensitive data — each supplier's account CPF/CNPJ, branch, account number and a one-week signed link to the bank statement — so it is admin-only: the finished file is not in this response, poll `settings document show <id>` until `report_csv_url` appears (returned only to an admin) and download from there. bank_information_id is the id of the bank information document, from `settings document list`; only the enabled document exports (a disabled one answers 404). Requires the admin role or above.",
-      "method": "POST",
-      "path": "/srm_settings/bank_informations/:bank_information_id/csv_reports",
-      "path_params": [
-        "bank_information_id"
-      ],
-      "params": [],
-      "response": "200 with {id, name, display_name, export_enqueued: true}. The file URL shows up later in `settings document show` as `report_csv_url`, only for an admin. 404 Rails default {status, error} when bank_information_id is unknown, disabled, or belongs to another buyer; 403 {error} when the policy denies access (requires the admin role or above); 401 (empty body) when unauthenticated.",
-      "auth": "pat",
-      "controller": "srm_settings/bank_informations/csv_reports#create"
     },
     {
       "command": [
@@ -931,7 +989,7 @@
           ]
         }
       ],
-      "response": "200 with the created {id, display_name, legal_entity, active, renew_at_in_days_after_approval, force_processing_on_renewal, monitor_on_qualification_start, monitor_after_approval, monitor_after_refusal, setting_risks} (setting_risks is [] on a fresh create; the monitoring fields carry their defaults — edit them with `settings category update-monitoring`). 422 {errors} on validation (e.g. blank or duplicate display_name, or a legal_entity outside PJ/PF/INTERNATIONAL); 400 Rails default {status, error} when the setting_category root is missing; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with the created {id, display_name, legal_entity, payment_mode, active, renew_at_in_days_after_approval, force_processing_on_renewal, monitor_on_qualification_start, monitor_after_approval, monitor_after_refusal, setting_risks} (setting_risks is [] on a fresh create; the monitoring fields carry their defaults — edit them with `settings category update-monitoring`). `payment_mode` is one of buyer, supplier (who pays for the category) and is read-only here — it is not accepted by create/update. 422 {errors} on validation (e.g. blank or duplicate display_name, or a legal_entity outside PJ/PF/INTERNATIONAL); 400 Rails default {status, error} when the setting_category root is missing; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories#create"
     },
@@ -1016,7 +1074,7 @@
         "param": "page"
       },
       "params": [],
-      "response": "200 with one page of {id, display_name, legal_entity, active}, plus the pagy headers (`total-count`, `total-pages`, `current-page`, `page-items`). A page past the last one returns an empty array (still 200). 400 {error} when --page is not a positive integer (e.g. 0 or non-numeric). `legal_entity` is one of PJ, PF, INTERNATIONAL. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires the manager role or above).",
+      "response": "200 with one page of {id, display_name, legal_entity, payment_mode, active}, plus the pagy headers (`total-count`, `total-pages`, `current-page`, `page-items`). A page past the last one returns an empty array (still 200). 400 {error} when --page is not a positive integer (e.g. 0 or non-numeric). `legal_entity` is one of PJ, PF, INTERNATIONAL. `payment_mode` is one of buyer, supplier (who pays for the category) and is read-only here — it is not accepted by create/update. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires the manager role or above).",
       "auth": "pat",
       "controller": "srm_settings/categories#index"
     },
@@ -1028,7 +1086,7 @@
         "create"
       ],
       "summary": "Attach a document to a category as a risk",
-      "description": "Attaches a SettingDocument to a category with a risk score (creates a risk). `category_id` comes from `settings category list`. `setting_document_id` is the id of a SettingDocument (a supplier field / check / certificate / bank information) — obtain it from `settings document list`, which lists every enabled document of all four types with its applicability flags; `settings category risk list` only lists documents already attached to a category. The document's applicability must match the category's `legal_entity` (PJ requires `national_pj`, PF requires `national_pf`, INTERNATIONAL requires `international`); a mismatching document is rejected with 422. Attaching a `setting_document_id` already present in the category is idempotent: it updates that risk's score instead of creating a second one (200).",
+      "description": "Attaches a SettingDocument to a category with a risk score (creates a risk), for one party of the supplier. `category_id` comes from `settings category list`. `setting_document_id` and `subject_party` are top-level query params, not body fields. `setting_document_id` is the id of a SettingDocument (a supplier field / check / certificate / bank information) — obtain it from `settings document list`, which lists every enabled document of all four types with its applicability flags; `settings category risk list` only lists documents already attached to a category. The document's applicability must match the category's `legal_entity` (PJ requires `national_pj`, PF requires `national_pf`, INTERNATIONAL requires `international`); a mismatching document is rejected with 422. Attaching a `setting_document_id` already present in the category is idempotent: it updates that risk's score instead of creating a second one (200).",
       "method": "POST",
       "path": "/srm_settings/categories/:category_id/risks",
       "path_params": [
@@ -1040,8 +1098,19 @@
           "name": "setting_document_id",
           "type": "string",
           "required": true,
-          "desc": "UUID of the SettingDocument to attach. Get it from `settings document list`, which lists every enabled document of all four types with its applicability flags (national_pj / national_pf / international); pick a document whose applicability matches the category's legal_entity (a mismatch is rejected with 422). `settings category risk list` only returns documents ALREADY attached to a category, so it is not the source for a new attachment (re-attaching an already-present document just updates its score).",
-          "in": "body"
+          "desc": "UUID of the SettingDocument to attach, passed as a top-level query param (NOT inside the setting_risk body). Get it from `settings document list`, which lists every enabled document of all four types with its applicability flags (national_pj / national_pf / international); pick a document whose applicability matches the category's legal_entity (a mismatch is rejected with 422). `settings category risk list` only returns documents ALREADY attached to a category, so it is not the source for a new attachment (re-attaching an already-present document just updates its score).",
+          "in": "query"
+        },
+        {
+          "name": "subject_party",
+          "type": "string",
+          "required": true,
+          "desc": "Which party of the supplier the document is requested from, passed as a top-level query param. `supplier` attaches it to the supplier itself; `related_party` attaches it to each of the supplier's related parties (partners/shareholders). There is no default — omitting it is a 400.",
+          "in": "query",
+          "enum": [
+            "supplier",
+            "related_party"
+          ]
         },
         {
           "name": "risk",
@@ -1065,7 +1134,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with {id, setting_document_id, risk, setting_document:{id, display_name, type}}. 422 {errors} when the SettingDocument is disabled (disabled documents cannot receive new risks — re-enable it first) or when its applicability does not cover the category's legal_entity (PJ requires national_pj, PF requires national_pf, INTERNATIONAL requires international — pick a compatible document from `settings document list`); 400 (bad request) when the setting_risk root is absent; 404 Rails default {status, error} when the category or the setting_document_id is unknown, and also when either belongs to another buyer (both lookups are scoped to the buyer, so neither confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, setting_document_id, risk, subject_party, setting_document:{id, display_name, type}}. 422 {errors} when the SettingDocument is disabled (disabled documents cannot receive new risks — re-enable it first) or when its applicability does not cover the category's legal_entity (PJ requires national_pj, PF requires national_pf, INTERNATIONAL requires international — pick a compatible document from `settings document list`); 400 (bad request) when the setting_risk root, the setting_document_id or the subject_party is absent; 404 Rails default {status, error} when the category or the setting_document_id is unknown, and also when either belongs to another buyer (both lookups are scoped to the buyer, so neither confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories_risks#create"
     },
@@ -1077,14 +1146,14 @@
         "delete"
       ],
       "summary": "Detach a document from a category (archive the risk)",
-      "description": "Detaches a document from a category by the risk `id` (from `settings category risk list`). The risk is marked for archival and a background job removes the attached document from the category's suppliers; the risk row is returned immediately.",
+      "description": "Detaches a document from a category by the risk `id` (from `settings category risk list`). Only the party of that entry is detached — when the same document is attached to both parties, deleting the `supplier` entry leaves the `related_party` one in place, so pick the `id` whose `subject_party` you mean. The risk is marked for archival and a background job removes the attached document from the category's suppliers; the risk row is returned immediately.",
       "method": "DELETE",
       "path": "/srm_settings/risks/:id",
       "path_params": [
         "id"
       ],
       "params": [],
-      "response": "200 with the archived {id, setting_document_id, risk, setting_document:{id, display_name, type}}. 404 Rails default {status, error} when the id is unknown; 404 Rails default {status, error} when the risk belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with the archived {id, setting_document_id, risk, subject_party, setting_document:{id, display_name, type}}. 404 Rails default {status, error} when the id is unknown; 404 Rails default {status, error} when the risk belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories_risks#destroy"
     },
@@ -1096,14 +1165,14 @@
         "list"
       ],
       "summary": "List the risks (attached documents) of a category",
-      "description": "Lists the documents attached to one category as risks. A risk links a SettingDocument to the category with a risk score. `category_id` comes from `settings category list`. Each entry carries the `id` (the risk id) consumed by `settings category risk update|delete`, the `setting_document_id`, the `risk` score, and an embedded `setting_document` ({id, display_name, type}) to identify the document. The `type` is the document's type identifier, the same value `settings document list` returns. Scoped to the current buyer — a `category_id` from another buyer returns 404.",
+      "description": "Lists the documents attached to one category as risks. A risk links a SettingDocument to the category with a risk score. `category_id` comes from `settings category list`. Each entry carries the `id` (the risk id) consumed by `settings category risk update|delete`, the `setting_document_id`, the `risk` score, the `subject_party` the document is requested from, and an embedded `setting_document` ({id, display_name, type}) to identify the document. The SAME `setting_document_id` can appear twice in one category, once per `subject_party` (`supplier` and `related_party`), each with its own score — `subject_party` is what tells the two apart, and the `id` of the entry you pick is the one that `risk update|delete` acts on. The `type` is the document's type identifier, the same value `settings document list` returns. Scoped to the current buyer — a `category_id` from another buyer returns 404.",
       "method": "GET",
       "path": "/srm_settings/categories/:category_id/risks",
       "path_params": [
         "category_id"
       ],
       "params": [],
-      "response": "200 with an array of {id, setting_document_id, risk, setting_document:{id, display_name, type}}. 404 Rails default {status, error} when the category is unknown or belongs to another buyer; 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "response": "200 with an array of {id, setting_document_id, risk, subject_party, setting_document:{id, display_name, type}}. 404 Rails default {status, error} when the category is unknown or belongs to another buyer; 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
       "auth": "pat",
       "controller": "srm_settings/categories_risks#index"
     },
@@ -1115,7 +1184,7 @@
         "update"
       ],
       "summary": "Change a risk's score",
-      "description": "Updates the risk score of an attached document by the risk `id` (from `settings category risk list`). Only the score changes; the document stays attached.",
+      "description": "Updates the risk score of an attached document by the risk `id` (from `settings category risk list`). Only the score changes; the document stays attached, and so does the `subject_party` it was attached for — when the same document is attached to both parties, pick the `id` of the entry whose `subject_party` you mean.",
       "method": "PATCH",
       "path": "/srm_settings/risks/:id",
       "path_params": [
@@ -1138,7 +1207,7 @@
           ]
         }
       ],
-      "response": "200 with {id, setting_document_id, risk, setting_document:{id, display_name, type}}. 404 Rails default {status, error} when the id is unknown; 404 Rails default {status, error} when the risk belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, setting_document_id, risk, subject_party, setting_document:{id, display_name, type}}. 404 Rails default {status, error} when the id is unknown; 404 Rails default {status, error} when the risk belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories_risks#update"
     },
@@ -1156,7 +1225,7 @@
         "id"
       ],
       "params": [],
-      "response": "200 with {id, display_name, legal_entity, active, renew_at_in_days_after_approval, force_processing_on_renewal, monitor_on_qualification_start, monitor_after_approval, monitor_after_refusal, setting_risks:[{id, setting_document_id, risk}]}. `legal_entity` is one of PJ, PF, INTERNATIONAL. 404 Rails default {status, error} if the id is unknown; 404 Rails default {status, error} when the category belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, display_name, legal_entity, payment_mode, active, renew_at_in_days_after_approval, force_processing_on_renewal, monitor_on_qualification_start, monitor_after_approval, monitor_after_refusal, setting_risks:[{id, setting_document_id, risk, subject_party}]}. `legal_entity` is one of PJ, PF, INTERNATIONAL. `payment_mode` is one of buyer, supplier (who pays for the category) and is read-only here — it is not accepted by create/update. 404 Rails default {status, error} if the id is unknown; 404 Rails default {status, error} when the category belongs to another buyer (the lookup is scoped to the buyer, so it never confirms the record exists); 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/categories#show"
     },
@@ -1801,33 +1870,6 @@
       "command": [
         "settings",
         "document",
-        "change-grouper"
-      ],
-      "summary": "Move a document to another review group",
-      "description": "Moves a document of the buyer — certificate, bank information, form or check — to a different review group (SettingGrouper). The `id` identifies the document to move — resolve it from `settings document list`. The destination `setting_grouper_id` must belong to the same buyer — get it from `settings setting-grouper list`; a grouper from another buyer or an unknown id is rejected before any write.",
-      "method": "PATCH",
-      "path": "/srm_settings/documents_changing_grouper/:id",
-      "path_params": [
-        "id"
-      ],
-      "body_root": "setting_document",
-      "params": [
-        {
-          "name": "setting_grouper_id",
-          "type": "string",
-          "required": true,
-          "desc": "Id of the destination review group — from `settings setting-grouper list`. Must belong to the same buyer as the document being moved.",
-          "in": "body"
-        }
-      ],
-      "response": "200 with the moved document in the same shape as enable/disable, with the new setting_grouper_id. 422 {errors} on validation (e.g. a document with the same internal name already enabled in the destination group); 400 Rails default {status, error} when the setting_document root is missing; 404 Rails default {status, error} when the id is unknown or belongs to another buyer, or when setting_grouper_id is unknown or belongs to another buyer; 403 {error} when the policy denies access (requires admin role or above); 401 (empty body) when unauthenticated.",
-      "auth": "pat",
-      "controller": "srm_settings/documents_changing_grouper#update"
-    },
-    {
-      "command": [
-        "settings",
-        "document",
         "disable"
       ],
       "summary": "Disable (archive) a document",
@@ -1849,7 +1891,7 @@
         "enable"
       ],
       "summary": "Enable (unarchive) a document",
-      "description": "Enables a previously disabled document of the buyer — certificate, bank information, form or check. Unlike disable/change-grouper, the underlying route has no id in the path, so the target is passed as setting_document_id. Get the id from `settings document list --tab disabled`.",
+      "description": "Enables a previously disabled document of the buyer — certificate, bank information, form or check. Unlike disable, the underlying route has no id in the path, so the target is passed as setting_document_id. Get the id from `settings document list --tab disabled`.",
       "method": "POST",
       "path": "/srm_settings/documents_enabling",
       "path_params": [],
@@ -1907,7 +1949,7 @@
         "id"
       ],
       "params": [],
-      "response": "200 with the attributes every type shares — {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order, name, hint, renew_at_in_days, block_supplier_on_expiry, default_responsible_party, send_document_reviewed_event, webhook_reference} plus a nested setting_document_review {id, review_type, automatic_review_rule, expires_on_in_days}. `name` is the fixed internal identifier of the document (e.g. CND_FEDERAL), not the editable label. A Consulta (certificate) also carries `fallback_responsible_party_rule` — what happens when the certificate cannot be issued at all (`supplier`, `buyer` or `refuse`), written by `settings document update-attrs`. An Informações bancárias document also carries `allow_pf_bank_account` — whether a PJ supplier may declare a PF (CPF) bank account on it —, written by `settings document update-attrs` too. The review `id` is what makes an update EDIT the review instead of replacing it, so read it here before any command that sends setting_document_review_attributes. SEVEN keys are conditional, and their absence is the document's type or the caller's role — never an error to retry: `fields` and `setting_document_review.grade_threshold` come only for a Formulário; `fallback_responsible_party_rule` only for a Consulta estadual (document_configs.scope = 'state', today CND_STATE and CDA_STATE) answered by the buyer, with emission automation, on a buyer with the `certificate_fallback_rule` feature flag; `allow_pf_bank_account` only for an Informações bancárias document; `report_csv_url` only when a form or bank information document has a generated report attached; `restriction_lists_export_csv_url` and `cnae_lists_export_csv_url` only on the certificate that owns that list. The three *_csv_url keys additionally require the export permission (admin), so a manager gets the show without them even when the file is attached — the same rule as the per-type shows. Each entry of `fields` is {id, display_name, hint, field_type, optional, order, has_answer_key, weight, marked_to_destroy, options: [{id, display_name, correct, requirement_type}]}, ordered by `order` and with fields marked for destruction left out; this is where the field_id consumed by every `settings supplier-field field ...` command comes from — no other command returns it, since `settings supplier-field field show` already needs a field id. Option ids come from here too, and also from that `field show`. `settings document list` stays thin (the item shape only), so a field beyond that list comes from this show. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "response": "200 with the attributes every type shares — {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order, name, hint, renew_at_in_days, block_supplier_on_expiry, default_responsible_party, send_document_reviewed_event, webhook_reference} plus a nested setting_document_review {id, review_type, automatic_review_rule, expires_on_in_days}. `name` is the fixed internal identifier of the document (e.g. CND_FEDERAL), not the editable label. `default_responsible_party` answers who fills the document by default and reads back as `supplier`, `buyer` or `external_source` — the last one meaning the Linkana issues the Consulta automatically from an external source, and it is assigned by the Linkana, never sent by a caller. A Consulta (certificate) also carries `fallback_responsible_party_rule` — what happens when the certificate cannot be issued at all (`supplier`, `buyer` or `refuse`), written by `settings document update-attrs`. An Informações bancárias document also carries `allow_pf_bank_account` — whether a PJ supplier may declare a PF (CPF) bank account on it —, written by `settings document update-attrs` too. The review `id` is what makes an update EDIT the review instead of replacing it, so read it here before any command that sends setting_document_review_attributes. SIX keys are conditional, and their absence is the document's type or the caller's role — never an error to retry: `fields` and `setting_document_review.grade_threshold` come only for a Formulário; `fallback_responsible_party_rule` only for a Consulta estadual (document_configs.scope = 'state', today CND_STATE and CDA_STATE) answered by the buyer, with emission automation, on a buyer with the `certificate_fallback_rule` feature flag; `allow_pf_bank_account` only for an Informações bancárias document; `restriction_lists_export_csv_url` and `cnae_lists_export_csv_url` only on the certificate that owns that list. The two *_csv_url keys additionally require the export permission (admin), so a manager gets the show without them even when the file is attached — the same rule as the per-type shows. Each entry of `fields` is {id, display_name, hint, field_type, optional, order, has_answer_key, weight, marked_to_destroy, options: [{id, display_name, correct, requirement_type}]}, ordered by `order` and with fields marked for destruction left out; this is where the field_id consumed by every `settings supplier-field field ...` command comes from — no other command returns it, since `settings supplier-field field show` already needs a field id. Option ids come from here too, and also from that `field show`. `settings document list` stays thin (the item shape only), so a field beyond that list comes from this show. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/documents#show"
     },
@@ -1965,7 +2007,7 @@
           "name": "default_responsible_party",
           "type": "string",
           "required": false,
-          "desc": "Who fills the document by default.",
+          "desc": "Who fills the document by default. Send `supplier` or `buyer` — those are the only two values this command takes. A Consulta issued automatically by an external source reads back as `external_source`, which the Linkana assigns when it creates the document from the catalog and no caller is meant to write.",
           "in": "body",
           "enum": [
             "supplier",
@@ -3046,7 +3088,7 @@
           "name": "default_responsible_party",
           "type": "string",
           "required": false,
-          "desc": "Who is expected to fill the form by default.",
+          "desc": "Who is expected to fill the form by default: `supplier` or `buyer`. The third value a document can read back, `external_source`, is assigned by the Linkana to a Consulta issued automatically by an external source and has no meaning for a form.",
           "in": "body"
         },
         {
@@ -3099,24 +3141,6 @@
       "response": "200 with the CREATED copy in the same shape as `settings document show` (note the id is the copy's, not the original's). 422 {errors} when the duplication fails validation (most often the display_name of the copy colliding with an enabled document); 404 Rails default {status, error} when supplier_field_id is unknown, disabled, or belongs to another buyer; 403 {error} when the policy denies access (requires the admin role or above); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/supplier_fields_duplications#create"
-    },
-    {
-      "command": [
-        "settings",
-        "supplier-field",
-        "export-report"
-      ],
-      "summary": "Export every supplier answer of a form to CSV",
-      "description": "Starts the CSV export of every supplier answer to one supplier form. The export runs in background and REPLACES the previously attached file, so the old `report_csv_url` stops working the moment this is called. The finished file is not in this response: poll `settings document show <id>` until `report_csv_url` appears and download from there — that key is returned only to an admin. supplier_field_id is the id of the form, from `settings document list`; only enabled forms export (a disabled one answers 404). Requires the admin role or above.",
-      "method": "POST",
-      "path": "/srm_settings/supplier_fields/:supplier_field_id/csv_reports",
-      "path_params": [
-        "supplier_field_id"
-      ],
-      "params": [],
-      "response": "200 with {id, name, display_name, export_enqueued: true}. The file URL shows up later in `settings document show` as `report_csv_url`, only for an admin. 404 Rails default {status, error} when supplier_field_id is unknown, disabled, or belongs to another buyer; 403 {error} when the policy denies access (requires the admin role or above); 401 (empty body) when unauthenticated.",
-      "auth": "pat",
-      "controller": "srm_settings/supplier_fields_csv_reports#create"
     },
     {
       "command": [
@@ -3659,14 +3683,14 @@
         "show"
       ],
       "summary": "Show a single supplier",
-      "description": "Shows one supplier of the current buyer by its id, taken from the :supplier_id path segment (get the id from `supplier list`). Returns the supplier panel.",
+      "description": "Shows one supplier of the current buyer by its id, taken from the :supplier_id path segment (get the id from `supplier list`). Returns the supplier panel, plus the supplier's active qualifications — one per category the supplier is qualified in. That `qualifications` array is the ONLY place a qualification id comes from, and it is what `qualification versionate` consumes.",
       "method": "GET",
       "path": "/srm/suppliers/:supplier_id/panel",
       "path_params": [
         "supplier_id"
       ],
       "params": [],
-      "response": "200 with {id, name, identifier, legal_entity, state, tags:[{id, display_name}]}. 404 Rails default {status, error} when the supplier is unknown; 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (e.g. the supplier belongs to another buyer).",
+      "response": "200 with {id, name, identifier, legal_entity, state, tags:[{id, display_name}], qualifications:[{id, state, supplier_category_id, category_id, category_display_name}]}. `qualifications` carries only the ACTIVE cycle of each category — a supplier qualified in two categories has two entries, one not qualified anywhere has an empty array — and its `id` is the argument of `qualification versionate`. Each `state` is one of `in_progress`, `approved` or `refused`; only the last two can be restarted. 404 Rails default {status, error} when the supplier is unknown; 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (e.g. the supplier belongs to another buyer).",
       "auth": "pat",
       "controller": "srm/suppliers/panels#show"
     }
