@@ -178,3 +178,25 @@ make dev     # lk doctor contra localhost:3000
 ```
 
 Regras do repo em `CLAUDE.md`. **Não abra PR sem `make test` verde e cobertura ≥95%.**
+
+## Release
+
+Publicar uma versão nova = empurrar a tag `vX.Y.Z`, que dispara o GoReleaser e
+atualiza o cask no tap da Homebrew. Dois caminhos:
+
+### Com Claude Code (recomendado)
+
+Rode `/release`. A skill roda os gates, deriva o número da versão pelo
+`SURFACE.txt`, pede aprovação, cria a tag e confere o cask no tap.
+
+### Na mão
+
+```bash
+make release-preflight            # gate antes da tag; imprime a versão recomendada
+git tag -a vX.Y.Z -m "vX.Y.Z"     # use o número que o preflight imprimiu
+git push origin vX.Y.Z            # dispara o workflow de release
+make release-verify VERSION=vX.Y.Z  # confere release, cask e assets publicados
+```
+
+Nada publica sem o push da tag. Reprovou um gate, corrija a causa — não existe
+modo "pula o check".
