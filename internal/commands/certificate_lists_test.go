@@ -136,6 +136,37 @@ func TestCertificateListImportChunksAndFollows(t *testing.T) {
 	}
 }
 
+func TestCertificateListImportSkipEmailsRidesTheWriteOnly(t *testing.T) {
+	authEnv(t)
+	fastImportPoll(t)
+	server, requests := importServer(t, []string{"completed"})
+	t.Setenv("LK_API_URL", server.URL)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+	csvPath := writeCSV(t, "CNPJ,Nome\n52.710.793/0001-36,ACME\n")
+
+	var out, errOut bytes.Buffer
+	code := run([]string{
+		"settings", "certificate", "restriction-list", "import",
+		"--id", "cert_1", "--file", csvPath, "--skip-emails", "--format", "json",
+	}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+
+	for _, request := range *requests {
+		switch {
+		case strings.HasSuffix(request.path, "_csv_imports.json"):
+			if request.query != "id=cert_1&skip_emails=true" {
+				t.Errorf("POST query = %q, want id=cert_1&skip_emails=true", request.query)
+			}
+		default:
+			if strings.Contains(request.query, "skip_emails") {
+				t.Errorf("poll query = %q, must stay clean of skip_emails", request.query)
+			}
+		}
+	}
+}
+
 func TestCertificateListImportMapsRowValues(t *testing.T) {
 	authEnv(t)
 	fastImportPoll(t)

@@ -305,6 +305,9 @@ func sendCertificateListChunks(
 ) (csvImportView, error) {
 	var accepted csvImportView
 	query := url.Values{"id": []string{certificateID}}
+	if skipEmailsFlag(cmd) {
+		query.Set(skipEmailsParam, "true")
+	}
 	total := len(rows)
 
 	for start := 0; start < total; start += chunkSize {
