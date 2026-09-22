@@ -162,6 +162,77 @@ func TestDynamicExecIDsFailsWhenResourceHasNoID(t *testing.T) {
 	}
 }
 
+// --skip-emails is a global flag: when set, every dynamic request carries
+// skip_emails=true so the backend suppresses the e-mails that call would send.
+func TestDynamicExecSkipEmailsAddsQuery(t *testing.T) {
+	swapFixtureManifest(t)
+	authEnv(t)
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		_, _ = w.Write([]byte(`{"id":"w_1"}`))
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("LK_API_URL", srv.URL)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+
+	var out, errOut bytes.Buffer
+	code := run([]string{"widget", "create", "--skip-emails", "--name", "Widget One"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	if gotQuery.Get("skip_emails") != "true" {
+		t.Errorf("skip_emails = %q, want true (query = %v)", gotQuery.Get("skip_emails"), gotQuery)
+	}
+}
+
+// Without the flag the query stays clean: the default notifies exactly as the web.
+func TestDynamicExecWithoutSkipEmailsHasNoQuery(t *testing.T) {
+	swapFixtureManifest(t)
+	authEnv(t)
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		_, _ = w.Write([]byte(`{"id":"w_1"}`))
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("LK_API_URL", srv.URL)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+
+	var out, errOut bytes.Buffer
+	code := run([]string{"widget", "create", "--name", "Widget One"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	if _, ok := gotQuery["skip_emails"]; ok {
+		t.Errorf("skip_emails must be absent without the flag, query = %v", gotQuery)
+	}
+}
+
+// A read carries no e-mail to suppress, so --skip-emails stays off the wire on a
+// GET: a read command's request keeps being a pure read.
+func TestDynamicExecSkipEmailsStaysOffReads(t *testing.T) {
+	swapFixtureManifest(t)
+	authEnv(t)
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		_, _ = w.Write([]byte(`[{"id":"w_1","name":"Widget One"}]`))
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("LK_API_URL", srv.URL)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+
+	var out, errOut bytes.Buffer
+	code := run([]string{"widget", "list", "--skip-emails"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
+	}
+	if _, ok := gotQuery["skip_emails"]; ok {
+		t.Errorf("skip_emails must stay off a read, query = %v", gotQuery)
+	}
+}
+
 // A 2xx with no body still owes an integer to --format count, so a caller
 // doing n=$(lk ... --format count) never gets an empty string.
 func TestDynamicExecCountOnEmptyBodyIsZero(t *testing.T) {

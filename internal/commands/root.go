@@ -45,6 +45,8 @@ func newRootCmd() *cobra.Command {
 		SilenceUsage:  true,
 	}
 	root.PersistentFlags().Var(&formatValue{value: output.FormatAuto}, "format", "output format: "+output.FormatList())
+	root.PersistentFlags().Bool(skipEmailsFlagName, false,
+		"on a write, suppress every e-mail it would send (PAT auth only; the write itself still runs)")
 	root.AddCommand(newVersionCmd())
 	root.AddCommand(newDoctorCmd())
 	root.AddCommand(newAuthCmd())
@@ -112,6 +114,19 @@ func Execute() {
 // formatFlag returns the resolved --format value for a command.
 func formatFlag(cmd *cobra.Command) string {
 	f, _ := cmd.Flags().GetString("format")
+	return f
+}
+
+// skipEmailsFlagName is the global flag that maps to the backend's skip_emails
+// query param. Hyphen on the CLI, underscore on the wire (Rails convention).
+const skipEmailsFlagName = "skip-emails"
+
+// skipEmailsParam is the backend query param the flag maps to.
+const skipEmailsParam = "skip_emails"
+
+// skipEmailsFlag reports whether the global --skip-emails flag is set.
+func skipEmailsFlag(cmd *cobra.Command) bool {
+	f, _ := cmd.Flags().GetBool(skipEmailsFlagName)
 	return f
 }
 

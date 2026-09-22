@@ -43,6 +43,14 @@ func runDynamic(e *manifest.Endpoint) func(*cobra.Command, []string) error {
 		if err != nil {
 			return err
 		}
+		if skipEmailsFlag(cmd) && isWriteMethod(e.Method) {
+			if query == nil {
+				query = url.Values{}
+			}
+			if !query.Has(skipEmailsParam) {
+				query.Set(skipEmailsParam, "true")
+			}
+		}
 		resp, err := api.Do(cmd.Context(), e.Method, path, query, payload)
 		if err != nil {
 			return err
@@ -86,6 +94,17 @@ func successBody(cmd *cobra.Command, e *manifest.Endpoint, resp *client.Response
 		return nil, nil
 	}
 	return resp.Body, nil
+}
+
+// isWriteMethod reports whether the HTTP verb mutates state. --skip-emails only
+// rides on writes: a read sends no e-mail, so a GET stays a pure read.
+func isWriteMethod(method string) bool {
+	switch method {
+	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+		return true
+	default:
+		return false
+	}
 }
 
 // substitutePathParams replaces each "/:param" segment with the matching
