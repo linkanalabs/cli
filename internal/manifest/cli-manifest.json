@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-09-11T19:32:22Z",
-  "source": "linkanalabs/linkana@4a37932e40",
+  "generated_at": "2026-10-01T13:57:53Z",
+  "source": "linkanalabs/linkana@89061422df",
   "endpoints": [
     {
       "command": [
@@ -21,10 +21,27 @@
     {
       "command": [
         "qualification",
+        "start-approval-steps"
+      ],
+      "summary": "Start the approval steps of a qualification (Iniciar aprovações)",
+      "description": "Starts the approval steps of ONE qualification — the same action as the 'Iniciar aprovações' button on the qualification panel. The positional id is the qualification id, taken from the `qualifications` array of `supplier show`. The command creates every approval step the buyer configured that applies to this qualification, with its approver tiers, and records the qualification's decision score. When every step created is automatic (no step left waiting for an approver), the qualification is decided on the spot: aprovada or reprovada, exactly as on the web. It does NOT check whether the supplier's documents are reviewed — it starts the steps of any active qualification it is given, so decide who is ready BEFORE calling it. Safe to repeat: a qualification whose steps were already started is left untouched and answers `result: already_started`. Requires the member role or above. ONE SIDE EFFECT MATTERS BEFORE LOOPING OVER MANY SUPPLIERS: each approver of a tier left waiting RECEIVES AN EMAIL asking for a decision — one call sends one message per approver of each pending tier, so a loop over hundreds of qualifications is a mailing of that size. The global `skip_emails` flag mutes it, as it does on any command: it silences every email the call would send.",
+      "method": "POST",
+      "path": "/srm/qualifications/:qualification_id/start_approval_steps",
+      "path_params": [
+        "qualification_id"
+      ],
+      "params": [],
+      "response": "200 with {id, state, supplier_id, category_display_name, result, approval_steps:[{id, state, setting_approval_step_display_name}]}. `result` says what happened: `started` when steps were created now; `already_started` when the qualification already had steps — nothing is created and `approval_steps` lists the existing ones; `no_triggerable_approval_steps` when no configured step applies to this qualification — nothing is created and `approval_steps` is empty. `state` is the qualification after the call (`in_progress`, `approved` or `refused` — the last two only when the steps decided it automatically); each step `state` is `pending` (waiting for its approvers), `approved` or `refused`. 422 {result: qualification_archived, errors} when the qualification is archived — nothing is created. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer). 403 {error} when the role is below member. 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm/suppliers/qualifications/start_approval_steps#create"
+    },
+    {
+      "command": [
+        "qualification",
         "versionate"
       ],
       "summary": "Restart the qualification of a supplier in one category (re-homologação)",
-      "description": "Starts a NEW qualification cycle for a supplier in ONE category — the same action as the 'Iniciar re-homologação' button on the qualification panel. The cycle that is active today stops being the active one and a new cycle is created in the SAME category, back at the approval-steps stage; nothing ever changes category. The positional id is the qualification id of the CURRENT cycle, taken from the `qualifications` array of `supplier show` — never the id of the cycle this command creates. Only a cycle already decided (aprovada or reprovada) can be restarted: one still in progress is refused, and so is an archived one. Requires the member role or above. TWO SIDE EFFECTS MATTER BEFORE LOOPING OVER MANY SUPPLIERS: the supplier gets a 'Re-homologação iniciada por {email}' event carrying the authenticated user's email, and every follower of that supplier who has qualification alerts enabled RECEIVES AN EMAIL. There is no way to mute the email from this command — one call sends one message per follower, so a loop over hundreds of suppliers is a mailing of that size. A bulk restart of a whole client base is not this command's job.",
+      "description": "Starts a NEW qualification cycle for a supplier in ONE category — the same action as the 'Iniciar re-homologação' button on the qualification panel. The cycle that is active today stops being the active one and a new cycle is created in the SAME category, back at the approval-steps stage; nothing ever changes category. The positional id is the qualification id of the CURRENT cycle, taken from the `qualifications` array of `supplier show` — never the id of the cycle this command creates. Only a cycle already decided (aprovada or reprovada) can be restarted: one still in progress is refused, and so is an archived one. Requires the member role or above. TWO SIDE EFFECTS MATTER BEFORE LOOPING OVER MANY SUPPLIERS: the supplier gets a 'Re-homologação iniciada por {email}' event carrying the authenticated user's email, and every follower of that supplier who has qualification alerts enabled RECEIVES AN EMAIL — one call sends one message per follower, so a loop over hundreds of suppliers is a mailing of that size. The global `skip_emails` flag mutes it, as it does on any command: it silences every email the call would send, not only the qualification alert, and it never silences the supplier event, which keeps recording who restarted the cycle. A bulk restart of a whole client base is still not this command's job.",
       "method": "PATCH",
       "path": "/srm/qualifications/versionate/:id",
       "path_params": [
@@ -113,7 +130,7 @@
         "update"
       ],
       "summary": "Replace the rating_labels of a RISK_SCORE approval step",
-      "description": "Replaces the rating_labels that trigger one RISK_SCORE approval step. Get the setting_approval_step_id from `settings approval-step list|show`. IMPORTANT — this call ALWAYS clears every setting_category linked to the step (via `settings approval-step condition setting-category update`) as a side effect, even when you only touch rating_labels and the step's condition has nothing to do with setting_category: this mirrors a pre-existing quirk of the backend and is deliberately left as-is, not treated as a bug to fix here. If the step also had setting_category links, re-link them afterwards. The whole call (clearing the category links and validating rating_labels) is wrapped in one transaction, so a rejected update (422) leaves both rating_labels and the category links untouched. Requires the manager role or above, same as show.",
+      "description": "Replaces the rating_labels that trigger one RISK_SCORE approval step. Get the setting_approval_step_id from `settings approval-step list|show`. Only rating_labels are touched — setting_category links on the same step are left untouched, and a rejected update (422) leaves rating_labels as they were. Requires the manager role or above, same as show.",
       "method": "PATCH",
       "path": "/srm_settings/setting_approval_steps/:setting_approval_step_id/condition_risk_score",
       "path_params": [
@@ -289,7 +306,7 @@
         "create"
       ],
       "summary": "Create an approval step",
-      "description": "Creates an approval step for the buyer. IMPORTANT: when `action` is TIERS_APPROVAL the backend automatically seeds one default tier (\"Nível Único Padrão\") — you do not pass tiers here, and a tiers step without a tier would be invalid. A step is created NOT in use; putting it to work is done elsewhere. With condition SETTING_TAG the step is created without any marcador linked and does not trigger until you link at least one with `settings approval-step condition setting-tag update`. Both the uppercase value (RISK_SCORE) and the lowercase key (risk_score) are accepted on input, and the response always reads back the lowercase form. Requires the manager role or above.",
+      "description": "Creates an approval step for the buyer. IMPORTANT: when `action` is TIERS_APPROVAL the backend automatically seeds one default tier (\"Nível Único Padrão\") — you do not pass tiers here, and a tiers step without a tier would be invalid. A step is created NOT in use; putting it to work is done elsewhere. With the setting_tag condition the step is created without any marcador linked and does not trigger until you link at least one with `settings approval-step condition setting-tag update`. Conditions are sent and read back as lowercase keys. Requires the manager role or above.",
       "method": "POST",
       "path": "/srm_settings/setting_approval_steps",
       "path_params": [],
@@ -303,24 +320,17 @@
           "in": "body"
         },
         {
-          "name": "condition",
-          "type": "string",
+          "name": "conditions",
+          "type": "array",
           "required": true,
-          "desc": "What triggers the step. One of SETTING_CATEGORY, RISK_SCORE, SETTING_DOCUMENT, SETTING_TAG, EXCEPTION_APPROVAL (the lowercase key is also accepted). SETTING_TAG is accepted from any caller: the feature flag that still gates it only decides whether the option shows up in the web form, so the CLI is the intended path while the flag is internal.",
-          "in": "body",
-          "enum": [
-            "SETTING_CATEGORY",
-            "RISK_SCORE",
-            "SETTING_DOCUMENT",
-            "SETTING_TAG",
-            "EXCEPTION_APPROVAL"
-          ]
+          "desc": "What triggers the step, as a list of one or two types of DIFFERENT kinds — e.g. [\"risk_score\",\"setting_tag\"] means the step only triggers when BOTH hold. Values are the lowercase keys the API reads back: `risk_score`, `setting_category`, `setting_document`, `setting_tag`, `exception_approval`. Two types of the same kind are rejected (422), and exception_approval is only valid alone. The composition is IMMUTABLE: it can only be set here, at creation — `settings approval-step update` ignores the field.",
+          "in": "body"
         },
         {
           "name": "action",
           "type": "string",
           "required": true,
-          "desc": "What the step does. One of AUTOMATIC_APPROVAL, AUTOMATIC_REFUSAL, TIERS_APPROVAL (the lowercase key is also accepted). With condition EXCEPTION_APPROVAL only TIERS_APPROVAL is valid.",
+          "desc": "What the step does. One of AUTOMATIC_APPROVAL, AUTOMATIC_REFUSAL, TIERS_APPROVAL (the lowercase key is also accepted). With the exception_approval condition only TIERS_APPROVAL is valid.",
           "in": "body",
           "enum": [
             "AUTOMATIC_APPROVAL",
@@ -336,7 +346,7 @@
           "in": "body"
         }
       ],
-      "response": "200 with the created {id, display_name, condition, action, being_used}. 422 {errors} on validation (missing display_name/condition/action, or an action other than TIERS_APPROVAL when the condition is EXCEPTION_APPROVAL); 400 Rails default {status, error} when the setting_approval_step root is missing; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
+      "response": "200 with the created {id, display_name, conditions, action, being_used}. 422 {errors} on validation (missing display_name/action/conditions, more than two conditions, two of the same kind, exception_approval combined with another type, or an action other than TIERS_APPROVAL when the condition is EXCEPTION_APPROVAL); 400 Rails default {status, error} when the setting_approval_step root is missing; 403 {error} when the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/setting_approval_steps#create"
     },
@@ -453,7 +463,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with one page of {id, display_name, condition, action, being_used}, plus the pagy headers (`total-count`, `total-pages`, `current-page`, `page-items`). A page past the last one returns an empty array (still 200). 400 {error} when --page is not a positive integer (e.g. 0 or non-numeric). `condition` and `action` come back as lowercase keys (e.g. risk_score, automatic_approval) even when created with the uppercase form. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
+      "response": "200 with one page of {id, display_name, conditions, action, being_used}, plus the pagy headers (`total-count`, `total-pages`, `current-page`, `page-items`). A page past the last one returns an empty array (still 200). 400 {error} when --page is not a positive integer (e.g. 0 or non-numeric). `conditions` is the array of condition types active on the step (one or two). `conditions` and `action` come back as lowercase keys (e.g. risk_score, automatic_approval) even when created with the uppercase form. 401 (empty body) when unauthenticated; 403 {error} when the policy denies access (requires manager or above).",
       "auth": "pat",
       "controller": "srm_settings/setting_approval_steps#index"
     },
@@ -471,7 +481,7 @@
         "id"
       ],
       "params": [],
-      "response": "200 with {id, display_name, condition, action, being_used, rating_labels, setting_category_ids, setting_document_ids, tiers}. `rating_labels` is the risk score labels that trigger the step (only meaningful when condition is RISK_SCORE; otherwise it still comes back with its default [A, B, C, D, E]). `setting_category_ids` / `setting_document_ids` / `setting_tag_ids` are the ids linked to the step's condition (only meaningful when condition is SETTING_CATEGORY / SETTING_DOCUMENT / SETTING_TAG respectively; empty array otherwise, never omitted). `tiers` is an array of {id, display_name, user_ids} — only populated when action is TIERS_APPROVAL; a tier just seeded by `settings approval-step create` comes back with an empty user_ids and needs `settings approval-step tier update` to gain approvers. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer, so a foreign id never resolves); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, display_name, conditions, action, being_used, rating_labels, setting_category_ids, setting_document_ids, tiers}. `rating_labels` is the risk score labels that trigger the step (only meaningful when condition is RISK_SCORE; otherwise it still comes back with its default [A, B, C, D, E]). `setting_category_ids` / `setting_document_ids` / `setting_tag_ids` are the ids linked to the step's condition (only meaningful when condition is SETTING_CATEGORY / SETTING_DOCUMENT / SETTING_TAG respectively; empty array otherwise, never omitted). `tiers` is an array of {id, display_name, user_ids} — only populated when action is TIERS_APPROVAL; a tier just seeded by `settings approval-step create` comes back with an empty user_ids and needs `settings approval-step tier update` to gain approvers. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer, so a foreign id never resolves); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/setting_approval_steps#show"
     },
@@ -592,7 +602,7 @@
         "update"
       ],
       "summary": "Update an approval step",
-      "description": "Updates one approval step by its id (see `settings approval-step list`). Only the fields you pass change. Same enum rules as `create`. Requires the manager role or above.",
+      "description": "Updates one approval step by its id (see `settings approval-step list`). Only the fields you pass change. Same enum rules as `create`. IMPORTANT — the composition of the step is immutable and this call never changes it. `conditions` sent in the body is ignored and the response reads back the composition the step already had, so a client that reads the object and writes it back whole keeps working. Creating another step is the only way to change the composition. Requires the manager role or above.",
       "method": "PATCH",
       "path": "/srm_settings/setting_approval_steps/:id",
       "path_params": [
@@ -606,20 +616,6 @@
           "required": false,
           "desc": "New name of the approval step.",
           "in": "body"
-        },
-        {
-          "name": "condition",
-          "type": "string",
-          "required": false,
-          "desc": "What triggers the step. One of SETTING_CATEGORY, RISK_SCORE, SETTING_DOCUMENT, SETTING_TAG, EXCEPTION_APPROVAL (the lowercase key is also accepted). SETTING_TAG is accepted from any caller: the feature flag that still gates it only decides whether the option shows up in the web form, so the CLI is the intended path while the flag is internal.",
-          "in": "body",
-          "enum": [
-            "SETTING_CATEGORY",
-            "RISK_SCORE",
-            "SETTING_DOCUMENT",
-            "SETTING_TAG",
-            "EXCEPTION_APPROVAL"
-          ]
         },
         {
           "name": "action",
@@ -639,9 +635,16 @@
           "required": false,
           "desc": "Whether the step is in use.",
           "in": "body"
+        },
+        {
+          "name": "conditions",
+          "type": "array",
+          "required": false,
+          "desc": "Accepted in the body and IGNORED — the composition is immutable and only `settings approval-step create` sets it. Sending it changes nothing and still answers 200, so a client that reads the object and writes it back whole keeps working.",
+          "in": "body"
         }
       ],
-      "response": "200 with the updated {id, display_name, condition, action, being_used}. 422 {errors} on validation (e.g. a blank display_name); 400 Rails default {status, error} when the setting_approval_step root is missing; 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (scoped lookup); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "response": "200 with the updated {id, display_name, conditions, action, being_used} — `conditions` always reads back the composition the step already had, whatever you sent. 422 {errors} on validation (e.g. a blank display_name); 400 Rails default {status, error} when the setting_approval_step root is missing; 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (scoped lookup); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/setting_approval_steps#update"
     },
@@ -1949,7 +1952,7 @@
         "id"
       ],
       "params": [],
-      "response": "200 with the attributes every type shares — {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order, name, hint, renew_at_in_days, block_supplier_on_expiry, default_responsible_party, send_document_reviewed_event, webhook_reference} plus a nested setting_document_review {id, review_type, automatic_review_rule, expires_on_in_days}. `name` is the fixed internal identifier of the document (e.g. CND_FEDERAL), not the editable label. `default_responsible_party` answers who fills the document by default and reads back as `supplier`, `buyer` or `external_source` — the last one meaning the Linkana issues the Consulta automatically from an external source, and it is assigned by the Linkana, never sent by a caller. A Consulta (certificate) also carries `fallback_responsible_party_rule` — what happens when the certificate cannot be issued at all (`supplier`, `buyer` or `refuse`), written by `settings document update-attrs`. An Informações bancárias document also carries `allow_pf_bank_account` — whether a PJ supplier may declare a PF (CPF) bank account on it —, written by `settings document update-attrs` too. The review `id` is what makes an update EDIT the review instead of replacing it, so read it here before any command that sends setting_document_review_attributes. SIX keys are conditional, and their absence is the document's type or the caller's role — never an error to retry: `fields` and `setting_document_review.grade_threshold` come only for a Formulário; `fallback_responsible_party_rule` only for a Consulta estadual (document_configs.scope = 'state', today CND_STATE and CDA_STATE) answered by the buyer, with emission automation, on a buyer with the `certificate_fallback_rule` feature flag; `allow_pf_bank_account` only for an Informações bancárias document; `restriction_lists_export_csv_url` and `cnae_lists_export_csv_url` only on the certificate that owns that list. The two *_csv_url keys additionally require the export permission (admin), so a manager gets the show without them even when the file is attached — the same rule as the per-type shows. Each entry of `fields` is {id, display_name, hint, field_type, optional, order, has_answer_key, weight, marked_to_destroy, options: [{id, display_name, correct, requirement_type}]}, ordered by `order` and with fields marked for destruction left out; this is where the field_id consumed by every `settings supplier-field field ...` command comes from — no other command returns it, since `settings supplier-field field show` already needs a field id. Option ids come from here too, and also from that `field show`. `settings document list` stays thin (the item shape only), so a field beyond that list comes from this show. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "response": "200 with the attributes every type shares — {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order, name, hint, renew_at_in_days, block_supplier_on_expiry, default_responsible_party, send_document_reviewed_event, webhook_reference} plus a nested setting_document_review {id, review_type, automatic_review_rule, expires_on_in_days}. `name` is the fixed internal identifier of the document (e.g. CND_FEDERAL), not the editable label. `default_responsible_party` answers who fills the document by default and reads back as `supplier`, `buyer` or `external_source` — the last one meaning the Linkana issues the Consulta automatically from an external source, and it is assigned by the Linkana, never sent by a caller. A Consulta (certificate) also carries `fallback_responsible_party_rule` — what happens when the certificate cannot be issued at all (`supplier`, `buyer` or `refuse`), written by `settings document update-attrs`. An Informações bancárias document also carries `allow_pf_bank_account` — whether a PJ supplier may declare a PF (CPF) bank account on it —, written by `settings document update-attrs` too. The review `id` is what makes an update EDIT the review instead of replacing it, so read it here before any command that sends setting_document_review_attributes. SIX keys are conditional, and their absence is the document's type or the caller's role — never an error to retry: `fields` and `setting_document_review.grade_threshold` come only for a Formulário; `fallback_responsible_party_rule` only for a Consulta estadual (document_configs.scope = 'state', today CND_STATE and CDA_STATE) whose default_responsible_party is not the supplier, with emission automation; `allow_pf_bank_account` only for an Informações bancárias document; `restriction_lists_export_csv_url` and `cnae_lists_export_csv_url` only on the certificate that owns that list. The two *_csv_url keys additionally require the export permission (admin), so a manager gets the show without them even when the file is attached — the same rule as the per-type shows. Each entry of `fields` is {id, display_name, hint, field_type, optional, order, has_answer_key, weight, marked_to_destroy, options: [{id, display_name, correct, requirement_type}]}, ordered by `order` and with fields marked for destruction left out; this is where the field_id consumed by every `settings supplier-field field ...` command comes from — no other command returns it, since `settings supplier-field field show` already needs a field id. Option ids come from here too, and also from that `field show`. `settings document list` stays thin (the item shape only), so a field beyond that list comes from this show. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/documents#show"
     },
@@ -2018,7 +2021,7 @@
           "name": "fallback_responsible_party_rule",
           "type": "string",
           "required": false,
-          "desc": "Only meaningful for a state-scoped certificate (Consulta estadual — document_configs.scope = 'state', today CND_STATE and CDA_STATE) with emission automation whose default_responsible_party is buyer, on a buyer with the `certificate_fallback_rule` feature flag: what to do when the certificate cannot be issued at all. `supplier` asks the supplier for the document, `buyer` keeps it as the buyer's own pending upload, `refuse` records it as refused without asking the supplier (going through the review queue first when the buyer requires human confirmation of refusals). Defaults to buyer.",
+          "desc": "Only meaningful for a state-scoped certificate (Consulta estadual — document_configs.scope = 'state', today CND_STATE and CDA_STATE) with emission automation whose default_responsible_party is not supplier: what to do when the certificate cannot be issued at all. `supplier` asks the supplier for the document, `buyer` keeps it as the buyer's own pending upload, `refuse` records it as refused without asking the supplier (going through the review queue first when the buyer requires human confirmation of refusals). Defaults to buyer, and a Consulta estadual do catálogo nasce em supplier.",
           "in": "body",
           "enum": [
             "supplier",
@@ -2778,13 +2781,13 @@
         "registration",
         "show"
       ],
-      "summary": "Show whether the buyer requires supplier registration",
-      "description": "Shows the supplier registration requirement of the authenticated buyer — there is no id, the target is always the caller's own buyer. When `requires_supplier_registration` is true, suppliers must complete a registration form before qualifying. Requires the manager role or above, and the supplier contacts feature enabled for the buyer (403 otherwise).",
+      "summary": "Show the supplier registration requirements of the buyer",
+      "description": "Shows the supplier registration requirements of the authenticated buyer — there is no id, the target is always the caller's own buyer. While a requirement is on and unmet, the supplier cannot send documents in the supplier portal. `requires_supplier_registration` requires at least one supplier contact; `requires_tax_regime_confirmation` requires national PJ suppliers to declare their tax regime. Requires the manager role or above, and the supplier contacts feature or the supplier tax regime feature enabled for the buyer (403 otherwise).",
       "method": "GET",
       "path": "/srm_settings/registration",
       "path_params": [],
       "params": [],
-      "response": "200 with {requires_supplier_registration}, a boolean (false when the buyer never configured it). 403 {error} when the policy denies access (requires manager or above, and the supplier contacts feature enabled for the buyer); 401 (empty body) when unauthenticated.",
+      "response": "200 with {requires_supplier_registration, requires_tax_regime_confirmation}, both booleans (false when the buyer never configured them). 403 {error} when the policy denies access (requires manager or above, and the supplier contacts or supplier tax regime feature enabled for the buyer); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/registrations#show"
     },
@@ -2794,8 +2797,8 @@
         "registration",
         "update"
       ],
-      "summary": "Update whether the buyer requires supplier registration",
-      "description": "Turns the supplier registration requirement on or off, on the authenticated buyer (no id — the target is always the caller's own buyer). When turned on, suppliers must complete a registration form before qualifying — this changes what suppliers OUTSIDE the platform are asked to do. The change is audited (who changed it and when). Sending the same value already set is a no-op that still answers 200. Requires the admin role or above (reading is manager+), and the supplier contacts feature enabled for the buyer.",
+      "summary": "Update the supplier registration requirements of the buyer",
+      "description": "Turns each supplier registration requirement on or off, on the authenticated buyer (no id — the target is always the caller's own buyer). While a requirement is on and unmet, suppliers cannot send documents in the supplier portal — this changes what suppliers OUTSIDE the platform are asked to do. Each param is optional and an omitted param leaves its requirement unchanged; at least one must be sent. Each change is audited (who changed it and when). Sending the value already set is a no-op that still answers 200. Requires the admin role or above (reading is manager+); each param also requires its own feature enabled for the buyer.",
       "method": "PATCH",
       "path": "/srm_settings/registration",
       "path_params": [],
@@ -2804,12 +2807,19 @@
         {
           "name": "requires_supplier_registration",
           "type": "boolean",
-          "required": true,
-          "desc": "true to require suppliers to complete a registration form before qualifying, false to make it optional.",
+          "required": false,
+          "desc": "true to require at least one supplier contact before documents can be sent, false to make it optional. Requires the supplier contacts feature.",
+          "in": "body"
+        },
+        {
+          "name": "requires_tax_regime_confirmation",
+          "type": "boolean",
+          "required": false,
+          "desc": "true to require national PJ suppliers to declare their tax regime before documents can be sent, false to make it optional. Requires the supplier tax regime feature.",
           "in": "body"
         }
       ],
-      "response": "200 with the updated setting in the same shape as `settings registration show`. 400 Rails default {status, error} when the buyer root is missing; 403 {error} when the policy denies access (requires admin or above, and the supplier contacts feature enabled for the buyer); 401 (empty body) when unauthenticated.",
+      "response": "200 with the updated requirements in the same shape as `settings registration show`. 400 Rails default {status, error} when the buyer root is missing or carries neither param; 403 {error} when the policy denies access (requires admin or above, and the feature of each sent param enabled for the buyer); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/registrations#update"
     },
@@ -3227,6 +3237,25 @@
         "settings",
         "supplier-field",
         "field",
+        "convert"
+      ],
+      "summary": "Convert a dropdown question into a selection button",
+      "description": "Converts a field whose field_type is select into radio_button, which is what makes it eligible for classification and for the answer key. The options, their texts and their order are preserved, and answers already submitted by suppliers are kept, since an answer stores the text of the chosen option. The conversion runs in one direction only: a field that is already radio_button, or that is of any other type, answers 422. Nothing is classified by the conversion — set that with `settings supplier-field field classification set` afterwards. Requires the admin role or above; fields of forms created from the Linkana template refuse the conversion (403). The FIELD id comes from the `fields` array of `settings document show`.",
+      "method": "POST",
+      "path": "/srm_settings/fields/:supplier_fields_field_id/conversion",
+      "path_params": [
+        "supplier_fields_field_id"
+      ],
+      "params": [],
+      "response": "200 with the field in the same shape as `settings supplier-field field show`, field_type now radio_button. 422 {errors} when the field is not a select; 404 Rails default {status, error} when the field id is unknown or belongs to another buyer; 403 {error} when the policy denies access — form created from the Linkana template, or caller below admin; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm_settings/supplier_fields_fields_conversions#create"
+    },
+    {
+      "command": [
+        "settings",
+        "supplier-field",
+        "field",
         "create"
       ],
       "summary": "Add a field (question) to a form",
@@ -3430,7 +3459,7 @@
         "request-resend"
       ],
       "summary": "Ask every supplier to answer the form again",
-      "description": "Bulk write: marks the answers of this form for resubmission across the buyer's approved and monitored suppliers, so each of them is asked to fill it again. There is no dry-run and no undo — the response tells how many documents were marked (requested_documents_count). Use it deliberately, not to test connectivity. supplier_field_id is the id of the form, from `settings document list`; a disabled form answers 404.",
+      "description": "Bulk write: asks every approved and monitored supplier of the buyer to fill this form again. The request is queued and the answers are marked for resubmission in the background over the next minutes, so the command returns at once even for thousands of suppliers; running it again while the first run is still going just waits and re-marks the same answers. There is no dry-run and no undo — the response tells how many documents were queued for resubmission (requested_documents_count). Use it deliberately, not to test connectivity. supplier_field_id is the id of the form, from `settings document list`; a disabled form answers 404.",
       "method": "POST",
       "path": "/srm_settings/supplier_fields/:supplier_field_id/synchronizations",
       "path_params": [
@@ -3445,7 +3474,7 @@
           "in": "query"
         }
       ],
-      "response": "200 with {id, display_name, requested_documents_count} — the number of supplier documents marked for resubmission (0 when no supplier qualifies). 404 Rails default {status, error} when supplier_field_id is unknown, disabled, or belongs to another buyer; 403 {error} when the policy denies access (requires the admin role or above); 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, display_name, requested_documents_count} — the number of supplier documents queued for resubmission (0 when no supplier qualifies); the marking itself finishes in the background within minutes. 404 Rails default {status, error} when supplier_field_id is unknown, disabled, or belongs to another buyer; 403 {error} when the policy denies access (requires the admin role or above); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/supplier_fields_synchronizations#create"
     },
