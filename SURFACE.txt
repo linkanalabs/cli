@@ -12,6 +12,7 @@ lk impersonate
 lk impersonate status
 lk impersonate stop
 lk qualification
+lk qualification start-approval-steps
 lk qualification versionate
 lk settings
 lk settings access-configuration
@@ -152,6 +153,7 @@ lk settings supplier-field field answers update
 lk settings supplier-field field classification
 lk settings supplier-field field classification remove
 lk settings supplier-field field classification set
+lk settings supplier-field field convert
 lk settings supplier-field field create
 lk settings supplier-field field delete
 lk settings supplier-field field reorder
