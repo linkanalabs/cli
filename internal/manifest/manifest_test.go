@@ -20,15 +20,12 @@ func TestLoadEmbeddedManifest(t *testing.T) {
 		t.Fatal("embedded manifest carries no endpoints")
 	}
 
-	// The embedded manifest grows as the backend exposes commands; pin only the
-	// stable invariants (identity show is always first) and look the rest up by
-	// command so this test does not churn on every added endpoint.
-	first := m.Endpoints[0]
-	if got := strings.Join(first.Command, " "); got != "identity show" {
-		t.Errorf("first command = %q, want %q", got, "identity show")
-	}
-	if first.Method != "GET" || first.Path != "/my/identity" {
-		t.Errorf("first endpoint = %s %s", first.Method, first.Path)
+	// The embedded manifest grows as the backend exposes commands, and it is
+	// sorted by command, so no position is stable; look every command up by
+	// name so this test does not churn on every added endpoint.
+	identity := findCommand(t, m, "identity show")
+	if identity.Method != "GET" || identity.Path != "/my/identity" {
+		t.Errorf("identity endpoint = %s %s", identity.Method, identity.Path)
 	}
 
 	update := findCommand(t, m, "settings email-message update")
