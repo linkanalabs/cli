@@ -178,3 +178,123 @@ func TestUploadSurfacesBackendError(t *testing.T) {
 		t.Errorf("stderr = %s", errOut.String())
 	}
 }
+
+func TestUploadContentTypeFromExtension(t *testing.T) {
+	pdf := []byte("%PDF-1.4 fake")
+	zipBytes := []byte("PK\x03\x04fake office zip")
+	png := []byte("\x89PNG\r\n\x1a\nfakepng.")
+	cases := []struct {
+		name    string
+		content []byte
+		want    string
+	}{
+		{"contrato.pdf", pdf, "application/pdf"},
+		{"contrato.docx", zipBytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document"},
+		{"planilha.xlsx", zipBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"},
+		{"apresentacao.pptx", zipBytes, "application/vnd.openxmlformats-officedocument.presentationml.presentation"},
+		{"antigo.doc", []byte("\xd0\xcf\x11\xe0fake ole"), "application/msword"},
+		{"antigo.xls", []byte("\xd0\xcf\x11\xe0fake ole"), "application/vnd.ms-excel"},
+		{"LOGO.PNG", png, "image/png"},
+		{"fornecedores.csv", []byte("cnpj,nome\n1,a\n"), "text/csv"},
+		{"notas.txt", []byte("texto"), "text/plain"},
+		{"pagina.html", []byte("<html></html>"), "text/html"},
+		{"semextensao", pdf, "application/pdf"},
+		{"semextensao-texto", []byte("texto simples"), "text/plain"},
+		{"arquivo.extensaoinexistente", png, "image/png"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := uploadContentType(tc.name, tc.content); got != tc.want {
+				t.Errorf("uploadContentType(%q) = %q, want %q", tc.name, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestUploadSendsContentTypeFromExtension(t *testing.T) {
+	authEnv(t)
+	server, requests, _ := uploadServer(t)
+	t.Setenv("LK_API_URL", server.URL)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+	path := writeUploadFile(t, "contrato.docx", []byte("PK\x03\x04fake office zip"))
+
+	var out, errOut bytes.Buffer
+	code := run([]string{"upload", "--file", path}, &out, &errOut)
+
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr: %s", code, errOut.String())
+	}
+	blob := (*requests)[0].body["blob"].(map[string]any)
+	want := "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+	if blob["content_type"] != want {
+		t.Errorf("content_type = %v, want %s", blob["content_type"], want)
+	}
+}
+
+func TestUploadExplicitContentTypeWinsOverExtension(t *testing.T) {
+	authEnv(t)
+	server, requests, _ := uploadServer(t)
+	t.Setenv("LK_API_URL", server.URL)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+	path := writeUploadFile(t, "contrato.docx", []byte("PK\x03\x04fake office zip"))
+
+	var out, errOut bytes.Buffer
+	code := run([]string{"upload", "--file", path, "--content-type", "application/zip"}, &out, &errOut)
+
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr: %s", code, errOut.String())
+	}
+	blob := (*requests)[0].body["blob"].(map[string]any)
+	if blob["content_type"] != "application/zip" {
+		t.Errorf("content_type = %v, want application/zip", blob["content_type"])
+	}
+}
+
+func TestUploadTimesOutOnStalledStoragePut(t *testing.T) {
+	authEnv(t)
+	release := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(nil))
+	server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPut {
+			<-release
+			return
+		}
+		_, _ = w.Write([]byte(`{"signed_id":"sgid-123","filename":"contrato.pdf","byte_size":13,` +
+			`"content_type":"application/pdf","direct_upload":{"url":"` + server.URL + `/storage-put",` +
+			`"headers":{"Content-Type":"application/pdf"}}}`))
+	})
+	t.Cleanup(func() {
+		close(release)
+		server.Close()
+	})
+	t.Setenv("LK_API_URL", server.URL)
+	t.Setenv("LK_TOKEN", "lkn_abc_def")
+	path := writeUploadFile(t, "contrato.pdf", []byte("%PDF-1.4 fake"))
+
+	var out, errOut bytes.Buffer
+	code := run([]string{"upload", "--file", path, "--timeout", "50ms"}, &out, &errOut)
+
+	if code != 1 {
+		t.Fatalf("exit = %d, want 1; stderr: %s", code, errOut.String())
+	}
+	for _, want := range []string{"contrato.pdf", "50ms"} {
+		if !strings.Contains(errOut.String(), want) {
+			t.Errorf("stderr missing %q: %s", want, errOut.String())
+		}
+	}
+}
+
+func TestUploadRejectsNonPositiveTimeout(t *testing.T) {
+	authEnv(t)
+	path := writeUploadFile(t, "contrato.pdf", []byte("%PDF-1.4 fake"))
+
+	var out, errOut bytes.Buffer
+	code := run([]string{"upload", "--file", path, "--timeout", "0s"}, &out, &errOut)
+
+	if code != 1 {
+		t.Fatalf("exit = %d, want 1", code)
+	}
+	if !strings.Contains(errOut.String(), "--timeout") {
+		t.Errorf("stderr = %s", errOut.String())
+	}
+}

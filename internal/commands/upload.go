@@ -6,12 +6,16 @@ import (
 	"crypto/md5" //nolint:gosec // Active Storage requires an MD5 checksum for direct uploads.
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"mime"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -20,13 +24,34 @@ import (
 	"github.com/linkanalabs/cli/internal/output"
 )
 
-const directUploadsPath = "/rails/active_storage/direct_uploads"
+const (
+	directUploadsPath    = "/rails/active_storage/direct_uploads"
+	defaultUploadTimeout = 5 * time.Minute
+)
 
-// storagePut performs the second leg of a direct upload (the raw PUT of the
-// bytes to the storage service URL). It is a seam so tests can intercept it —
-// the URL is absolute and outside the API client (no Bearer, exact headers).
-var storagePut = func(req *http.Request) (*http.Response, error) {
-	return http.DefaultClient.Do(req)
+// uploadContentTypes mirrors the backend allowlist
+// (linkana app/models/uploads/allowed_content_types.rb). Go's builtin MIME
+// table lacks the Office types and the system one varies by OS, so a byte
+// sniff would send .docx/.xlsx as application/zip and get a 422.
+var uploadContentTypes = map[string]string{
+	".pdf":  "application/pdf",
+	".doc":  "application/msword",
+	".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+	".xls":  "application/vnd.ms-excel",
+	".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+	".xlsm": "application/vnd.ms-excel.sheet.macroenabled.12",
+	".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+	".txt":  "text/plain",
+	".csv":  "text/csv",
+	".png":  "image/png",
+	".jpg":  "image/jpeg",
+	".jpeg": "image/jpeg",
+	".jfif": "image/jpeg",
+	".webp": "image/webp",
+	".zip":  "application/zip",
+	".rar":  "application/x-rar-compressed",
+	".msg":  "application/vnd.ms-outlook",
+	".eml":  "message/rfc822",
 }
 
 // directUploadBlob is the direct_uploads#create response: the signed_id the
@@ -47,6 +72,7 @@ func newUploadCmd() *cobra.Command {
 	var fromStdin bool
 	var filename string
 	var contentType string
+	var timeout time.Duration
 
 	cmd := &cobra.Command{
 		Use:   "upload",
@@ -56,17 +82,27 @@ func newUploadCmd() *cobra.Command {
 			"e imprime o signed_id resultante. O signed_id é o valor que os comandos de update " +
 			"esperam em params de anexo — ex.: lk settings company update --logo <signed_id>.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runUpload(cmd, filePath, fromStdin, filename, contentType)
+			return runUpload(cmd, filePath, fromStdin, filename, contentType, timeout)
 		},
 	}
 	cmd.Flags().StringVar(&filePath, "file", "", "caminho do arquivo a subir")
 	cmd.Flags().BoolVar(&fromStdin, "stdin", false, "lê o conteúdo do stdin (exige --filename)")
 	cmd.Flags().StringVar(&filename, "filename", "", "nome do arquivo no storage (default: basename de --file)")
-	cmd.Flags().StringVar(&contentType, "content-type", "", "content type do arquivo (default: detectado do conteúdo)")
+	cmd.Flags().StringVar(&contentType, "content-type", "", "content type do arquivo (default: pela extensão do nome; sem extensão conhecida, detectado do conteúdo)")
+	cmd.Flags().DurationVar(&timeout, "timeout", defaultUploadTimeout, "tempo máximo do envio dos bytes ao storage")
 	return cmd
 }
 
-func runUpload(cmd *cobra.Command, filePath string, fromStdin bool, filename, contentType string) error {
+func runUpload(
+	cmd *cobra.Command,
+	filePath string,
+	fromStdin bool,
+	filename, contentType string,
+	timeout time.Duration,
+) error {
+	if timeout <= 0 {
+		return fmt.Errorf("--timeout precisa ser maior que zero")
+	}
 	data, filename, err := readUploadSource(cmd, filePath, fromStdin, filename)
 	if err != nil {
 		return err
@@ -75,7 +111,7 @@ func runUpload(cmd *cobra.Command, filePath string, fromStdin bool, filename, co
 		return fmt.Errorf("o arquivo está vazio")
 	}
 	if contentType == "" {
-		contentType = http.DetectContentType(data)
+		contentType = uploadContentType(filename, data)
 	}
 
 	api, imp, err := resolveAPI()
@@ -87,7 +123,7 @@ func runUpload(cmd *cobra.Command, filePath string, fromStdin bool, filename, co
 	if err != nil {
 		return err
 	}
-	if err := putUploadBytes(cmd.Context(), blob, data); err != nil {
+	if err := putUploadBytes(cmd.Context(), blob, data, filename, timeout); err != nil {
 		return err
 	}
 
@@ -98,6 +134,24 @@ func runUpload(cmd *cobra.Command, filePath string, fromStdin bool, filename, co
 		"byte_size":    blob.ByteSize,
 		"content_type": blob.ContentType,
 	})
+}
+
+// uploadContentType picks the content type from the filename extension and
+// sniffs the bytes only when the extension is unknown.
+func uploadContentType(filename string, data []byte) string {
+	ext := strings.ToLower(filepath.Ext(filename))
+	if contentType, ok := uploadContentTypes[ext]; ok {
+		return contentType
+	}
+	if contentType := mime.TypeByExtension(ext); contentType != "" {
+		return withoutParams(contentType)
+	}
+	return withoutParams(http.DetectContentType(data))
+}
+
+func withoutParams(contentType string) string {
+	mediaType, _, _ := strings.Cut(contentType, ";")
+	return strings.TrimSpace(mediaType)
 }
 
 // readUploadSource resolves --file / --stdin into the full content plus the
@@ -175,7 +229,13 @@ func createDirectUpload(
 
 // putUploadBytes performs the storage PUT with exactly the headers the backend
 // signed — adding or changing one invalidates the signature on S3-like services.
-func putUploadBytes(ctx context.Context, blob *directUploadBlob, data []byte) error {
+func putUploadBytes(
+	ctx context.Context,
+	blob *directUploadBlob,
+	data []byte,
+	filename string,
+	timeout time.Duration,
+) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut, blob.DirectUpload.URL, bytes.NewReader(data))
 	if err != nil {
 		return fmt.Errorf("montando o PUT do upload: %w", err)
@@ -184,8 +244,13 @@ func putUploadBytes(ctx context.Context, blob *directUploadBlob, data []byte) er
 		req.Header.Set(key, value)
 	}
 
-	resp, err := storagePut(req)
+	storage := &http.Client{Timeout: timeout}
+	resp, err := storage.Do(req)
 	if err != nil {
+		var netErr net.Error
+		if errors.As(err, &netErr) && netErr.Timeout() {
+			return fmt.Errorf("upload de %s sem resposta do storage após %s (--timeout)", filename, timeout)
+		}
 		return fmt.Errorf("enviando os bytes do upload: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
