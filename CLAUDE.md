@@ -97,14 +97,16 @@ internal/output/   render JSON (default) / styled / markdown / ids / count
 
 ## Current state
 
-Skeleton + `doctor` + **auth via PAT (CLI)** + **suppliers (SRM)** +
+Skeleton + `doctor` + **auth via PAT (CLI)** +
 **impersonation (LIN-5921)** + **manifest-driven dynamic commands (LIN-6332)**
 — see the dedicated section. Manual commands:
 `version`, `doctor` (version, runtime, config, filesystem, reachability `GET /up`,
 **Authentication** via `GET /my/identity.json` — pass/fail/skip, with a skip-cascade
 when the backend is unreachable), `auth login|status|logout`, `whoami`,
-`supplier list|show`, `impersonate <ref>|stop|status`, `config`,
-`config set-url <url>`, `update [--check]`.
+`impersonate <ref>|stop|status`, `config`, `config set-url <url>`,
+`update [--check]`, `upload`. Every resource command — `supplier`, `supplier
+document`, `document`, `settings`, `qualification`, … — comes from the embedded
+manifest; there is no hand-written resource command left.
 
 `base_url` resolves in the order `LK_API_URL` (env) → `config.yml` (XDG) →
 **default `https://app.linkana.com`** (production — a clean install via brew talks
@@ -114,7 +116,8 @@ it to the file (and warns if `LK_API_URL` is set, since the env wins at runtime)
 
 `supplier list` → `GET /srm/suppliers` (bare array of suppliers). `supplier show
 <id>` → `GET /srm/suppliers/<id>/panel` (a single supplier). Supplier contract:
-`{id, name, identifier, legal_entity, state, tags:[{id, display_name}]}`. 401 →
+`{id, name, identifier, legal_entity, state, tags:[{id, display_name}]}`. Both
+are manifest-driven, guarded end to end by `supplier_dynamic_test.go`. 401 →
 hint `lk auth login`.
 
 Token storage in `internal/auth`: OS keychain (`go-keyring`) with an atomic file

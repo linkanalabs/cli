@@ -9,8 +9,10 @@ engenharia. Fala com o backend Rails via `format.json`.
 
 ## Status
 
-Esqueleto + `doctor` + autenticação via PAT (`auth`, `whoami`) + suppliers
-(`supplier list|show`). Mais comandos de recurso vêm depois.
+Esqueleto + `doctor` + autenticação via PAT (`auth`, `whoami`) + impersonação +
+`upload`. Os comandos de recurso (`supplier`, `supplier document`, `document`,
+`settings`, `qualification`, …) vêm do manifest embutido; `lk --help` lista
+todos.
 
 ## Instalação
 
@@ -150,9 +152,12 @@ aponte para o backend local com `LK_API_URL=http://localhost:3000` (ver `make de
 | `lk auth status` | mostra se há token guardado e a origem (env/keychain/arquivo), sem revelar o segredo |
 | `lk auth logout` | apaga o token guardado do `base_url` ativo |
 | `lk whoami` | mostra a identidade autenticada (`GET /my/identity.json`) |
-| `lk supplier list` | lista suppliers (`GET /srm/suppliers`); JSON é um array bare |
-| `lk supplier show <id>` | mostra um supplier (`GET /srm/suppliers/<id>/panel`) |
-| `lk --help` | ajuda |
+| `lk upload --file <caminho>` | sobe um arquivo (direct upload) e imprime o `signed_id` que os comandos de anexo esperam |
+| `lk --help` | ajuda, com todos os comandos de recurso do manifest |
+
+Comandos de recurso, como `lk supplier list`, `lk supplier document list` e
+`lk document review`, vêm do manifest embutido. `lk <comando> --help` mostra o
+endpoint, os parâmetros e a resposta de cada um.
 
 ## Autenticação
 
