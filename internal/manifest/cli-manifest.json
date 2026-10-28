@@ -1,8 +1,440 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-10-09T13:02:37Z",
-  "source": "linkanalabs/linkana@58336c3cb6",
+  "generated_at": "2026-10-27T22:28:39Z",
+  "source": "linkanalabs/linkana@1f855dcfb9",
   "endpoints": [
+    {
+      "command": [
+        "document",
+        "bank-information-override"
+      ],
+      "summary": "Update one Informações bancárias document by hand, with the bank account, the buyer's verdict and a file (Atualizar)",
+      "description": "Replaces the bank account of ONE Informações bancárias document and records the buyer's verdict — the same action as the 'Atualizar' button on that document. The positional id is the document id, taken from `supplier document list` (`type` BankInformation). The receipt file is the `signed_id` returned by `lk upload`. Only `clear` or `not_clear` is accepted; any other state answers 422 and nothing changes. A new version starts from an empty account, so send every account field; only a document in `processing` keeps the fields you leave out. A document in `processing` is updated in place and keeps its id; any other one is archived and a NEW version with a NEW id is created: the response `id` is the new one and `previous_document_id` the one you sent — use the new id from now on. The bank name comes from `bank_code`, the agency digit is always calculated from `agency_number` (send the number only), and the account digit is the part of `account_number` after a dash. The sender recorded is the impersonated user. No external validation of the account runs (that only happens when the supplier sends it). Requires the reviewer role or above, and the user must belong to the document's review group when the group restricts its reviewers. SIDE EFFECTS: the approval steps of the supplier's qualifications are started automatically when the new verdict completes what they wait for. The global `skip_emails` flag does NOT silence the webhook the buyer may have configured for reviewed documents nor the supplier event, which still fire.",
+      "method": "PATCH",
+      "path": "/srm/documents/bank_information_override/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "document",
+      "params": [
+        {
+          "name": "state",
+          "type": "string",
+          "required": true,
+          "desc": "Buyer's verdict: clear (approved) or not_clear (refused).",
+          "in": "body",
+          "enum": [
+            "clear",
+            "not_clear"
+          ]
+        },
+        {
+          "name": "reviewer_comment",
+          "type": "string",
+          "required": false,
+          "desc": "Comment recorded in the document history with the verdict.",
+          "in": "body"
+        },
+        {
+          "name": "reviewer_refusal_reason",
+          "type": "string",
+          "required": false,
+          "desc": "Why the document was refused, as one of the fixed values. Mandatory when `state` is `not_clear` and the document's `responsible_party` is `supplier`.",
+          "in": "body",
+          "enum": [
+            "Preenchimento incorreto do formulário",
+            "Documento com CNPJ errado",
+            "Documento expirado",
+            "Documento inválido",
+            "Informação diferente da solicitada",
+            "Não enviou informação obrigatória",
+            "Não preencheu os requisitos necessários",
+            "Documento indisponível"
+          ]
+        },
+        {
+          "name": "documentable_attributes",
+          "type": "object",
+          "required": true,
+          "desc": "The bank account, all fields: '{\"legal_entity\":\"pj\",\"name\":\"<holder>\",\"identifier\":\"<CNPJ or CPF of the holder>\",\"account_type\":\"checking_account\",\"bank_code\":\"001\",\"agency_number\":\"1234\",\"account_number\":\"12345-6\",\"file\":\"<signed_id from lk upload>\"}'. legal_entity: pj or pf (identifier must be a valid CNPJ or CPF accordingly). account_type: checking_account, easy_account, savings_account, payment_account or public_entities. agency_number is the number only, its digit is calculated; account_number carries the digit after a dash.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the final document: {id, previous_document_id, supplier_id, type, display_name, setting_document_id, state, should_resend, responsible_party, expires_on, renew_at, update_requested, new_requested_comment, supplier_related_party_id}. `previous_document_id` is the id you sent when a new version was created, null when the document in `processing` was updated in place. 422 {error} with every message joined when the state is not clear or not_clear, the account is invalid (e.g. a CNPJ that does not check out, a missing field) or the refusal reason is missing — nothing changes. 404 Rails default {status, error} when the id is unknown, is not an Informações bancárias document, belongs to another buyer or the document is disabled. 403 {error} when the document is waiting for review (review it with `document review` instead), the user is outside the review group, or the role is below reviewer. 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm/documents/bank_information_override#update"
+    },
+    {
+      "command": [
+        "document",
+        "cancel-update"
+      ],
+      "summary": "Cancel an open update request of one document",
+      "description": "Cancels the update the buyer asked the supplier for on ONE document — the same action as the 'Cancelar solicitação' button. The positional id is the id of the document carrying the request (the one `document request-update` returned). When the request was blocking, the new version is DELETED and the previous reviewed version comes back: the response `id` is that previous version, not the id you sent. When it was not blocking, the same document stays, without the request. The document goes back to its default responsible party. A blocking request with no previous reviewed version to resume cannot be cancelled (403). Requires the operator role or above, and the user must belong to the document's review group when the group restricts its reviewers. Sends no email.",
+      "method": "DELETE",
+      "path": "/srm/documents/request_update/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with the document left after the cancellation: {id, previous_document_id, supplier_id, type, display_name, setting_document_id, state, should_resend, responsible_party, expires_on, renew_at, update_requested, new_requested_comment, supplier_related_party_id}, with `update_requested` false. 422 {error} when the cancellation fails and nothing changes. 404 Rails default {status, error} when the id is unknown, belongs to another buyer or the document is disabled (also what a repeated call answers after a blocking cancel deleted the version). 403 {error} when the document has no open request, has no previous version to resume, is a Base pública document, the user is outside the review group, or the role is below operator. 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm/documents/request_update#destroy"
+    },
+    {
+      "command": [
+        "document",
+        "certificate-override"
+      ],
+      "summary": "Update one Consulta document by hand, with the buyer's verdict and a file (Atualizar)",
+      "description": "Records the buyer's verdict and, optionally, a file on ONE Consulta (certificate) document — the same action as the 'Atualizar' button on a Consulta document. The positional id is the document id, taken from `supplier document list` (`type` Certificate). The file is the `signed_id` returned by `lk upload`. Only `clear` or `not_clear` is accepted; any other state answers 422 and nothing changes. A document in `processing` is updated in place and keeps its id; any other one is archived and a NEW version with a NEW id is created: the response `id` is the new one and `previous_document_id` the one you sent — use the new id from now on. DATES: `expires_on` and `renew_at` left out take the current ones, as the screen pre-fills them; then a `renew_at` that is blank or not after today, the current one included, is recalculated from the document type's renewal term (Renovação in the settings) for the verdict sent; send a future `renew_at` to keep your own date. Requires the reviewer role or above, and the user must belong to the document's review group when the group restricts its reviewers. SIDE EFFECTS: the approval steps of the supplier's qualifications are started automatically when the new verdict completes what they wait for. The global `skip_emails` flag does NOT silence the webhook the buyer may have configured for reviewed documents nor the supplier event, which still fire.",
+      "method": "PATCH",
+      "path": "/srm/documents/certificate_override/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "document",
+      "params": [
+        {
+          "name": "state",
+          "type": "string",
+          "required": true,
+          "desc": "Buyer's verdict: clear (approved) or not_clear (refused).",
+          "in": "body",
+          "enum": [
+            "clear",
+            "not_clear"
+          ]
+        },
+        {
+          "name": "reviewer_comment",
+          "type": "string",
+          "required": false,
+          "desc": "Comment recorded in the document history with the verdict.",
+          "in": "body"
+        },
+        {
+          "name": "expires_on",
+          "type": "date",
+          "required": false,
+          "desc": "Expiry date of the certificate (YYYY-MM-DD). Left out keeps the current one, as the screen pre-fills it; blank clears it.",
+          "in": "body"
+        },
+        {
+          "name": "renew_at",
+          "type": "date",
+          "required": false,
+          "desc": "Renewal date (YYYY-MM-DD). Left out uses the current one, as the screen pre-fills it; a date not after today, the current one included, and a blank are recalculated from the settings' renewal term, so only a future date survives.",
+          "in": "body"
+        },
+        {
+          "name": "documentable_attributes",
+          "type": "object",
+          "required": false,
+          "desc": "The file: '{\"file\":\"<signed_id from lk upload>\"}'. Without it, a new version has NO file (only a document in `processing`, updated in place, keeps its current file).",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the final document: {id, previous_document_id, supplier_id, type, display_name, setting_document_id, state, should_resend, responsible_party, expires_on, renew_at, update_requested, new_requested_comment, supplier_related_party_id}. `previous_document_id` is the id you sent when a new version was created, null when the document in `processing` was updated in place. 422 {error} for a state other than clear or not_clear, or an invalid date — nothing changes. 404 Rails default {status, error} when the id is unknown, is not a Consulta, belongs to another buyer or the document is disabled. 403 {error} when the document is waiting for review (review it with `document review` instead), the user is outside the review group, or the role is below reviewer. 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm/documents/certificate_override#update"
+    },
+    {
+      "command": [
+        "document",
+        "check-override"
+      ],
+      "summary": "Update one Base pública document by hand, with the buyer's verdict and a file (Atualizar)",
+      "description": "Records the buyer's verdict and, optionally, a file on ONE Base pública (check) document — the same action as the 'Atualizar' button on a Base pública document. The positional id is the document id, taken from `supplier document list` (`type` Check). The file is the `signed_id` returned by `lk upload`. Only `clear` or `not_clear` is accepted; any other state answers 422 and nothing changes. A document in `processing` is updated in place and keeps its id; any other one is archived and a NEW version with a NEW id is created: the response `id` is the new one and `previous_document_id` the one you sent — use the new id from now on. Requires the reviewer role or above, and the user must belong to the document's review group when the group restricts its reviewers. SIDE EFFECTS: the approval steps of the supplier's qualifications are started automatically when the new verdict completes what they wait for. The global `skip_emails` flag does NOT silence the webhook the buyer may have configured for reviewed documents nor the supplier event, which still fire.",
+      "method": "PATCH",
+      "path": "/srm/documents/check_override/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "document",
+      "params": [
+        {
+          "name": "state",
+          "type": "string",
+          "required": true,
+          "desc": "Buyer's verdict: clear (approved) or not_clear (refused).",
+          "in": "body",
+          "enum": [
+            "clear",
+            "not_clear"
+          ]
+        },
+        {
+          "name": "reviewer_comment",
+          "type": "string",
+          "required": false,
+          "desc": "Comment recorded in the document history with the verdict.",
+          "in": "body"
+        },
+        {
+          "name": "expires_on",
+          "type": "date",
+          "required": false,
+          "desc": "Expiry date (YYYY-MM-DD). The screen has no such field: left out or blank leaves the new version without one.",
+          "in": "body"
+        },
+        {
+          "name": "renew_at",
+          "type": "date",
+          "required": false,
+          "desc": "Renewal date (YYYY-MM-DD). Left out keeps the current one, as the screen pre-fills it; blank clears it.",
+          "in": "body"
+        },
+        {
+          "name": "documentable_attributes",
+          "type": "object",
+          "required": false,
+          "desc": "The file: '{\"file\":\"<signed_id from lk upload>\"}'. Without it, a new version has NO file (only a document in `processing`, updated in place, keeps its current file).",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the final document: {id, previous_document_id, supplier_id, type, display_name, setting_document_id, state, should_resend, responsible_party, expires_on, renew_at, update_requested, new_requested_comment, supplier_related_party_id}. `previous_document_id` is the id you sent when a new version was created, null when the document in `processing` was updated in place. 422 {error} for a state other than clear or not_clear, or an invalid date — nothing changes. 404 Rails default {status, error} when the id is unknown, is not a Base pública document, belongs to another buyer or the document is disabled. 403 {error} when the document is waiting for review (review it with `document review` instead), the user is outside the review group, or the role is below reviewer. 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm/documents/check_override#update"
+    },
+    {
+      "command": [
+        "document",
+        "expires-at"
+      ],
+      "summary": "Change the expiry date of one document (Vencimento)",
+      "description": "Sets the expiry date of ONE document — the same action as editing 'Vencimento' on the document page. The positional id is the document id, taken from `supplier document list`. Only a reviewed document accepts it (`clear`, `not_clear` or `informative`): one in `ready_to_review` or `processing` answers 403, and so does a Formulário, Informações bancárias or FinancialStatement document whose expiry date is already in the past — ask the supplier for a new version with `document request-update` instead. On those same types and on a Consulta collected from the supplier the new date must be after today. Requires the operator role or above, and the user must belong to the document's review group when the group restricts its reviewers. Sends no email. This changes ONE document once; to make the buyer's documents of a type expire a fixed number of days after each review, set `expires_on_in_days` with `settings document update-monitoring` instead of looping over this command.",
+      "method": "PATCH",
+      "path": "/srm/documents/expires_at/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "document",
+      "params": [
+        {
+          "name": "expires_on",
+          "type": "date",
+          "required": true,
+          "desc": "New expiry date (YYYY-MM-DD).",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the document: {id, previous_document_id, supplier_id, type, display_name, setting_document_id, state, should_resend, responsible_party, expires_on, renew_at, update_requested, new_requested_comment, supplier_related_party_id}. 422 {errors:[...]} when the date is refused, e.g. a past date on a document the supplier keeps up to date — nothing changes. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer. 403 {error} when the document is waiting for review, being updated (`processing`), a Formulário, Informações bancárias or FinancialStatement document already expired, disabled, the user is outside its review group, or the role is below operator. 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm/documents/expires_at#update"
+    },
+    {
+      "command": [
+        "document",
+        "form-override"
+      ],
+      "summary": "Update one Formulário document by hand, with the buyer's answers and verdict (Atualizar)",
+      "description": "Records the buyer's answers and verdict on ONE Formulário document — the same action as the 'Atualizar' button on that document, Transfeera bank data included. The positional id is the document id, taken from `supplier document list` (`type` FormGroup). Field names come from `settings document show <setting_document_id>` (`.fields[].name`), which needs the manager role or above — an operator gets 403 there, so read the names with a manager first; files are the `signed_id`s returned by `lk upload`. Only `clear` or `not_clear` is accepted; any other state answers 422 and nothing changes. A document in `processing` is updated in place and keeps its id; any other one is archived and a NEW version with a NEW id is created: the response `id` is the new one and `previous_document_id` the one you sent — use the new id from now on. ONLY THE FIELDS YOU SEND CHANGE: every field left out of `answers` keeps its current answer, comment and files, also in the new version. Within a field you send, `value`, `files` and `comment` are written together: sending only `comment` on an upload field CLEARS its files, so send the files again with it. Questions hidden by the form's visibility condition are cleared. The renewal date is cleared, unless `expires_on` changes: then it is recalculated from the new expiry date, as on the screen. Change it afterwards with `document renew-at`. Requires the reviewer role or above, and the user must belong to the document's review group when the group restricts its reviewers. SIDE EFFECTS: the approval steps of the supplier's qualifications are started automatically when the new verdict completes what they wait for, and when other documents depend on this form (e.g. Base pública lookups fed by its answers) a new paid external lookup is queued for each of them. The global `skip_emails` flag does NOT silence the webhook the buyer may have configured for reviewed documents nor the supplier event, which still fire.",
+      "method": "PATCH",
+      "path": "/srm/documents/form_group_override/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "document",
+      "params": [
+        {
+          "name": "state",
+          "type": "string",
+          "required": true,
+          "desc": "Buyer's verdict: clear (approved) or not_clear (refused).",
+          "in": "body",
+          "enum": [
+            "clear",
+            "not_clear"
+          ]
+        },
+        {
+          "name": "reviewer_comment",
+          "type": "string",
+          "required": false,
+          "desc": "Comment recorded in the document history with the verdict.",
+          "in": "body"
+        },
+        {
+          "name": "reviewer_refusal_reason",
+          "type": "string",
+          "required": false,
+          "desc": "Why the document was refused, as one of the fixed values. Mandatory when `state` is `not_clear` and the document's `responsible_party` is `supplier`.",
+          "in": "body",
+          "enum": [
+            "Preenchimento incorreto do formulário",
+            "Documento com CNPJ errado",
+            "Documento expirado",
+            "Documento inválido",
+            "Informação diferente da solicitada",
+            "Não enviou informação obrigatória",
+            "Não preencheu os requisitos necessários",
+            "Documento indisponível"
+          ]
+        },
+        {
+          "name": "expires_on",
+          "type": "date",
+          "required": false,
+          "desc": "Expiry date of the form (YYYY-MM-DD), after today. Blank or left out clears it.",
+          "in": "body"
+        },
+        {
+          "name": "answers",
+          "type": "object",
+          "required": false,
+          "desc": "Answers by field name: '{\"<FIELD_NAME>\":{\"value\":...,\"files\":[\"<signed_id>\"],\"comment\":\"...\"}}'. value is a string for text, long text, e-mail, CPF, number and currency fields; the option's display_name for select, radio_button and other_fields_visibility_condition; an array of display_names for check_box. files is an array of signed_ids for upload and multiple_uploads. comment is the justification an option may require. A field whose chosen option requires a comment or a file answers 422 without it.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the final document: {id, previous_document_id, supplier_id, type, display_name, setting_document_id, state, should_resend, responsible_party, expires_on, renew_at, update_requested, new_requested_comment, supplier_related_party_id}. `previous_document_id` is the id you sent when a new version was created, null when the document in `processing` was updated in place. 422 {error} when the state is not clear or not_clear, the refusal reason is missing, the expiry date is in the past, or a field refuses its answer — the message names the field (e.g. a file type not accepted, a required answer left blank, a missing justification) — nothing changes. 400 Rails default {status, error} when an entry of `answers` is not an object. 404 Rails default {status, error} when the id is unknown, is not a Formulário, belongs to another buyer or the document is disabled. 403 {error} when the document is waiting for review (review it with `document review` instead), the user is outside the review group, or the role is below reviewer. 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm/documents/form_group_override#update"
+    },
+    {
+      "command": [
+        "document",
+        "renew-at"
+      ],
+      "summary": "Change the renewal date of one document (Renovação)",
+      "description": "Sets the date when ONE document is renewed — the same action as editing 'Renovação' on the document page. The positional id is the document id, taken from `supplier document list`. Only a reviewed document accepts it (`clear`, `not_clear` or `informative`): one in `ready_to_review` or `processing` answers 403. Requires the operator role or above, and the user must belong to the document's review group when the group restricts its reviewers. Sends no email by itself. This changes ONE document once; for a recurring rule across the buyer's documents of a type use `settings document update-monitoring` instead.",
+      "method": "PATCH",
+      "path": "/srm/documents/renewals/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "document",
+      "params": [
+        {
+          "name": "renew_at",
+          "type": "date",
+          "required": true,
+          "desc": "New renewal date (YYYY-MM-DD).",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the document: {id, previous_document_id, supplier_id, type, display_name, setting_document_id, state, should_resend, responsible_party, expires_on, renew_at, update_requested, new_requested_comment, supplier_related_party_id}. 422 {errors:[...]} when the date is refused — nothing changes. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer. 403 {error} when the document is waiting for review, being updated (`processing`), disabled, the user is outside its review group, or the role is below operator. 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm/documents/renewals#update"
+    },
+    {
+      "command": [
+        "document",
+        "request-update"
+      ],
+      "summary": "Ask the supplier to update one document (Solicitar atualização)",
+      "description": "Asks the supplier to send ONE document again — the same action as the 'Solicitar atualização' button on the document page. The positional id is the document id, taken from `supplier document list`. The document becomes the supplier's responsibility. With `blocking` true (the default, the button's 'impeditiva' option) the current version is archived and a NEW document with a NEW id is opened in `processing`: the response `id` is the new one and `previous_document_id` the one you sent — use the new id from now on. With `blocking` false the same document stays valid in its current state and only carries the open request (`update_requested` true). Does not apply to Base pública documents (they come from an external source, never from the supplier) — they answer 403. A document already requested from the supplier, or waiting for review, answers 403 too. Requires the operator role or above, and the user must belong to the document's review group when the group restricts its reviewers. THE SUPPLIER IS NOTIFIED BY EMAIL, not by this call: the daily 6am routine emails every supplier with an open request, so the global `skip_emails` flag does NOT silence that email. Undo with `document cancel-update`.",
+      "method": "PATCH",
+      "path": "/srm/documents/request_update/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [
+        {
+          "name": "blocking",
+          "type": "boolean",
+          "required": false,
+          "desc": "true (default) archives the current version and opens a new document in `processing`, with a new id; false keeps the current document valid and only records the request.",
+          "in": "query"
+        },
+        {
+          "name": "new_requested_comment",
+          "type": "string",
+          "required": false,
+          "desc": "Message to the supplier explaining what to update, shown with the request.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with the requested document: {id, previous_document_id, supplier_id, type, display_name, setting_document_id, state, should_resend, responsible_party, expires_on, renew_at, update_requested, new_requested_comment, supplier_related_party_id}. `previous_document_id` is the id you sent when `blocking` created a new version, null otherwise. `responsible_party` comes back `supplier` and `update_requested` true. 404 Rails default {status, error} when the id is unknown, belongs to another buyer or the document is disabled. 403 {error} for a Base pública document, a document already requested or waiting for review, a user outside the review group, or a role below operator. 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm/documents/request_update#update"
+    },
+    {
+      "command": [
+        "document",
+        "revert-review"
+      ],
+      "summary": "Undo the review of one document, sending it back to review",
+      "description": "Undoes the decision recorded on ONE document — the same action as the 'Reverter revisão' button on the document page. The positional id is the document id, taken from `supplier document list`. Only a reviewed document (`clear`, `not_clear` or `informative`) can be reverted: `processing` or `ready_to_review` is refused with 422 and nothing changes. The document goes back to `ready_to_review`, and its expiry date, renewal date and resend request are CLEARED — they are not restored by reviewing again, so pass `expires_on` to `document review` if the document needs one. The previous decision stays in the document history. Typical use: revert, then `document review` with the new decision. Requires the operator role or above, and the user must belong to the document's review group when the group restricts its reviewers. Sends no email.",
+      "method": "PATCH",
+      "path": "/srm/revert_document_review/:id",
+      "path_params": [
+        "id"
+      ],
+      "params": [],
+      "response": "200 with the document after the revert: {id, previous_document_id, supplier_id, type, display_name, setting_document_id, state, should_resend, responsible_party, expires_on, renew_at, update_requested, new_requested_comment, supplier_related_party_id}, with `state` `ready_to_review` and `expires_on`, `renew_at` null and `should_resend` false. 422 {error} when the document was not reviewed (a repeated call answers this, so retrying is safe). 404 Rails default {status, error} when the id is unknown OR belongs to another buyer. 403 {error} when the document is disabled, the user is outside its review group, or the role is below operator. 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm/suppliers/revert_document_review#update"
+    },
+    {
+      "command": [
+        "document",
+        "review"
+      ],
+      "summary": "Review one document of a supplier (approve, refuse or mark as informative)",
+      "description": "Records the reviewer's decision on ONE document — the same action as the review screen (Revisar documentos). The positional id is the document id, taken from `supplier document list`. Only a document in `ready_to_review` can be reviewed: any other state is refused with 422 and nothing changes; to change a decision already taken, run `document revert-review` first and review again. `clear` approves, `not_clear` refuses and `informative` records the document without a verdict. On a refusal of a document the supplier is responsible for (`responsible_party` is `supplier`), `reviewer_refusal_reason` is mandatory; `should_resend` true asks the supplier to send it again. On an approval the refusal fields are ignored. Requires the operator role or above, and the user must belong to the document's review group when the group restricts its reviewers. SIDE EFFECTS: the approval steps of the supplier's qualifications are started automatically when the decision completes what they wait for, and the documents that depend on this one are refreshed. When the call empties the supplier's review queue and no document of the supplier is waiting to be resent (`should_resend`), the supplier's followers with review alerts enabled get an email. For buyers with automatic review feedback enabled, a `not_clear` with `should_resend` true opens a new version of the document for the supplier to send (the response is the reviewed document, with `should_resend` false), and when the call empties the review queue while documents still wait to be resent, the supplier's users get an email listing them; the review screen asks to confirm that finish, the CLI does not. The global `skip_emails` flag silences these emails; it does NOT silence the webhook the buyer may have configured for reviewed documents, which still fires.",
+      "method": "PATCH",
+      "path": "/srm/review_documents/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "document",
+      "params": [
+        {
+          "name": "state",
+          "type": "string",
+          "required": true,
+          "desc": "The decision: `clear` (approved), `not_clear` (refused) or `informative` (recorded without a verdict).",
+          "in": "body",
+          "enum": [
+            "clear",
+            "not_clear",
+            "informative"
+          ]
+        },
+        {
+          "name": "reviewer_refusal_reason",
+          "type": "string",
+          "required": false,
+          "desc": "Why the document was refused, as one of the fixed values. Mandatory when `state` is `not_clear` and the document's `responsible_party` is `supplier`; ignored on an approval.",
+          "in": "body",
+          "enum": [
+            "Preenchimento incorreto do formulário",
+            "Documento com CNPJ errado",
+            "Documento expirado",
+            "Documento inválido",
+            "Informação diferente da solicitada",
+            "Não enviou informação obrigatória",
+            "Não preencheu os requisitos necessários",
+            "Documento indisponível"
+          ]
+        },
+        {
+          "name": "reviewer_comment",
+          "type": "string",
+          "required": false,
+          "desc": "Free-text comment of the reviewer, shown to the buyer's team in the document history.",
+          "in": "body"
+        },
+        {
+          "name": "should_resend",
+          "type": "boolean",
+          "required": false,
+          "desc": "On a refusal, true asks the supplier to send the document again. Defaults to false; ignored on an approval.",
+          "in": "body"
+        },
+        {
+          "name": "expires_on",
+          "type": "date",
+          "required": false,
+          "desc": "Expiry date to record with the decision (YYYY-MM-DD). Omitted, the current expiry date is kept.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the document after the decision: {id, previous_document_id, supplier_id, type, display_name, setting_document_id, state, should_resend, responsible_party, expires_on, renew_at, update_requested, new_requested_comment, supplier_related_party_id}. 422 {error} when the document is not in `ready_to_review` (nothing changes — a repeated call answers this, so retrying is safe) or when the decision is invalid, e.g. a refusal without the mandatory reason. 404 Rails default {status, error} when the id is unknown, belongs to another buyer or the document is disabled. 403 {error} when the user is outside its review group, or the role is below operator. 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm/suppliers/review_documents#update"
+    },
     {
       "command": [
         "identity",
@@ -1665,6 +2097,7 @@
             "requester",
             "observer",
             "member",
+            "reviewer",
             "operator",
             "manager",
             "admin",
@@ -1768,6 +2201,7 @@
             "requester",
             "observer",
             "member",
+            "reviewer",
             "operator",
             "manager",
             "admin",
@@ -1858,6 +2292,7 @@
             "requester",
             "observer",
             "member",
+            "reviewer",
             "operator",
             "manager",
             "admin",
@@ -1952,7 +2387,7 @@
         "id"
       ],
       "params": [],
-      "response": "200 with the attributes every type shares — {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order, name, hint, renew_at_in_days, block_supplier_on_expiry, default_responsible_party, send_document_reviewed_event, webhook_reference} plus a nested setting_document_review {id, review_type, automatic_review_rule, expires_on_in_days} and `support_materials` — the support material (Material de apoio) the supplier sees under the hint, a list of {id, kind, label, url}, where `kind` is `link` or `file`, `url` is the external link or the attached file's download url, and a null `label` shows as 'visualize aqui'; it is an empty list on documents without support material. `name` is the fixed internal identifier of the document (e.g. CND_FEDERAL), not the editable label. `default_responsible_party` answers who fills the document by default and reads back as `supplier`, `buyer` or `external_source` — the last one meaning the Linkana issues the Consulta automatically from an external source, and it is assigned by the Linkana, never sent by a caller. A Consulta (certificate) also carries `fallback_responsible_party_rule` — what happens when the certificate cannot be issued at all (`supplier`, `buyer` or `refuse`), written by `settings document update-attrs`. An Informações bancárias document also carries `allow_pf_bank_account` — whether a PJ supplier may declare a PF (CPF) bank account on it —, written by `settings document update-attrs` too. The review `id` is what makes an update EDIT the review instead of replacing it, so read it here before any command that sends setting_document_review_attributes. SIX keys are conditional, and their absence is the document's type or the caller's role — never an error to retry: `fields` and `setting_document_review.grade_threshold` come only for a Formulário; `fallback_responsible_party_rule` only for a Consulta estadual (document_configs.scope = 'state', today CND_STATE and CDA_STATE) whose default_responsible_party is not the supplier, with emission automation; `allow_pf_bank_account` only for an Informações bancárias document; `restriction_lists_export_csv_url` and `cnae_lists_export_csv_url` only on the certificate that owns that list. The two *_csv_url keys additionally require the export permission (admin), so a manager gets the show without them even when the file is attached — the same rule as the per-type shows. Each entry of `fields` is {id, display_name, hint, field_type, optional, order, has_answer_key, weight, marked_to_destroy, options: [{id, display_name, correct, requirement_type}]}, ordered by `order` and with fields marked for destruction left out; this is where the field_id consumed by every `settings supplier-field field ...` command comes from — no other command returns it, since `settings supplier-field field show` already needs a field id. Option ids come from here too, and also from that `field show`. `settings document list` stays thin (the item shape only), so a field beyond that list comes from this show. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
+      "response": "200 with the attributes every type shares — {id, display_name, disabled, national_pj, national_pf, international, setting_grouper_id, type, type_humanize, order, name, hint, renew_at_in_days, block_supplier_on_expiry, default_responsible_party, send_document_reviewed_event, webhook_reference} plus a nested setting_document_review {id, review_type, automatic_review_rule, expires_on_in_days} and `support_materials` — the support material (Material de apoio) the supplier sees under the hint, a list of {id, kind, label, url}, where `kind` is `link` or `file`, `url` is the external link or the attached file's download url, and a null `label` shows as 'visualize aqui'; it is an empty list on documents without support material. `name` is the fixed internal identifier of the document (e.g. CND_FEDERAL), not the editable label. `default_responsible_party` answers who fills the document by default and reads back as `supplier`, `buyer` or `external_source` — the last one meaning the Linkana issues the Consulta automatically from an external source, and it is assigned by the Linkana, never sent by a caller. A Consulta (certificate) also carries `fallback_responsible_party_rule` — what happens when the certificate cannot be issued at all (`supplier`, `buyer` or `refuse`), written by `settings document update-attrs`. An Informações bancárias document also carries `allow_pf_bank_account` — whether a PJ supplier may declare a PF (CPF) bank account on it —, written by `settings document update-attrs` too. The review `id` is what makes an update EDIT the review instead of replacing it, so read it here before any command that sends setting_document_review_attributes. SIX keys are conditional, and their absence is the document's type or the caller's role — never an error to retry: `fields` and `setting_document_review.grade_threshold` come only for a Formulário; `fallback_responsible_party_rule` only for a Consulta estadual (document_configs.scope = 'state', today CND_STATE and CDA_STATE) whose default_responsible_party is not the supplier, with emission automation; `allow_pf_bank_account` only for an Informações bancárias document; `restriction_lists_export_csv_url` and `cnae_lists_export_csv_url` only on the certificate that owns that list. The two *_csv_url keys additionally require the export permission (admin), so a manager gets the show without them even when the file is attached — the same rule as the per-type shows. Each entry of `fields` is {id, name, display_name, hint, field_type, optional, order, has_answer_key, weight, marked_to_destroy, options: [{id, display_name, correct, requirement_type, reveals_other_fields}]}, ordered by `order` and with fields marked for destruction left out; `name` is the fixed internal identifier of the field, the key `document form-override` expects in `answers`; this is where the field_id consumed by every `settings supplier-field field ...` command comes from — no other command returns it, since `settings supplier-field field show` already needs a field id. Option ids come from here too, and also from that `field show`. `settings document list` stays thin (the item shape only), so a field beyond that list comes from this show. 404 Rails default {status, error} when the id is unknown OR belongs to another buyer (the lookup is scoped to the caller's buyer); 403 {error} when the policy denies access by role; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/documents#show"
     },
@@ -2630,7 +3065,7 @@
         "calibrate"
       ],
       "summary": "Set the weight of every pillar of an evaluation in one batch",
-      "description": "Sets the weight (1..100) of one or more pillars of a performance evaluation in a single call. evaluation_id comes from `settings performance-evaluation list` or `settings performance-evaluation show`. The keys of --weights are pillar ids (see `settings performance-evaluation show <evaluation_id>` for the pillars tree) — shape: {\"<pillar_id>\": {\"weight\": 1..100}, ...}. A pillar id that does not belong to this evaluation returns 404. Blocked (403) while the buyer has an active performance cycle.",
+      "description": "Sets the weight (0..100) of one or more pillars of a performance evaluation in a single call. A pillar with weight 0 is informative: its asks stay mandatory and it keeps its own score, but it does not count toward the evaluation's Performance Score. If every pillar weighs 0, the evaluation is informative only: it has no Performance Score and stays out of the supplier's score for the cycle. evaluation_id comes from `settings performance-evaluation list` or `settings performance-evaluation show`. The keys of --weights are pillar ids (see `settings performance-evaluation show <evaluation_id>` for the pillars tree) — shape: {\"<pillar_id>\": {\"weight\": 0..100}, ...}. A pillar id that does not belong to this evaluation returns 404. Blocked (403) while the buyer has an active performance cycle.",
       "method": "PATCH",
       "path": "/srm_settings/performance_evaluations/:performance_evaluation_id/pillars_calibrating",
       "path_params": [
@@ -2642,12 +3077,12 @@
           "name": "weights",
           "type": "object",
           "required": true,
-          "desc": "Weights by pillar id: {\"<pillar_id>\": {\"weight\": 1..100}, ...}. Every key must be a pillar id belonging to the evaluation.",
+          "desc": "Weights by pillar id: {\"<pillar_id>\": {\"weight\": 0..100}, ...}. Every key must be a pillar id belonging to the evaluation.",
           "in": "body",
           "spread": true
         }
       ],
-      "response": "200 with {id, pillars:[{id, weight}]} (the evaluation with every pillar's current weight, not just the ones just updated). 422 {errors} on validation (e.g. a weight outside 1..100); 404 Rails default {status, error} if evaluation_id is unknown/belongs to another buyer, or if a pillar id in --weights does not belong to this evaluation; 403 {error} when the policy denies access (requires admin or above, or an active performance cycle blocks the edit); 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, pillars:[{id, weight}]} (the evaluation with every pillar's current weight, not just the ones just updated). 422 {errors} on validation (e.g. a weight outside 0..100); 404 Rails default {status, error} if evaluation_id is unknown/belongs to another buyer, or if a pillar id in --weights does not belong to this evaluation; 403 {error} when the policy denies access (requires admin or above, or an active performance cycle blocks the edit); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/performance_pillars_calibrating#update"
     },
@@ -2790,12 +3225,12 @@
         "show"
       ],
       "summary": "Show the supplier registration requirements of the buyer",
-      "description": "Shows the supplier registration requirements of the authenticated buyer — there is no id, the target is always the caller's own buyer. While a requirement is on and unmet, the supplier cannot send documents in the supplier portal. `requires_supplier_registration` requires at least one supplier contact; `requires_tax_regime_confirmation` requires national PJ suppliers to declare their tax regime. Requires the manager role or above, and the supplier contacts feature or the supplier tax regime feature enabled for the buyer (403 otherwise).",
+      "description": "Shows the supplier registration requirements of the authenticated buyer — there is no id, the target is always the caller's own buyer. While a requirement is on and unmet, the supplier cannot send documents in the supplier portal. `requires_supplier_registration` requires at least one supplier contact; `requires_tax_regime_confirmation` requires national PJ suppliers to declare their tax regime. Requires the manager role or above (403 otherwise).",
       "method": "GET",
       "path": "/srm_settings/registration",
       "path_params": [],
       "params": [],
-      "response": "200 with {requires_supplier_registration, requires_tax_regime_confirmation}, both booleans (false when the buyer never configured them). 403 {error} when the policy denies access (requires manager or above, and the supplier contacts or supplier tax regime feature enabled for the buyer); 401 (empty body) when unauthenticated.",
+      "response": "200 with {requires_supplier_registration, requires_tax_regime_confirmation}, both booleans (false when the buyer never configured them). 403 {error} when the policy denies access (requires manager or above); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/registrations#show"
     },
@@ -2806,7 +3241,7 @@
         "update"
       ],
       "summary": "Update the supplier registration requirements of the buyer",
-      "description": "Turns each supplier registration requirement on or off, on the authenticated buyer (no id — the target is always the caller's own buyer). While a requirement is on and unmet, suppliers cannot send documents in the supplier portal — this changes what suppliers OUTSIDE the platform are asked to do. Each param is optional and an omitted param leaves its requirement unchanged; at least one must be sent. Each change is audited (who changed it and when). Sending the value already set is a no-op that still answers 200. Requires the admin role or above (reading is manager+); each param also requires its own feature enabled for the buyer.",
+      "description": "Turns each supplier registration requirement on or off, on the authenticated buyer (no id — the target is always the caller's own buyer). While a requirement is on and unmet, suppliers cannot send documents in the supplier portal — this changes what suppliers OUTSIDE the platform are asked to do. Each param is optional and an omitted param leaves its requirement unchanged; at least one must be sent. Each change is audited (who changed it and when). Sending the value already set is a no-op that still answers 200. Requires the admin role or above (reading is manager+); `requires_supplier_registration` also requires the supplier contacts feature enabled for the buyer.",
       "method": "PATCH",
       "path": "/srm_settings/registration",
       "path_params": [],
@@ -2823,11 +3258,11 @@
           "name": "requires_tax_regime_confirmation",
           "type": "boolean",
           "required": false,
-          "desc": "true to require national PJ suppliers to declare their tax regime before documents can be sent, false to make it optional. Requires the supplier tax regime feature.",
+          "desc": "true to require national PJ suppliers to declare their tax regime before documents can be sent, false to make it optional.",
           "in": "body"
         }
       ],
-      "response": "200 with the updated requirements in the same shape as `settings registration show`. 400 Rails default {status, error} when the buyer root is missing or carries neither param; 403 {error} when the policy denies access (requires admin or above, and the feature of each sent param enabled for the buyer); 401 (empty body) when unauthenticated.",
+      "response": "200 with the updated requirements in the same shape as `settings registration show`. 400 Rails default {status, error} when the buyer root is missing or carries neither param; 403 {error} when the policy denies access (requires admin or above, and the supplier contacts feature enabled for the buyer when `requires_supplier_registration` is sent); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/registrations#update"
     },
@@ -3177,7 +3612,7 @@
         "update"
       ],
       "summary": "Replace the answer options of a field",
-      "description": "Manages the answer options of a field in one call: sending an option WITHOUT `id` creates it, WITH `id` renames it, and with `_destroy: true` removes it. Send the full intended set — an option you omit stays untouched, so removals must be explicit. Types that carry options (check_box, radio_button, select) must keep at least 2 options, so a removal that would leave fewer answers 422. The FIELD id comes from the `fields` array of `settings document show`, and the option ids come from `settings supplier-field field show`.",
+      "description": "Manages the answer options of a field in one call: sending an option WITHOUT `id` creates it, WITH `id` renames it, and with `_destroy: true` removes it. Send the full intended set — an option you omit stays untouched, so removals must be explicit. Types that carry options (check_box, radio_button, select) must keep at least 2 options, so a removal that would leave fewer answers 422. On the visibility condition (other_fields_visibility_condition) only the texts of its 2 existing options can change: creating or removing an option answers 422, and which option shows the other questions never changes. The FIELD id comes from the `fields` array of `settings document show`, and the option ids come from `settings supplier-field field show`.",
       "method": "PATCH",
       "path": "/srm_settings/fields/:supplier_fields_field_id/answers",
       "path_params": [
@@ -3275,7 +3710,7 @@
         "create"
       ],
       "summary": "Add a field (question) to a form",
-      "description": "Adds a field (question) to a supplier form. supplier_field_id is the id of the form, from `settings document list`. `name` and `order` are assigned by the server (a UUID and last position) — do not send them. Creating a field enqueues a job that adds it retroactively to the suppliers' existing answers. Field types that carry options (check_box, radio_button, select) REQUIRE at least 2 options in the same call, otherwise the response is 422. Requires the admin role or above; forms created from the Linkana template refuse new fields (403).",
+      "description": "Adds a field (question) to a supplier form. supplier_field_id is the id of the form, from `settings document list`. `name` and `order` are assigned by the server (a UUID and last position) — do not send them. Creating a field enqueues a job that adds it retroactively to the suppliers' existing answers. Field types that carry options (check_box, radio_button, select) REQUIRE at least 2 options in the same call, otherwise the response is 422. field_type other_fields_visibility_condition creates the visibility condition (Condição de exibição): a question whose answer shows or hides every other question of the form. It takes exactly 2 options — the first one shows the other questions, the second hides them —, is always required, always becomes the first question of the form, and turns every other question of the form required; a form accepts only one (a second answers 422), and it is only available to companies that have the feature enabled (403 otherwise). Requires the admin role or above; forms created from the Linkana template refuse new fields (403).",
       "method": "POST",
       "path": "/srm_settings/supplier_fields/:supplier_field_id/fields",
       "path_params": [
@@ -3294,7 +3729,7 @@
           "name": "field_type",
           "type": "string",
           "required": true,
-          "desc": "How the supplier answers. check_box, radio_button and select require options_attributes with at least 2 entries.",
+          "desc": "How the supplier answers. check_box, radio_button and select require options_attributes with at least 2 entries; other_fields_visibility_condition requires exactly 2 (first shows the other questions, second hides them).",
           "in": "body",
           "enum": [
             "check_box",
@@ -3304,6 +3739,7 @@
             "long_text_input",
             "multiple_uploads",
             "number_input",
+            "other_fields_visibility_condition",
             "radio_button",
             "select",
             "text_input",
@@ -3321,19 +3757,19 @@
           "name": "optional",
           "type": "boolean",
           "required": false,
-          "desc": "When true the supplier may leave it blank. An optional field never scores in the answer key.",
+          "desc": "When true the supplier may leave it blank. An optional field never scores in the answer key. Ignored (always false) for the visibility condition and for any question of a form that has one.",
           "in": "body"
         },
         {
           "name": "options_attributes",
           "type": "array",
           "required": false,
-          "desc": "Answer options, as a JSON array of objects with display_name, e.g. '[{\"display_name\":\"Sim\"},{\"display_name\":\"Não\"}]'. Required (min 2) for check_box, radio_button and select; ignored by the other types.",
+          "desc": "Answer options, as a JSON array of objects with display_name, e.g. '[{\"display_name\":\"Sim\"},{\"display_name\":\"Não\"}]'. Required (min 2) for check_box, radio_button and select, and exactly 2 for other_fields_visibility_condition; ignored by the other types.",
           "in": "body",
           "item": "object"
         }
       ],
-      "response": "200 with the created field in the same shape as `settings supplier-field field show`. 422 {errors} on validation (blank display_name, invalid field_type, or fewer than 2 options on a type that requires them); 404 Rails default {status, error} when supplier_field_id is unknown or belongs to another buyer; 400 Rails default {status, error} when the setting_form_field root is missing; 403 {error} when the policy denies access (requires admin, and the form must not come from the template); 401 (empty body) when unauthenticated.",
+      "response": "200 with the created field in the same shape as `settings supplier-field field show`. 422 {errors} on validation (blank display_name, invalid field_type, fewer than 2 options on a type that requires them, or a second visibility condition in the form); 404 Rails default {status, error} when supplier_field_id is unknown or belongs to another buyer; 400 Rails default {status, error} when the setting_form_field root is missing; 403 {error} when the policy denies access (requires admin, the form must not come from the template, and the visibility condition requires the feature enabled for the company); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/supplier_fields_fields#create"
     },
@@ -3364,7 +3800,7 @@
         "reorder"
       ],
       "summary": "Reorder the fields (questions) of a form",
-      "description": "Sets the order in which the questions of one form are shown to the supplier. --identifiers is a comma-separated list of FIELD ids (from the `fields` array of `settings document show`) in the desired final order. Send every field of the form: a field left out keeps its previous order number and may end up sharing a position. The form must have at least 2 fields.",
+      "description": "Sets the order in which the questions of one form are shown to the supplier. --identifiers is a comma-separated list of FIELD ids (from the `fields` array of `settings document show`) in the desired final order. Send every field of the form: a field left out keeps its previous order number and may end up sharing a position. The visibility condition, when the form has one, always goes back to the first position whatever its place in the list. The form must have at least 2 fields.",
       "method": "PATCH",
       "path": "/srm_settings/supplier_fields/:supplier_field_id/fields_reordering",
       "path_params": [
@@ -3398,7 +3834,7 @@
         "id"
       ],
       "params": [],
-      "response": "200 with {id, display_name, hint, field_type, optional, order, has_answer_key, weight, marked_to_destroy, options:[{id, display_name, correct, requirement_type}], supplier_field_id}. 404 Rails default {status, error} when the id is unknown or the field belongs to another buyer (the lookup is scoped to the buyer); 403 {error} when the policy denies access (requires member or above); 401 (empty body) when unauthenticated.",
+      "response": "200 with {id, name, display_name, hint, field_type, optional, order, has_answer_key, weight, marked_to_destroy, options:[{id, display_name, correct, requirement_type, reveals_other_fields}], supplier_field_id}. reveals_other_fields is true only on the answer of a visibility condition that shows the other questions. 404 Rails default {status, error} when the id is unknown or the field belongs to another buyer (the lookup is scoped to the buyer); 403 {error} when the policy denies access (requires member or above); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/supplier_fields_fields#show"
     },
@@ -3410,7 +3846,7 @@
         "update"
       ],
       "summary": "Update the wording of a field (question)",
-      "description": "Updates only the wording of a field: display_name, hint and optional. The answer options are managed by `settings supplier-field field answers update`, the classification by `settings supplier-field field classification set`. Marking a field as optional automatically drops it from the answer key (has_answer_key becomes false). The FIELD id comes from the `fields` array of `settings document show`.",
+      "description": "Updates only the wording of a field: display_name, hint and optional. The answer options are managed by `settings supplier-field field answers update`, the classification by `settings supplier-field field classification set`. Marking a field as optional automatically drops it from the answer key (has_answer_key becomes false). optional is ignored (stays false) for the visibility condition and for any question of a form that has one. The FIELD id comes from the `fields` array of `settings document show`.",
       "method": "PATCH",
       "path": "/srm_settings/fields/:supplier_fields_field_id/questions",
       "path_params": [
@@ -3703,6 +4139,67 @@
       "response": "200 with {id, name, identifier, legal_entity, state, tags:[{id, display_name}], supplier_category_id}. 422 {errors} on validation (e.g. invalid identifier/contact_email, or missing required qualification document fields); 404 Rails default {status, error} when category_id is unknown or belongs to another buyer; 403 {error} when the policy denies access (requires member or above); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm/suppliers#create"
+    },
+    {
+      "command": [
+        "supplier",
+        "document",
+        "list"
+      ],
+      "summary": "List the documents of one supplier (one page per call; total comes in headers)",
+      "description": "Lists the documents of ONE supplier of the current buyer — the same list as the supplier's Documentos tab. The positional id is the supplier id, taken from `supplier list`. Each row's `id` is the document id consumed by every `document ...` command (`document review`, `document revert-review`, `document request-update`, `document cancel-update`, `document expires-at`, `document renew-at`). By default it lists the documents requested from the supplier itself; pass `subject_party=related_party` to list the documents requested from its related parties (partners/shareholders) instead, optionally narrowed to one of them with `supplier_related_party_id` — that id comes from the `supplier_related_party_id` of a row returned with `subject_party=related_party`. Filters are optional and combinable. `latest_review` is the LAST transition of the document, whatever caused it — a manual review, an automatic check, a supplier submission, an update request — so read its `trigger` before treating it as a reviewer's verdict; it is null when the document never had one. The response is PAGINATED: the body carries one page (30 rows, not the 100 of the web tab) and the page metadata comes back in headers; use `--page N` to fetch a specific page, and `--format count` reads the supplier's TOTAL from the header. Requires the observer role or above.",
+      "method": "GET",
+      "path": "/srm/suppliers/:supplier_id/documents",
+      "path_params": [
+        "supplier_id"
+      ],
+      "pagination": {
+        "param": "page"
+      },
+      "params": [
+        {
+          "name": "state",
+          "type": "string",
+          "required": false,
+          "desc": "Only the documents in this state. `processing` is waiting for the supplier or the external source, `ready_to_review` is waiting for a reviewer, `informative` was marked as informative, `clear` was approved and `not_clear` was refused. Any other value is ignored and lists every state.",
+          "in": "query",
+          "enum": [
+            "processing",
+            "ready_to_review",
+            "informative",
+            "clear",
+            "not_clear"
+          ]
+        },
+        {
+          "name": "display_name",
+          "type": "string",
+          "required": false,
+          "desc": "Partial match on the document name (accents and case ignored), e.g. 'certidão federal'.",
+          "in": "query"
+        },
+        {
+          "name": "subject_party",
+          "type": "string",
+          "required": false,
+          "desc": "Whose documents to list: `supplier` (default) for the documents requested from the supplier itself, `related_party` for the ones requested from its related parties.",
+          "in": "query",
+          "enum": [
+            "supplier",
+            "related_party"
+          ]
+        },
+        {
+          "name": "supplier_related_party_id",
+          "type": "string",
+          "required": false,
+          "desc": "With `subject_party=related_party`, only the documents of this related party. The id is the `supplier_related_party_id` of a row listed with `subject_party=related_party`; an id from another supplier answers 404.",
+          "in": "query"
+        }
+      ],
+      "response": "200 with one page of {id, previous_document_id, supplier_id, type, display_name, setting_document_id, state, should_resend, responsible_party, expires_on, renew_at, update_requested, new_requested_comment, supplier_related_party_id, applicability:{pj, pf, international}, latest_review:{state, trigger, reviewer_comment, reviewer_refusal_reason, created_at} or null}, plus the pagy headers (`total-count`, `total-pages`, `current-page`, `page-items`). `type` is one of FormGroup (Formulário), Check (Base pública), Certificate (Consulta), BankInformation (Informações bancárias) and FinancialStatement; `setting_document_id` is the id of the document in `settings document list`. `previous_document_id` is always null here. `responsible_party` is `supplier`, `buyer` or `external_source`. `update_requested` is true when someone asked the supplier for an update that is still open. `applicability` tells which kinds of supplier the document applies to: national company (pj), national individual (pf) and international. A page past the last one returns an empty array (still 200). 400 {error} when --page is not a positive integer. 404 Rails default {status, error} when the supplier (or the related party) is unknown OR belongs to another buyer. 403 {error} when the role is below observer. 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm/suppliers/documents#index"
     },
     {
       "command": [

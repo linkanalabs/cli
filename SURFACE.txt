@@ -6,6 +6,17 @@ lk auth status
 lk config
 lk config set-url
 lk doctor
+lk document
+lk document bank-information-override
+lk document cancel-update
+lk document certificate-override
+lk document check-override
+lk document expires-at
+lk document form-override
+lk document renew-at
+lk document request-update
+lk document revert-review
+lk document review
 lk identity
 lk identity show
 lk impersonate
@@ -171,6 +182,8 @@ lk settings tag list
 lk settings tag update
 lk supplier
 lk supplier create
+lk supplier document
+lk supplier document list
 lk supplier list
 lk supplier show
 lk update
