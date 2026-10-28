@@ -104,9 +104,10 @@ Skeleton + `doctor` + **auth via PAT (CLI)** +
 **Authentication** via `GET /my/identity.json` — pass/fail/skip, with a skip-cascade
 when the backend is unreachable), `auth login|status|logout`, `whoami`,
 `impersonate <ref>|stop|status`, `config`, `config set-url <url>`,
-`update [--check]`, `upload`. Every resource command — `supplier`, `supplier
-document`, `document`, `settings`, `qualification`, … — comes from the embedded
-manifest; there is no hand-written resource command left.
+`update [--check]`, `upload`. Resource commands — `supplier`, `supplier
+document`, `document`, `settings`, `qualification`, … — come from the embedded
+manifest, except the hand-written CSV imports `settings certificate
+restriction-list|cnae-list import` (`internal/commands/certificate_lists.go`).
 
 `base_url` resolves in the order `LK_API_URL` (env) → `config.yml` (XDG) →
 **default `https://app.linkana.com`** (production — a clean install via brew talks
@@ -130,15 +131,16 @@ Credential: `lkn_<short>_<long>`; header `Authorization: Bearer <cred>`.
 Distribution: **public** repo, released via GoReleaser + a dedicated Homebrew tap
 (`linkanalabs/homebrew-tap`) — see the "Release / Homebrew (LIN-6287)" section.
 
-Next phases: resource commands (buyer), self-describing `lk schema`, embedded
-`SKILL.md`.
+Next phases: self-describing `lk schema`, embedded `SKILL.md`.
 
 ## Manifest-driven dynamic commands (LIN-6332)
 
 The Rails backend generates a `cli-manifest.json` describing the exposed
 endpoints; the CLI vendors that file in `internal/manifest/cli-manifest.json`
 (go:embed) and builds Cobra commands at runtime with a generic REST executor.
-Today the manifest exposes `identity show` and `settings email-message list|show|update`.
+The manifest carries every resource command — `supplier`, `supplier document`,
+`document`, `qualification` and the `settings` groups; `SURFACE.txt` is the full
+list.
 
 - `internal/manifest/` — schema types + `Load()`/`Parse()` with validation
   (command/method/path required, closed type and `in` sets, a path_param must

@@ -11,8 +11,8 @@ engenharia. Fala com o backend Rails via `format.json`.
 
 Esqueleto + `doctor` + autenticação via PAT (`auth`, `whoami`) + impersonação +
 `upload`. Os comandos de recurso (`supplier`, `supplier document`, `document`,
-`settings`, `qualification`, …) vêm do manifest embutido; `lk --help` lista
-todos.
+`settings`, `qualification`, …) vêm do manifest embutido; `lk --help` lista os
+grupos e `lk <grupo> --help` os comandos de cada um.
 
 ## Instalação
 
@@ -153,7 +153,7 @@ aponte para o backend local com `LK_API_URL=http://localhost:3000` (ver `make de
 | `lk auth logout` | apaga o token guardado do `base_url` ativo |
 | `lk whoami` | mostra a identidade autenticada (`GET /my/identity.json`) |
 | `lk upload --file <caminho>` | sobe um arquivo (direct upload) e imprime o `signed_id` que os comandos de anexo esperam |
-| `lk --help` | ajuda, com todos os comandos de recurso do manifest |
+| `lk --help` | ajuda, com os grupos de comando; `lk <grupo> --help` desce um nível |
 
 Comandos de recurso, como `lk supplier list`, `lk supplier document list` e
 `lk document review`, vêm do manifest embutido. `lk <comando> --help` mostra o
