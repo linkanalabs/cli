@@ -17,6 +17,7 @@ lk document renew-at
 lk document request-update
 lk document revert-review
 lk document review
+lk document show
 lk identity
 lk identity show
 lk impersonate
