@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-11-05T16:57:15Z",
-  "source": "linkanalabs/linkana@45b42898fc",
+  "generated_at": "2026-11-11T22:12:51Z",
+  "source": "linkanalabs/linkana@a07ab08113",
   "endpoints": [
     {
       "command": [
@@ -60,7 +60,7 @@
           "in": "body"
         }
       ],
-      "response": "200 with the final document: {id, previous_document_id, supplier_id, type, display_name, setting_document_id, state, should_resend, responsible_party, expires_on, renew_at, update_requested, new_requested_comment, supplier_related_party_id}. `previous_document_id` is the id you sent when a new version was created, null when the document in `processing` was updated in place. 422 {error} with every message joined when the state is not clear or not_clear, the account is invalid (e.g. a CNPJ that does not check out, a missing field) or the refusal reason is missing — nothing changes. 404 Rails default {status, error} when the id is unknown, is not an Informações bancárias document, belongs to another buyer or the document is disabled. 403 {error} when the document is waiting for review (review it with `document review` instead), the user is outside the review group, or the role is below reviewer. 401 (empty body) when unauthenticated.",
+      "response": "200 with the final document: {id, previous_document_id, supplier_id, type, display_name, setting_document_id, state, should_resend, responsible_party, expires_on, renew_at, update_requested, new_requested_comment, supplier_related_party_id}. `previous_document_id` is the id you sent when a new version was created, null when the document in `processing` was updated in place. 422 {error} with every message joined when the state is not clear or not_clear, the account is invalid (e.g. a CNPJ that does not check out, a missing field), the refusal reason is missing, or `file` is not a signed_id from `lk upload` — nothing changes. 404 Rails default {status, error} when the id is unknown, is not an Informações bancárias document, belongs to another buyer or the document is disabled. 403 {error} when the document is waiting for review (review it with `document review` instead), the user is outside the review group, or the role is below reviewer. 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm/documents/bank_information_override#update"
     },
@@ -135,7 +135,7 @@
           "in": "body"
         }
       ],
-      "response": "200 with the final document: {id, previous_document_id, supplier_id, type, display_name, setting_document_id, state, should_resend, responsible_party, expires_on, renew_at, update_requested, new_requested_comment, supplier_related_party_id}. `previous_document_id` is the id you sent when a new version was created, null when the document in `processing` was updated in place. 422 {error} for a state other than clear or not_clear, or an invalid date — nothing changes. 404 Rails default {status, error} when the id is unknown, is not a Consulta, belongs to another buyer or the document is disabled. 403 {error} when the document is waiting for review (review it with `document review` instead), the user is outside the review group, or the role is below reviewer. 401 (empty body) when unauthenticated.",
+      "response": "200 with the final document: {id, previous_document_id, supplier_id, type, display_name, setting_document_id, state, should_resend, responsible_party, expires_on, renew_at, update_requested, new_requested_comment, supplier_related_party_id}. `previous_document_id` is the id you sent when a new version was created, null when the document in `processing` was updated in place. 422 {error} for a state other than clear or not_clear, an invalid date, or a `file` that is not a signed_id from `lk upload` — nothing changes. 404 Rails default {status, error} when the id is unknown, is not a Consulta, belongs to another buyer or the document is disabled. 403 {error} when the document is waiting for review (review it with `document review` instead), the user is outside the review group, or the role is below reviewer. 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm/documents/certificate_override#update"
     },
@@ -193,7 +193,7 @@
           "in": "body"
         }
       ],
-      "response": "200 with the final document: {id, previous_document_id, supplier_id, type, display_name, setting_document_id, state, should_resend, responsible_party, expires_on, renew_at, update_requested, new_requested_comment, supplier_related_party_id}. `previous_document_id` is the id you sent when a new version was created, null when the document in `processing` was updated in place. 422 {error} for a state other than clear or not_clear, or an invalid date — nothing changes. 404 Rails default {status, error} when the id is unknown, is not a Base pública document, belongs to another buyer or the document is disabled. 403 {error} when the document is waiting for review (review it with `document review` instead), the user is outside the review group, or the role is below reviewer. 401 (empty body) when unauthenticated.",
+      "response": "200 with the final document: {id, previous_document_id, supplier_id, type, display_name, setting_document_id, state, should_resend, responsible_party, expires_on, renew_at, update_requested, new_requested_comment, supplier_related_party_id}. `previous_document_id` is the id you sent when a new version was created, null when the document in `processing` was updated in place. 422 {error} for a state other than clear or not_clear, an invalid date, or a `file` that is not a signed_id from `lk upload` — nothing changes. 404 Rails default {status, error} when the id is unknown, is not a Base pública document, belongs to another buyer or the document is disabled. 403 {error} when the document is waiting for review (review it with `document review` instead), the user is outside the review group, or the role is below reviewer. 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm/documents/check_override#update"
     },
@@ -287,7 +287,7 @@
           "in": "body"
         }
       ],
-      "response": "200 with the final document: {id, previous_document_id, supplier_id, type, display_name, setting_document_id, state, should_resend, responsible_party, expires_on, renew_at, update_requested, new_requested_comment, supplier_related_party_id}. `previous_document_id` is the id you sent when a new version was created, null when the document in `processing` was updated in place. 422 {error} when the state is not clear or not_clear, the refusal reason is missing, the expiry date is in the past, or a field refuses its answer — the message names the field (e.g. a file type not accepted, a required answer left blank, a missing justification) — nothing changes. 400 Rails default {status, error} when an entry of `answers` is not an object. 404 Rails default {status, error} when the id is unknown, is not a Formulário, belongs to another buyer or the document is disabled. 403 {error} when the document is waiting for review (review it with `document review` instead), the user is outside the review group, or the role is below reviewer. 401 (empty body) when unauthenticated.",
+      "response": "200 with the final document: {id, previous_document_id, supplier_id, type, display_name, setting_document_id, state, should_resend, responsible_party, expires_on, renew_at, update_requested, new_requested_comment, supplier_related_party_id}. `previous_document_id` is the id you sent when a new version was created, null when the document in `processing` was updated in place. 422 {error} when the state is not clear or not_clear, the refusal reason is missing, the expiry date is in the past, or a field refuses its answer — the message names the field (e.g. a file type not accepted, a required answer left blank, a missing justification), or a file in `answers` is not a signed_id from `lk upload` — nothing changes. 400 Rails default {status, error} when an entry of `answers` is not an object. 404 Rails default {status, error} when the id is unknown, is not a Formulário, belongs to another buyer or the document is disabled. 403 {error} when the document is waiting for review (review it with `document review` instead), the user is outside the review group, or the role is below reviewer. 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm/documents/form_group_override#update"
     },
@@ -2073,7 +2073,7 @@
           "in": "body"
         }
       ],
-      "response": "200 with the updated profile in the same shape as `settings company show`. 422 {errors} when an image has a disallowed content type or the name is invalid; 400 Rails default {status, error} when the buyer root is missing; 403 {error} when the policy denies access (requires admin or above); 401 (empty body) when unauthenticated.",
+      "response": "200 with the updated profile in the same shape as `settings company show`. 422 {errors} when an image has a disallowed content type or the name is invalid; 422 {error} when an image is not a signed_id from `lk upload`; 400 Rails default {status, error} when the buyer root is missing; 403 {error} when the policy denies access (requires admin or above); 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/companies#update"
     },
@@ -2415,7 +2415,7 @@
         "update-attrs"
       ],
       "summary": "Edit the identity fields of a document of any type",
-      "description": "Writes the Atributos tab of ANY `SettingDocument` — certificate, check, form or bank information. It replaced the per-type `update` commands, which were unequal and could not reach every field: `hint`, `national_pj`, `national_pf` and `international` on a certificate or a check are set here, and `allow_pf_bank_account` on an Informações bancárias document. Every field is optional; send only what changes. The id is a positional argument, from `settings document list`. Read the result back with `settings document show`. Requires the admin role or above.",
+      "description": "Writes the Atributos tab of ANY `SettingDocument` — certificate, check, form or bank information. It replaced the per-type `update` commands, which were unequal and could not reach every field: `hint`, `national_pj`, `national_pf` and `international` on a certificate or a check are set here, `allow_pf_bank_account` on an Informações bancárias document, and the integration code (`webhook_reference`, `send_document_reviewed_event`), the same fields the web screen edits in Editar informações. Every field is optional; send only what changes. The id is a positional argument, from `settings document list`. Read the result back with `settings document show`. Requires the admin role or above.",
       "method": "PATCH",
       "path": "/srm_settings/documents_attrs/:id",
       "path_params": [
@@ -2495,6 +2495,20 @@
           "type": "boolean",
           "required": false,
           "desc": "Only meaningful for an Informações bancárias document: whether a PJ supplier may declare a PF (CPF) bank account when answering it. Off hides that option in the supplier's form; it is off by default. Different from `national_pf`, which decides whether the document is offered to PF suppliers at all. Read the current value in `settings document show`. Sent to a document of another type it is stored and never read, so send it only to the Informações bancárias one.",
+          "in": "body"
+        },
+        {
+          "name": "webhook_reference",
+          "type": "string",
+          "required": false,
+          "desc": "The integration code (Código de integração) that identifies this document in the API and in the webhook payload. Send an empty string to clear it; when `send_document_reviewed_event` is on, send `send_document_reviewed_event: false` in the same request, otherwise clearing answers 422. Same field `settings document update-webhook` writes.",
+          "in": "body"
+        },
+        {
+          "name": "send_document_reviewed_event",
+          "type": "boolean",
+          "required": false,
+          "desc": "Sends the integration event when a review approves or refuses the supplier's current version of this document, only for a buyer with webhook integration configured and only once the supplier has an approved qualification; otherwise the flag is stored and no event goes out. Requires webhook_reference to be filled: enabling it on a document without the code answers 422.",
           "in": "body"
         }
       ],
@@ -4077,6 +4091,106 @@
       "response": "200 with {id, display_name}. 422 {errors} on validation (blank or duplicate display_name); 404 Rails default {status, error} if the id is unknown; 403 {error} when the tag belongs to another buyer or the policy denies access; 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm_settings/setting_tags#update"
+    },
+    {
+      "command": [
+        "supplier",
+        "buyer-document",
+        "create"
+      ],
+      "summary": "Fill in a custom field of an existing supplier, including a file (Adicionar campo)",
+      "description": "Fills in ONE custom field (Campo personalizado) of an existing supplier of the current buyer — the same action as Campos personalizados > Adicionar campo on the supplier page. The positional id is the supplier id, taken from `supplier list`. Use it only for a field the supplier does not have yet: a field already filled answers 422, and is changed with `supplier buyer-document update` instead.\n\nSend `value` or `file` according to the field type:\n  * text_input and select: `--value` with the text or the chosen option.\n  * multi_select: `--value` with a JSON list of options, e.g. '[\"ISO9001\",\"ISO14001\"]'. Each item must be one of the field's options.\n  * currency: `--value` with the amount in Brazilian format, e.g. \"1.234,56\".\n  * upload: run `lk upload --file <path>` first and pass the `signed_id` it returns as `--file`.\n\nReference chaining (resolve each id BEFORE calling this command):\n  * --setting_buyer_document_id ← `settings buyer-document list` (needs the manager role), or the `setting_buyer_document_id` of a row of `supplier buyer-document list` of any supplier.\n  * --qualification_id ← the `qualifications[].id` of `supplier show`. Send it to tie the value to one category of the supplier, as the Categoria select of the screen does; leave it out for a field of the supplier as a whole.\n\nThe user recorded as the author is the authenticated (or impersonated) user. Requires the operator role or above.\n",
+      "method": "POST",
+      "path": "/srm/suppliers/:supplier_id/buyer_documents",
+      "path_params": [
+        "supplier_id"
+      ],
+      "body_root": "buyer_document",
+      "params": [
+        {
+          "name": "setting_buyer_document_id",
+          "type": "string",
+          "required": true,
+          "desc": "Which custom field to fill in (id from `settings buyer-document list`). Archived fields and fields of another buyer answer 404.",
+          "in": "body"
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "required": false,
+          "desc": "The value, for every type but upload. multi_select takes a JSON list ('[\"A\",\"B\"]'); currency takes Brazilian format (\"1.234,56\").",
+          "in": "body"
+        },
+        {
+          "name": "file",
+          "type": "string",
+          "required": false,
+          "desc": "For an upload field: the `signed_id` returned by `lk upload`.",
+          "in": "body"
+        },
+        {
+          "name": "qualification_id",
+          "type": "string",
+          "required": false,
+          "desc": "Ties the value to one category of the supplier (`qualifications[].id` from `supplier show`). A qualification of another supplier answers 404.",
+          "in": "body"
+        }
+      ],
+      "response": "201 with the new field, same shape as a row of `supplier buyer-document list`. 422 {errors:[...]} when the field is already filled for the supplier (and category), the value is not valid for the field type, or the file type is not accepted; 422 {error} when `file` is not a signed_id from `lk upload`. 404 Rails default {status, error} when the supplier, the field or the qualification is unknown or belongs to another buyer. 403 {error} below the operator role or when the buyer has no custom field left for this supplier. 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm/buyer_documents#create"
+    },
+    {
+      "command": [
+        "supplier",
+        "buyer-document",
+        "list"
+      ],
+      "summary": "List the custom fields filled in for one supplier (Campos personalizados)",
+      "description": "Lists the custom fields (Campos personalizados) currently filled in for ONE supplier of the current buyer — the same list as the supplier's Campos personalizados tab, without its filters. The positional id is the supplier id, taken from `supplier list`. Only the current version of each field is listed; older versions stay in the history of the screen. Each row's `id` is the argument of `supplier buyer-document update`, and its `setting_buyer_document_id` tells which field it fills. A field with no value yet does not appear here: fill it with `supplier buyer-document create`. Not paginated. Requires the observer role or above.",
+      "method": "GET",
+      "path": "/srm/suppliers/:supplier_id/buyer_documents",
+      "path_params": [
+        "supplier_id"
+      ],
+      "params": [],
+      "response": "200 with an array of {id, supplier_id, setting_buyer_document_id, name, label, field_type, value, state, qualification_id, category_display_name, user_email, created_at, file}. `field_type` is one of currency, select, text_input, upload, multi_select. `value` is the text as stored: a multi_select joins the options with \", \", a currency holds the amount in cents, and an upload has no value (read `file`). `file` is null or {filename, content_type, byte_size, url}, where `url` downloads the file and expires in 5 minutes. `qualification_id` and `category_display_name` are null when the field belongs to the supplier and not to one category. 404 Rails default {status, error} when the supplier is unknown or belongs to another buyer; 403 {error} below the observer role; 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm/buyer_documents#index"
+    },
+    {
+      "command": [
+        "supplier",
+        "buyer-document",
+        "update"
+      ],
+      "summary": "Change the value or the file of a filled custom field (Editar)",
+      "description": "Changes the value or the file of ONE custom field already filled in for a supplier — the same action as editing a field in the supplier's Campos personalizados tab. The positional id is the field id, taken from `supplier buyer-document list`. Send `value` or `file` with the same rules as `supplier buyer-document create`: for an upload field, run `lk upload --file <path>` first and pass the `signed_id` as `--file`. The change never edits in place: it creates a NEW version with a NEW id and moves the current one to the history. The response `id` is the new one and `previous_buyer_document_id` the one you sent — use the new id from now on. The category of the field stays the same. Requires the operator role or above.",
+      "method": "PATCH",
+      "path": "/srm/buyer_documents/:id",
+      "path_params": [
+        "id"
+      ],
+      "body_root": "buyer_document",
+      "params": [
+        {
+          "name": "value",
+          "type": "string",
+          "required": false,
+          "desc": "The new value, for every type but upload. multi_select takes a JSON list ('[\"A\",\"B\"]'); currency takes Brazilian format (\"1.234,56\").",
+          "in": "body"
+        },
+        {
+          "name": "file",
+          "type": "string",
+          "required": false,
+          "desc": "For an upload field: the `signed_id` returned by `lk upload`.",
+          "in": "body"
+        }
+      ],
+      "response": "200 with the new version, same shape as a row of `supplier buyer-document list` plus `previous_buyer_document_id` (the id you sent). 422 {errors:[...]} when the value is not valid for the field type, the file type is not accepted or the field was archived in the settings; 422 {error} when `file` is not a signed_id from `lk upload`. 404 Rails default {status, error} when the id is unknown, belongs to another buyer or was removed. 403 {error} below the operator role. 401 (empty body) when unauthenticated.",
+      "auth": "pat",
+      "controller": "srm/buyer_documents#update"
     },
     {
       "command": [
