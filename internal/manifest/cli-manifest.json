@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-11-11T22:12:51Z",
-  "source": "linkanalabs/linkana@a07ab08113",
+  "generated_at": "2026-11-11T22:19:38Z",
+  "source": "linkanalabs/linkana@a928eab0eb",
   "endpoints": [
     {
       "command": [
@@ -4136,7 +4136,7 @@
           "in": "body"
         }
       ],
-      "response": "201 with the new field, same shape as a row of `supplier buyer-document list`. 422 {errors:[...]} when the field is already filled for the supplier (and category), the value is not valid for the field type, or the file type is not accepted; 422 {error} when `file` is not a signed_id from `lk upload`. 404 Rails default {status, error} when the supplier, the field or the qualification is unknown or belongs to another buyer. 403 {error} below the operator role or when the buyer has no custom field left for this supplier. 401 (empty body) when unauthenticated.",
+      "response": "201 with the new field, same shape as a row of `supplier buyer-document list`. 422 {errors:[...]} when the field is already filled for the supplier (and category) — the message says to edit the existing field, which is `supplier buyer-document update` —, the value is not valid for the field type, or the file type is not accepted; 422 {error} when `file` is not a signed_id from `lk upload`. 404 Rails default {status, error} when the supplier, the field or the qualification is unknown or belongs to another buyer. 403 {error} below the operator role or when the buyer has no custom field left for this supplier. 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm/buyer_documents#create"
     },
@@ -4188,7 +4188,7 @@
           "in": "body"
         }
       ],
-      "response": "200 with the new version, same shape as a row of `supplier buyer-document list` plus `previous_buyer_document_id` (the id you sent). 422 {errors:[...]} when the value is not valid for the field type, the file type is not accepted or the field was archived in the settings; 422 {error} when `file` is not a signed_id from `lk upload`. 404 Rails default {status, error} when the id is unknown, belongs to another buyer or was removed. 403 {error} below the operator role. 401 (empty body) when unauthenticated.",
+      "response": "200 with the new version, same shape as a row of `supplier buyer-document list` plus `previous_buyer_document_id` (the id you sent). 422 {errors:[...]} when the value is not valid for the field type, the file type is not accepted or the field was archived in the settings while its filled values were kept; 422 {error} when `file` is not a signed_id from `lk upload`. 404 Rails default {status, error} when the id is unknown, belongs to another buyer, or was archived together with the field in the settings. 403 {error} below the operator role. 401 (empty body) when unauthenticated.",
       "auth": "pat",
       "controller": "srm/buyer_documents#update"
     },
