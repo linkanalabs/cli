@@ -182,6 +182,10 @@ lk settings tag delete
 lk settings tag list
 lk settings tag update
 lk supplier
+lk supplier buyer-document
+lk supplier buyer-document create
+lk supplier buyer-document list
+lk supplier buyer-document update
 lk supplier create
 lk supplier document
 lk supplier document list

@@ -10,8 +10,9 @@ engenharia. Fala com o backend Rails via `format.json`.
 ## Status
 
 Esqueleto + `doctor` + autenticação via PAT (`auth`, `whoami`) + impersonação +
-`upload`. Os comandos de recurso (`supplier`, `supplier document`, `document`,
-`settings`, `qualification`, …) vêm do manifest embutido; `lk --help` lista os
+`upload`. Os comandos de recurso (`supplier`, `supplier document`,
+`supplier buyer-document`, `document`, `settings`, `qualification`, …) vêm do
+manifest embutido; `lk --help` lista os
 grupos e `lk <grupo> --help` os comandos de cada um.
 
 ## Instalação

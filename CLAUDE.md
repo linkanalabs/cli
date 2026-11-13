@@ -138,7 +138,7 @@ Next phases: self-describing `lk schema`, embedded `SKILL.md`.
 The Rails backend generates a `cli-manifest.json` describing the exposed
 endpoints; the CLI vendors that file in `internal/manifest/cli-manifest.json`
 (go:embed) and builds Cobra commands at runtime with a generic REST executor.
-The manifest carries every resource command — `supplier`, `supplier document`,
+The manifest carries every resource command — `supplier`, `supplier document`, `supplier buyer-document`,
 `document`, `qualification` and the `settings` groups; `SURFACE.txt` is the full
 list.
 
