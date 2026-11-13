@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-11-11T22:19:38Z",
-  "source": "linkanalabs/linkana@a928eab0eb",
+  "generated_at": "2026-11-13T16:50:12Z",
+  "source": "linkanalabs/linkana@1efa66d253",
   "endpoints": [
     {
       "command": [
@@ -297,7 +297,7 @@
         "renew-at"
       ],
       "summary": "Change the renewal date of one document (Renovação)",
-      "description": "Sets the date when ONE document is renewed — the same action as editing 'Renovação' on the document page. The positional id is the document id, taken from `supplier document list`. Only a reviewed document accepts it (`clear`, `not_clear` or `informative`): one in `ready_to_review` or `processing` answers 403. Requires the operator role or above, and the user must belong to the document's review group when the group restricts its reviewers. Sends no email by itself. This changes ONE document once; for a recurring rule across the buyer's documents of a type use `settings document update-monitoring` instead.",
+      "description": "Sets the date when ONE document is renewed — the same action as editing 'Renovação' on the document page. The positional id is the document id, taken from `supplier document list`. Only a reviewed document accepts it (`clear`, `not_clear` or `informative`): one in `ready_to_review` or `processing` answers 403. Requires the operator role or above, and the user must belong to the document's review group when the group restricts its reviewers. Sends no email by itself. A date of today or earlier on a Consulta (certificate) makes the next daily renewal run renew it, as long as the supplier is connected: a new version is created and, when the Consulta is issued automatically, the Linkana queries the external source again — a new PAID lookup (Serasa, for one, is charged to the buyer's own contract). The document's next renewal then counts from that new lookup; the buyer's renewal setting does not change. This changes ONE document once; for a recurring rule across the buyer's documents of a type use `settings document update-monitoring` instead.",
       "method": "PATCH",
       "path": "/srm/documents/renewals/:id",
       "path_params": [
@@ -2414,8 +2414,8 @@
         "document",
         "update-attrs"
       ],
-      "summary": "Edit the identity fields of a document of any type",
-      "description": "Writes the Atributos tab of ANY `SettingDocument` — certificate, check, form or bank information. It replaced the per-type `update` commands, which were unequal and could not reach every field: `hint`, `national_pj`, `national_pf` and `international` on a certificate or a check are set here, `allow_pf_bank_account` on an Informações bancárias document, and the integration code (`webhook_reference`, `send_document_reviewed_event`), the same fields the web screen edits in Editar informações. Every field is optional; send only what changes. The id is a positional argument, from `settings document list`. Read the result back with `settings document show`. Requires the admin role or above.",
+      "summary": "Edit the identity fields of a form, and the integration code of a document of any type",
+      "description": "Writes the Atributos tab of ANY `SettingDocument` — certificate, check, form or bank information. `display_name`, `hint`, `national_pj`, `national_pf`, `international`, `default_responsible_party` and `support_materials_attributes` are written only on a Formulário: on the standard documents of the Linkana (certificate, check, bank information, financial statement) the Linkana defines them, and changing any of them answers 422 without writing anything (sending the value already saved, or a support material list that adds, edits or removes nothing, is accepted). `fallback_responsible_party_rule` on a certificate, `allow_pf_bank_account` on an Informações bancárias document, and the integration code (`webhook_reference`, `send_document_reviewed_event`), the same fields the web screen edits in Editar informações. Every field is optional; send only what changes. The id is a positional argument, from `settings document list`. Read the result back with `settings document show`. Requires the admin role or above.",
       "method": "PATCH",
       "path": "/srm_settings/documents_attrs/:id",
       "path_params": [
@@ -2441,7 +2441,7 @@
           "name": "support_materials_attributes",
           "type": "array",
           "required": false,
-          "desc": "JSON array of support material (Material de apoio) objects, shown to the supplier under the hint: [{\"kind\":\"link\",\"url\":\"https://...\",\"label\":\"Baixe o modelo\"}] adds a link; [{\"id\":\"<uuid>\",\"label\":\"Novo texto\"}] edits one; [{\"id\":\"<uuid>\",\"_destroy\":true}] removes one. Each `id` comes from `support_materials` in `settings document show`; entries you do not send stay as they are. A null `label` shows as 'visualize aqui'. Files (kind `file`) are uploaded in the web form only. A non-http(s) url answers 422, and an id of another document answers 404.",
+          "desc": "Only on a Formulário — a standard document of the Linkana has no support material, and adding, editing or removing one there answers 422. JSON array of support material (Material de apoio) objects, shown to the supplier under the hint:[{\"kind\":\"link\",\"url\":\"https://...\",\"label\":\"Baixe o modelo\"}] adds a link; [{\"id\":\"<uuid>\",\"label\":\"Novo texto\"}] edits one; [{\"id\":\"<uuid>\",\"_destroy\":true}] removes one. Each `id` comes from `support_materials` in `settings document show`; entries you do not send stay as they are. A null `label` shows as 'visualize aqui'. Files (kind `file`) are uploaded in the web form only. A non-http(s) url answers 422, and an id of another document answers 404.",
           "in": "body",
           "item": "object"
         },
@@ -2481,7 +2481,7 @@
           "name": "fallback_responsible_party_rule",
           "type": "string",
           "required": false,
-          "desc": "Only meaningful for a catalog CND_STATE, CDA_STATE or CENPROT with emission automation whose default_responsible_party is not supplier: what to do when the certificate cannot be issued at all. On CENPROT the choice is saved but does not change the outcome yet — a new CENPROT still ends as INFORMATIVE. `mark_unavailable` records it as unavailable (INFORMATIVE, with the reason in the review comment), with no pending item for anyone and no refusal in the risk, and is accepted only on CND_STATE and CDA_STATE — any other certificate answers 422. `supplier` asks the supplier for the document, `buyer` keeps it as the buyer's own pending upload, `refuse` records it as refused without asking the supplier (going through the review queue first when the buyer requires human confirmation of refusals). Defaults to buyer, and a Consulta estadual do catálogo nasce em supplier.",
+          "desc": "Only meaningful for a catalog CND_STATE, CDA_STATE or CENPROT with emission automation whose default_responsible_party is not supplier: what to do when the certificate cannot be issued at all. A new CENPROT of a legal entity follows the saved rule, with the reason 'Consulta sem cobertura do provedor' in the review comment. `mark_unavailable` records it as unavailable (INFORMATIVE, with the reason in the review comment), with no pending item for anyone and no refusal in the risk, and is accepted only on CND_STATE and CDA_STATE — any other certificate answers 422. `supplier` asks the supplier for the document, `buyer` keeps it as the buyer's own pending upload, `refuse` records it as refused without asking the supplier (going through the review queue first when the buyer requires human confirmation of refusals). Defaults to buyer, and a Consulta estadual do catálogo nasce em supplier.",
           "in": "body",
           "enum": [
             "mark_unavailable",
