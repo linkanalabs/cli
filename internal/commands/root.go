@@ -26,13 +26,22 @@ func SetVersion(v string) {
 	}
 }
 
-// newRootCmd builds a fresh command tree. A constructor (rather than a package
-// global) keeps tests isolated from each other.
+// newRootCmd builds a fresh command tree that never asks the backend for its
+// manifest. A constructor (rather than a package global) keeps tests isolated
+// from each other.
 func newRootCmd() *cobra.Command {
+	return buildRootCmd(false)
+}
+
+// buildRootCmd builds the command tree. With refreshManifest the dynamic
+// commands come from the backend's manifest when the local copy is old.
+func buildRootCmd(refreshManifest bool) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "lk",
 		Short: "Linkana CLI",
 		Long: "lk is the command-line interface for Linkana.\n\n" +
+			"Not sure which command? `lk cli search \"<what you want to do>\"` lists the\n" +
+			"best matches; then `lk <command> --help` shows its flags.\n\n" +
 			"Output formats (--format):\n" +
 			"  auto      styled on a terminal, json when piped (default)\n" +
 			"  json      the stable contract: the response, pretty-printed\n" +
@@ -56,10 +65,11 @@ func newRootCmd() *cobra.Command {
 	root.AddCommand(newUpdateCmd())
 	root.AddCommand(newCertificateListsCmds())
 	root.AddCommand(newUploadCmd())
+	root.AddCommand(newCliCmd())
 	// Dynamic (manifest-driven) commands mount last so manual commands always
 	// win name collisions. A manifest load failure disables them; `lk version`
 	// surfaces the manifest state.
-	if m, err := loadManifest(); err == nil {
+	if m, err := loadManifest(refreshManifest); err == nil {
 		registerDynamic(root, m)
 	}
 	return root
@@ -76,7 +86,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 // stdin (e.g. auth login prompt) stay testable. It also reports which command
 // cobra actually ran, which Execute needs and run() discards.
 func runWith(stdin io.Reader, args []string, stdout, stderr io.Writer) (int, *cobra.Command) {
-	root := newRootCmd()
+	root := buildRootCmd(wantsFreshManifest(args))
 	root.SetArgs(args)
 	root.SetIn(stdin)
 	root.SetOut(stdout)

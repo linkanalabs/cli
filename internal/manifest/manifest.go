@@ -35,6 +35,10 @@ type Manifest struct {
 	GeneratedAt     string     `json:"generated_at"`
 	Source          string     `json:"source"`
 	Endpoints       []Endpoint `json:"endpoints"`
+
+	// Origin says where this copy came from (OriginEmbedded, OriginCache or
+	// OriginBackend). It is set by Remote and never read from the JSON.
+	Origin string `json:"-"`
 }
 
 // Endpoint describes one backend endpoint exposed as a dynamic command.

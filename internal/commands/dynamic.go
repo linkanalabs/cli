@@ -10,9 +10,6 @@ import (
 	"github.com/linkanalabs/cli/internal/manifest"
 )
 
-// loadManifest is a seam so tests can substitute the embedded manifest.
-var loadManifest = manifest.Load
-
 // registerDynamic mounts the manifest-driven command tree under root. Manual
 // commands are registered first and always win: any name collision at the same
 // level silently skips the dynamic endpoint.
