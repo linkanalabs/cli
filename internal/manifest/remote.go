@@ -30,8 +30,10 @@ const RemotePath = "/cli/manifest.json"
 const (
 	DefaultMaxAge  = 5 * time.Minute
 	DefaultTimeout = 3 * time.Second
-	maxBodyBytes   = 16 << 20
 )
+
+// maxBodyBytes caps the manifest body; a var so tests can lower it.
+var maxBodyBytes int64 = 16 << 20
 
 // Remote resolves the manifest of the backend the CLI talks to. It keeps one
 // copy per BaseURL under CacheDir and asks the backend again only after MaxAge
@@ -108,8 +110,8 @@ func (r *Remote) fetch(ctx context.Context, cached *Manifest, meta *cacheMeta) *
 		return nil
 	}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBodyBytes))
-	if err != nil {
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBodyBytes+1))
+	if err != nil || int64(len(body)) > maxBodyBytes {
 		return nil
 	}
 	m, err := Parse(body)

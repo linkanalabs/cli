@@ -249,6 +249,21 @@ func TestRemoteFallsBackWhenTheCacheCannotBeWritten(t *testing.T) {
 	}
 }
 
+func TestRemoteFallsBackSilentlyOnAnOversizedBody(t *testing.T) {
+	b := newBackend(t)
+	r, warn := newRemote(t, b, &clock{t: time.Now()})
+	prev := maxBodyBytes
+	maxBodyBytes = int64(len(remoteManifest)) - 1
+	t.Cleanup(func() { maxBodyBytes = prev })
+
+	if m := resolve(t, r, true); m.Origin != OriginEmbedded {
+		t.Errorf("origin %q", m.Origin)
+	}
+	if warn.Len() != 0 {
+		t.Errorf("warned about an oversized body: %q", warn.String())
+	}
+}
+
 func TestRemoteHonoursMaxAgeAndHTTPClient(t *testing.T) {
 	b := newBackend(t)
 	c := &clock{t: time.Now()}

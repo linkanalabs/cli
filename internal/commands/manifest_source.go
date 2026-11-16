@@ -77,9 +77,11 @@ func resolveManifest(refresh bool) (*manifest.Manifest, error) {
 	return r.Resolve(context.Background(), refresh)
 }
 
-// manifestToken is the credential the next command will use: the active
-// impersonation when there is one and it has not expired, else the stored
-// token. Any failure only means "do not ask the backend".
+// manifestToken is the credential the next command will use, under the same
+// sticky rule as authedClient: a stored impersonation wins, and once it has
+// expired there is no token at all (every command fails until `lk impersonate
+// stop`), so the manifest is not fetched as another user. Without an
+// impersonation it is the stored token. Any failure means "do not ask".
 func manifestToken(baseURL string) string {
 	if imp, err := auth.LoadImpersonation(baseURL); err == nil && imp != nil {
 		if imp.Expired(timeNow()) {
