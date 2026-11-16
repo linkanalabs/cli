@@ -12,7 +12,8 @@ engenharia. Fala com o backend Rails via `format.json`.
 Esqueleto + `doctor` + autenticação via PAT (`auth`, `whoami`) + impersonação +
 `upload`. Os comandos de recurso (`supplier`, `supplier document`,
 `supplier buyer-document`, `document`, `settings`, `qualification`, …) vêm do
-manifest embutido; `lk --help` lista os
+manifest do backend em que você está logado, então um comando novo chega sem
+atualizar o `lk`. `lk cli search "<tarefa>"` acha o comando, `lk --help` lista os
 grupos e `lk <grupo> --help` os comandos de cada um.
 
 ## Instalação
@@ -154,11 +155,16 @@ aponte para o backend local com `LK_API_URL=http://localhost:3000` (ver `make de
 | `lk auth logout` | apaga o token guardado do `base_url` ativo |
 | `lk whoami` | mostra a identidade autenticada (`GET /my/identity.json`) |
 | `lk upload --file <caminho>` | sobe um arquivo (direct upload) e imprime o `signed_id` que os comandos de anexo esperam |
+| `lk cli search "<tarefa>"` | lista os 5 comandos que mais combinam com a tarefa, em português ou inglês (`--limit` muda o número) |
 | `lk --help` | ajuda, com os grupos de comando; `lk <grupo> --help` desce um nível |
 
 Comandos de recurso, como `lk supplier list`, `lk supplier document list` e
-`lk document review`, vêm do manifest embutido. `lk <comando> --help` mostra o
-endpoint, os parâmetros e a resposta de cada um.
+`lk document review`, vêm do manifest do backend (`GET /cli/manifest.json`). O
+`lk` guarda uma cópia por `base_url` e confere de novo depois de 5 minutos. Com
+o backend fora do ar, usa a cópia; sem cópia, o manifest embutido no binário.
+`lk version` diz qual está em uso, e `LK_NO_REMOTE_MANIFEST=1` desliga a
+consulta. `lk <comando> --help` mostra o endpoint, os parâmetros e a resposta de
+cada um.
 
 ## Autenticação
 
