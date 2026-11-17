@@ -34,6 +34,9 @@ var offlineCommands = map[string]bool{
 	"doctor":     true,
 	"update":     true,
 	"completion": true,
+	// cobra's hidden commands behind shell tab completion
+	"__complete":       true,
+	"__completeNoDesc": true,
 }
 
 // wantsFreshManifest reports whether the invocation may ask the backend for
@@ -83,7 +86,11 @@ func resolveManifest(refresh bool) (*manifest.Manifest, error) {
 // stop`), so the manifest is not fetched as another user. Without an
 // impersonation it is the stored token. Any failure means "do not ask".
 func manifestToken(baseURL string) string {
-	if imp, err := auth.LoadImpersonation(baseURL); err == nil && imp != nil {
+	imp, err := auth.LoadImpersonation(baseURL)
+	if err != nil {
+		return ""
+	}
+	if imp != nil {
 		if imp.Expired(timeNow()) {
 			return ""
 		}

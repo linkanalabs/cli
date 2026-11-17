@@ -91,11 +91,11 @@ func Decide(in Inputs) (d Decision) {
 	// be shown to have installed: say what to run instead.
 	case in.TapLocal == "":
 		d.Command = BrewUpgradeCommand
-	// GoReleaser commits the cask for prerelease tags too (no skip_upload), and
-	// /releases/latest skips prereleases — so a `vX.Y.Z-rc.1` tag makes the tap
-	// serve a release candidate while the published latest stays stable. Never
-	// move a stable installation onto one unprompted; say so and let the person
-	// decide.
+	// The cask has skip_upload: auto, so a `vX.Y.Z-rc.1` tag should never reach
+	// the tap. If one does anyway (the setting reverted, a cask committed by
+	// hand), the tap serves a release candidate while /releases/latest stays
+	// stable. Never move a stable installation onto one unprompted; say so and
+	// let the person decide.
 	case Prerelease(in.TapRemote) && !Prerelease(in.Current):
 		warnings = append(warnings, fmt.Sprintf(
 			"%s is a prerelease; lk will not install it on its own", in.TapRemote))

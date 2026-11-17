@@ -33,17 +33,21 @@ type searchResult struct {
 type searchResults []searchResult
 
 // Styled renders one command per line, the usage aligned before its summary.
+// Both come from the backend's manifest, so control characters are escaped
+// before they reach the terminal.
 func (rs searchResults) Styled() string {
 	if len(rs) == 0 {
 		return "no command matches; try other words or `lk --help`\n"
 	}
+	usages := make([]string, len(rs))
 	width := 0
-	for _, r := range rs {
-		width = max(width, len(r.Usage))
+	for i, r := range rs {
+		usages[i] = output.EscapeLayout(r.Usage)
+		width = max(width, len(usages[i]))
 	}
 	var b strings.Builder
-	for _, r := range rs {
-		fmt.Fprintf(&b, "%-*s  %s\n", width, r.Usage, r.Summary)
+	for i, r := range rs {
+		fmt.Fprintf(&b, "%-*s  %s\n", width, usages[i], output.EscapeLayout(r.Summary))
 	}
 	return b.String()
 }
@@ -195,9 +199,30 @@ func queryTerms(query string) [][]string {
 		}
 		forms := []string{w}
 		forms = append(forms, synonyms[w]...)
+		if s := portugueseSingular(w); s != w {
+			forms = append(forms, s)
+			forms = append(forms, synonyms[s]...)
+		}
 		terms = append(terms, forms)
 	}
 	return terms
+}
+
+// portugueseSingular finishes what tokens started on a Portuguese plural, whose
+// final "s" is already gone: fornecedore → fornecedor, aprovacoe → aprovacao,
+// mensagen → mensagem, papei → papel.
+func portugueseSingular(w string) string {
+	switch {
+	case strings.HasSuffix(w, "oe"):
+		return strings.TrimSuffix(w, "oe") + "ao"
+	case strings.HasSuffix(w, "en"):
+		return strings.TrimSuffix(w, "en") + "em"
+	case strings.HasSuffix(w, "ei"):
+		return strings.TrimSuffix(w, "ei") + "el"
+	case strings.HasSuffix(w, "re"), strings.HasSuffix(w, "ze"), strings.HasSuffix(w, "le"):
+		return strings.TrimSuffix(w, "e")
+	}
+	return w
 }
 
 func tokenSet(s string) map[string]bool {

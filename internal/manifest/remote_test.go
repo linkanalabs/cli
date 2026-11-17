@@ -225,6 +225,23 @@ func TestRemoteDoesNotFetchWithoutACacheDirAndStillWorks(t *testing.T) {
 	if m.Origin != OriginEmbedded {
 		t.Errorf("origin %q", m.Origin)
 	}
+	if b.hits.Load() != 0 {
+		t.Errorf("backend asked %d times without a cache dir", b.hits.Load())
+	}
+}
+
+func TestRemoteRechecksWhenTheLastCheckIsInTheFuture(t *testing.T) {
+	b := newBackend(t)
+	c := &clock{t: time.Now()}
+	r, _ := newRemote(t, b, c)
+	resolve(t, r, true)
+
+	c.t = c.t.Add(-time.Hour)
+	resolve(t, r, true)
+
+	if b.hits.Load() != 2 {
+		t.Errorf("backend asked %d times, want 2", b.hits.Load())
+	}
 }
 
 func TestRemoteRejectsAnInvalidBaseURL(t *testing.T) {
@@ -235,7 +252,7 @@ func TestRemoteRejectsAnInvalidBaseURL(t *testing.T) {
 	}
 }
 
-func TestRemoteFallsBackWhenTheCacheCannotBeWritten(t *testing.T) {
+func TestRemoteUsesTheBackendManifestEvenWhenTheCacheCannotBeWritten(t *testing.T) {
 	b := newBackend(t)
 	r, _ := newRemote(t, b, &clock{t: time.Now()})
 	blocker := filepath.Join(t.TempDir(), "file")
@@ -244,8 +261,10 @@ func TestRemoteFallsBackWhenTheCacheCannotBeWritten(t *testing.T) {
 	}
 	r.CacheDir = blocker
 
-	if m := resolve(t, r, true); m.Origin != OriginEmbedded {
-		t.Errorf("origin %q", m.Origin)
+	m := resolve(t, r, true)
+
+	if m.Origin != OriginBackend || m.Source != "linkanalabs/linkana@remote" {
+		t.Errorf("origin %q source %q", m.Origin, m.Source)
 	}
 }
 
