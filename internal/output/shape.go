@@ -121,6 +121,10 @@ func escapeLayout(s string) string {
 
 func needsEscape(r rune) bool { return unicode.IsControl(r) }
 
+// EscapeLayout is escapeLayout for a command that renders its own styled text
+// from backend strings.
+func EscapeLayout(s string) string { return escapeLayout(s) }
+
 // orderedObject is a JSON object that remembers its key order, so rendered
 // output shows columns and fields in the order the backend emitted them.
 type orderedObject struct {

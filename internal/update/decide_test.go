@@ -134,9 +134,10 @@ func TestDecideOnlyCasksSelfUpgrade(t *testing.T) {
 	}
 }
 
-// A `vX.Y.Z-rc.1` tag makes GoReleaser commit the cask (there is no skip_upload)
-// while /releases/latest keeps pointing at the last stable one. Auto-upgrading
-// on that would move the whole fleet onto a release candidate.
+// The cask has skip_upload: auto, so a `vX.Y.Z-rc.1` tag no longer reaches the
+// tap; this guards the case where a release candidate lands there anyway (the
+// setting reverted, a cask committed by hand). Auto-upgrading on that would
+// move the whole fleet onto a release candidate.
 func TestDecideNeverSelfUpgradesOntoAPrerelease(t *testing.T) {
 	got := Decide(Inputs{
 		Install: caskInstall(), Current: "0.8.0",

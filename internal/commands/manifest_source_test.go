@@ -75,12 +75,15 @@ func TestBackendCommandStillRunsFromTheCopyWhenTheBackendManifestFails(t *testin
 	t.Cleanup(func() { timeNow = time.Now })
 	manifestAsked := false
 	server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == manifest.RemotePath {
+		switch r.URL.Path {
+		case manifest.RemotePath:
 			manifestAsked = true
 			http.Error(w, "boom", http.StatusInternalServerError)
-			return
+		case "/srm/gadgets.json":
+			_, _ = w.Write([]byte(`[]`))
+		default:
+			http.NotFound(w, r)
 		}
-		_, _ = w.Write([]byte(`[]`))
 	})
 
 	out.Reset()
@@ -171,6 +174,27 @@ func TestManifestTokenPrefersALiveImpersonation(t *testing.T) {
 	}
 	if got := manifestToken("https://example.test"); got != "" {
 		t.Errorf("with expired impersonation: %q", got)
+	}
+}
+
+func TestManifestTokenIsEmptyWhenTheImpersonationIsUnreadable(t *testing.T) {
+	useRemoteManifest(t, "https://example.test")
+	swapAuthLoad(t, func(string) (string, auth.Source, error) { return "lkn_own", auth.SourceEnv, nil })
+	if err := auth.Save("https://example.test|impersonation", "{broken"); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := manifestToken("https://example.test"); got != "" {
+		t.Errorf("token = %q, want none rather than the original user's", got)
+	}
+}
+
+func TestShellCompletionNeverAsksTheBackend(t *testing.T) {
+	t.Setenv(EnvNoRemoteManifest, "")
+	for _, args := range [][]string{{"__complete", "supplier", ""}, {"__completeNoDesc", "sup"}} {
+		if wantsFreshManifest(args) {
+			t.Errorf("wantsFreshManifest(%v) = true", args)
+		}
 	}
 }
 

@@ -141,6 +141,37 @@ func TestRootHelpPointsToTheSearch(t *testing.T) {
 	}
 }
 
+func TestCliSearchUnderstandsPortuguesePlurals(t *testing.T) {
+	embeddedManifest(t)
+	cases := map[string]string{
+		"listar fornecedores":         "supplier list",
+		"revisar aprovações":          "document review",
+		"mensagens de e-mail":         "settings email-message list",
+		"categorias dos fornecedores": "settings category list",
+	}
+	for query, want := range cases {
+		found := false
+		for _, c := range commandsOf(searchJSON(t, query)) {
+			found = found || c == want
+		}
+		if !found {
+			t.Errorf("%q: %q not found", query, want)
+		}
+	}
+	for in, want := range map[string]string{"fornecedore": "fornecedor", "aprovacoe": "aprovacao", "mensagen": "mensagem", "papei": "papel", "documento": "documento"} {
+		if got := portugueseSingular(in); got != want {
+			t.Errorf("portugueseSingular(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestCliSearchStyledEscapesControlCharacters(t *testing.T) {
+	got := searchResults{{Usage: "lk x", Summary: "evil\x1b[2Jsummary\nfake line"}}.Styled()
+	if strings.ContainsAny(got[:len(got)-1], "\x1b\n") {
+		t.Errorf("styled output carries control characters: %q", got)
+	}
+}
+
 func TestTokensStripAccentsAndPlurals(t *testing.T) {
 	got := strings.Join(tokens("Documentos Bancários, process ação"), " ")
 	if got != "documento bancario process acao" {

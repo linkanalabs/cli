@@ -80,11 +80,18 @@ func (r *Remote) Resolve(ctx context.Context, refresh bool) (*Manifest, error) {
 	return m, nil
 }
 
+// due says whether to ask the backend now. Without a place to keep the copy a
+// fetch would be thrown away on every command, so it never happens; a check
+// stamped in the future (clock moved back) counts as due.
 func (r *Remote) due(meta *cacheMeta) bool {
-	if r.BaseURL == "" || r.Token == "" {
+	if r.BaseURL == "" || r.Token == "" || r.dir() == "" {
 		return false
 	}
-	return meta == nil || r.now().Sub(meta.CheckedAt) >= r.maxAge()
+	if meta == nil {
+		return true
+	}
+	elapsed := r.now().Sub(meta.CheckedAt)
+	return elapsed < 0 || elapsed >= r.maxAge()
 }
 
 // fetch asks the backend for its manifest. It returns nil whenever the caller
@@ -119,10 +126,9 @@ func (r *Remote) fetch(ctx context.Context, cached *Manifest, meta *cacheMeta) *
 		r.warnf("warning: the backend manifest is not readable by this lk version (%v); using the previous copy. Run `lk update`.\n", err)
 		return nil
 	}
-	if err := r.writeManifest(body); err != nil {
-		return nil
+	if r.writeManifest(body) == nil {
+		next.ETag = resp.Header.Get("ETag")
 	}
-	next.ETag = resp.Header.Get("ETag")
 	m.Origin = OriginBackend
 	return m
 }
