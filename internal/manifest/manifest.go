@@ -93,9 +93,40 @@ var validTypes = map[string]bool{
 	TypeDatetime: true, TypeDecimal: true, TypeArray: true, TypeObject: true,
 }
 
+// SupportedVersion is the newest manifest_version this binary was built for.
+const SupportedVersion = 1
+
+// Skipped is an endpoint ParseLenient left out, and why.
+type Skipped struct {
+	Command string
+	Reason  string
+}
+
 // Load parses and validates the embedded manifest.
 func Load() (*Manifest, error) {
 	return Parse(embedded)
+}
+
+// ParseLenient parses manifest JSON keeping only the endpoints this binary can
+// build: one that does not validate (a param type added after this binary, for
+// example) is dropped and reported instead of failing the whole manifest. Only
+// JSON that does not decode is an error.
+func ParseLenient(data []byte) (*Manifest, []Skipped, error) {
+	var m Manifest
+	if err := json.Unmarshal(data, &m); err != nil {
+		return nil, nil, fmt.Errorf("parsing manifest: %w", err)
+	}
+	kept := make([]Endpoint, 0, len(m.Endpoints))
+	var skipped []Skipped
+	for i := range m.Endpoints {
+		if err := m.Endpoints[i].validate(); err != nil {
+			skipped = append(skipped, Skipped{Command: m.Endpoints[i].CommandPath(), Reason: err.Error()})
+			continue
+		}
+		kept = append(kept, m.Endpoints[i])
+	}
+	m.Endpoints = kept
+	return &m, skipped, nil
 }
 
 // Parse parses and validates manifest JSON.
