@@ -41,9 +41,15 @@ func TestACommandThisLkCannotBuildDoesNotHideTheOthers(t *testing.T) {
 		t.Errorf("warning = %q", warn.String())
 	}
 
+	firstWarning := warn.String()
 	out.Reset()
-	run([]string{"gadget", "--help"}, &out, &errOut)
-	if strings.Contains(out.String(), "sync") {
-		t.Errorf("the command this lk cannot build is listed: %q", out.String())
+	if code := run([]string{"gadget", "--help"}, &out, &errOut); code != 0 {
+		t.Fatalf("help exit %d, stderr %q", code, errOut.String())
+	}
+	if !strings.Contains(out.String(), "list") || strings.Contains(out.String(), "sync") {
+		t.Errorf("help = %q", out.String())
+	}
+	if warn.String() != firstWarning {
+		t.Errorf("the warning repeated on a cache read: %q", warn.String())
 	}
 }

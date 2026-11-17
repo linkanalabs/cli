@@ -56,6 +56,45 @@ func TestRemoteKeepsTheCommandsItUnderstandsAndWarnsAboutTheRest(t *testing.T) {
 	}
 }
 
+func TestRemoteRepeatsTheWarningOnA304ButNotOnCacheReads(t *testing.T) {
+	b := newBackend(t)
+	b.body = partlyNewerManifest
+	c := &clock{t: time.Now()}
+	r, warn := newRemote(t, b, c)
+	resolve(t, r, true)
+
+	warn.Reset()
+	c.t = c.t.Add(time.Minute)
+	resolve(t, r, true)
+	if warn.Len() != 0 {
+		t.Errorf("a cache read warned: %q", warn.String())
+	}
+
+	c.t = c.t.Add(DefaultMaxAge)
+	m := resolve(t, r, true)
+	if b.lastReq.Get("If-None-Match") != `"v1"` || m.Origin != OriginBackend {
+		t.Fatalf("not a 304 revalidation: origin %q", m.Origin)
+	}
+	if !strings.Contains(warn.String(), "left out: thing sync") {
+		t.Errorf("the 304 was silent: %q", warn.String())
+	}
+}
+
+func TestRemoteFallsBackOnAManifestWithNoCommand(t *testing.T) {
+	b := newBackend(t)
+	c := &clock{t: time.Now()}
+	r, _ := newRemote(t, b, c)
+	resolve(t, r, true)
+
+	b.body = `{"manifest_version":1,"endpoints":[]}`
+	writeMetaETag(t, r, `"v0"`)
+	m := resolve(t, r, true)
+
+	if m.Origin != OriginCache || len(m.Endpoints) != 1 {
+		t.Errorf("origin %q endpoints %d", m.Origin, len(m.Endpoints))
+	}
+}
+
 func TestRemoteWarnsAboutANewerManifestVersion(t *testing.T) {
 	b := newBackend(t)
 	b.body = strings.Replace(remoteManifest, `"manifest_version":1`, `"manifest_version":2`, 1)

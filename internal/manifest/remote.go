@@ -62,9 +62,9 @@ type cacheMeta struct {
 // Resolve returns the manifest to build the command tree from. With refresh
 // false it never touches the network (offline commands, tests).
 func (r *Remote) Resolve(ctx context.Context, refresh bool) (*Manifest, error) {
-	cached, meta := r.readCache()
+	cached, cachedSkipped, meta := r.readCache()
 	if refresh && r.due(meta) {
-		if m := r.fetch(ctx, cached, meta); m != nil {
+		if m := r.fetch(ctx, cached, cachedSkipped, meta); m != nil {
 			return m, nil
 		}
 	}
@@ -96,7 +96,9 @@ func (r *Remote) due(meta *cacheMeta) bool {
 
 // fetch asks the backend for its manifest. It returns nil whenever the caller
 // should fall back, after recording the check so the next one waits MaxAge.
-func (r *Remote) fetch(ctx context.Context, cached *Manifest, meta *cacheMeta) *Manifest {
+// Every answer it uses, a 304 included, repeats the warning about commands this
+// binary left out; reading the copy between checks stays silent.
+func (r *Remote) fetch(ctx context.Context, cached *Manifest, cachedSkipped []Skipped, meta *cacheMeta) *Manifest {
 	next := cacheMeta{BaseURL: r.BaseURL, CheckedAt: r.now()}
 	if meta != nil {
 		next.ETag = meta.ETag
@@ -111,6 +113,7 @@ func (r *Remote) fetch(ctx context.Context, cached *Manifest, meta *cacheMeta) *
 
 	switch {
 	case resp.StatusCode == http.StatusNotModified && cached != nil:
+		r.warnNewer(cached, cachedSkipped)
 		cached.Origin = OriginBackend
 		return cached
 	case resp.StatusCode != http.StatusOK:
@@ -122,7 +125,10 @@ func (r *Remote) fetch(ctx context.Context, cached *Manifest, meta *cacheMeta) *
 		return nil
 	}
 	m, skipped, err := ParseLenient(body)
-	if err == nil && len(m.Endpoints) == 0 && len(skipped) > 0 {
+	if err == nil && len(m.Endpoints) == 0 {
+		if len(skipped) == 0 {
+			return nil
+		}
 		err = fmt.Errorf("none of its %d commands is readable", len(skipped))
 	}
 	if err != nil {
@@ -190,14 +196,15 @@ func (c cancelOnClose) Close() error {
 	return c.ReadCloser.Close()
 }
 
-// readCache returns the stored copy and its metadata. Commands of the copy this
-// binary cannot build are left out silently (fetch already warned); a copy that
-// does not decode, or keeps no command, is ignored, but its metadata still
-// counts so a broken copy does not trigger a fetch on every command.
-func (r *Remote) readCache() (*Manifest, *cacheMeta) {
+// readCache returns the stored copy, the commands of it this binary cannot
+// build (left out, and reported only when the backend is asked again), and its
+// metadata. A copy that does not decode, or keeps no command, is ignored, but
+// its metadata still counts so a broken copy does not trigger a fetch on every
+// command.
+func (r *Remote) readCache() (*Manifest, []Skipped, *cacheMeta) {
 	dir := r.dir()
 	if dir == "" {
-		return nil, nil
+		return nil, nil, nil
 	}
 	var meta *cacheMeta
 	if data, err := os.ReadFile(filepath.Join(dir, "meta.json")); err == nil {
@@ -208,13 +215,13 @@ func (r *Remote) readCache() (*Manifest, *cacheMeta) {
 	}
 	data, err := os.ReadFile(filepath.Join(dir, "manifest.json"))
 	if err != nil {
-		return nil, meta
+		return nil, nil, meta
 	}
-	m, _, err := ParseLenient(data)
+	m, skipped, err := ParseLenient(data)
 	if err != nil || len(m.Endpoints) == 0 {
-		return nil, meta
+		return nil, nil, meta
 	}
-	return m, meta
+	return m, skipped, meta
 }
 
 func (r *Remote) writeManifest(body []byte) error {
