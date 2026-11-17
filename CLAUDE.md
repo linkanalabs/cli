@@ -136,11 +136,8 @@ Next phases: self-describing `lk schema`, embedded `SKILL.md`.
 ## Manifest-driven dynamic commands (LIN-6332)
 
 The Rails backend generates a `cli-manifest.json` describing the exposed
-endpoints and serves the deployed one at `GET /cli/manifest.json` (PAT auth,
-ETag). The CLI builds Cobra commands at runtime from that manifest with a
-generic REST executor, so a command exposed on the backend reaches `lk` on the
-same deploy, without a CLI release. A copy of the file is still vendored in
-`internal/manifest/cli-manifest.json` (go:embed) as the last fallback.
+endpoints; the CLI vendors that file in `internal/manifest/cli-manifest.json`
+(go:embed) and builds Cobra commands at runtime with a generic REST executor.
 The manifest carries every resource command — `supplier`, `supplier document`, `supplier buyer-document`,
 `document`, `qualification` and the `settings` groups; `SURFACE.txt` is the full
 list.
@@ -149,21 +146,6 @@ list.
   (command/method/path required, closed type and `in` sets, a path_param must
   exist in the path). `make update-manifest` downloads the fresh copy from the
   Rails repo (fails cleanly on 404, never overwrites with garbage).
-- `internal/manifest/remote.go` — `Remote.Resolve`: one copy per `base_url` in
-  `$XDG_STATE_HOME/lk/manifests/`, re-checked with the ETag 5 minutes after the
-  last check (3s timeout). Backend down, 4xx/5xx or a manifest this binary cannot
-  `Parse` → the last copy, then the embedded one (an unreadable one warns on
-  stderr to run `lk update`). It never fails a command.
-- `internal/commands/manifest_source.go` — `wantsFreshManifest(args)` decides
-  from the raw args (the tree exists before cobra picks the command): `version`,
-  `--version`, `config`, `auth`, `doctor`, `update` and `completion` never ask the
-  backend. The token is the live impersonation, else the stored one.
-  `LK_NO_REMOTE_MANIFEST=1` turns the fetch off; the tests' `TestMain` sets it and
-  points `XDG_STATE_HOME` at a temp dir.
-- `internal/commands/cli_search.go` — `lk cli search "<task>"`: scores every
-  runnable command (dynamic and manual) — name 10, name prefix 6, summary 3, long
-  help 1 per query word, Portuguese domain words mapped to the English command
-  words — and lists the top 5 (JSON by default).
 - `internal/commands/dynamic.go` — `registerDynamic(root, m)` runs at the END of
   `newRootCmd()`: **manual commands register first and win name collisions at the
   same level** (a colliding dynamic command is silently skipped). Intermediate
@@ -177,8 +159,7 @@ list.
   arrays as `name[]`) or body (`in: body`, wrapped in `body_root`) →
   `client.Do` (inherits the Bearer token and the `.json` suffix). 2xx → raw JSON on
   stdout; 401 → login hint; non-2xx → body on stderr + exit 1.
-- `lk version` shows `manifest: <generated_at> (<source>, <origin>)`, origin
-  being `embedded`, `cache` or `backend`.
+- `lk version` shows `manifest: <generated_at> (<source>)`.
 - `SURFACE.txt` at the root is the golden of the full command tree; the
   `TestSurfaceGolden` test compares and regenerates with
   `go test ./internal/commands -run TestSurfaceGolden -update`. Changed the
@@ -191,20 +172,22 @@ list.
 **How to request (trigger).** Requests like "expose/add/promote/make-dynamic the
 command X on the CLI", "expose `<controller#action>` on lk", "I want `<resource>`
 on lk" (PT or EN — "expõe/adiciona/dinamiza o comando X", "quero X no lk") trigger
-THIS process in full. Since the CLI reads the backend's manifest, the work lives in
-`linkana` only; the cli and lk-stack phases below say when they still apply. When
+THIS process in full. The default scope is ALWAYS the three repos (linkana → cli →
+lk-stack) — a delivery that stops at Phase 1 or 2 is incomplete. Only do a partial
+scope if the request explicitly says so ("just the backend" / "cli only"). When
 unsure whether it's one command or several, or about id dependencies
 (reference-chaining), ask before starting.
 
-Every new command (or surface/param change) follows the same ordered steps. The
-reference slice is PR #14103 (`settings email-message`):
+Every new command (or surface/param change) **spans three repos** and follows the
+same ordered steps. The reference slice is PR #14103 (`settings email-message`):
 `cli_expose` + `config/cli/<x>.yml` + JSON branch/jbuilder + `_cli_test.rb` +
 regenerated manifest. **Done = all of the verification gate below is demonstrable
 with real output** (not "looks right"): Rails tests green (CLI + web untouched),
 `cli:manifest:check` green, `make test|lint|cover` (≥95%) green, `SURFACE.txt`
 golden green, **the real `lk` binary exercised end-to-end against a backend
-(incl. error paths: 401 hint, 4xx/422 on stderr + exit 1)**, and `lk cli search`
-finding it. Nothing merges/publishes without explicit approval.
+(incl. error paths: 401 hint, 4xx/422 on stderr + exit 1)**, and the lk-stack
+skill updated with reference chaining. Nothing merges/publishes without
+explicit approval.
 
 **Contract-mapping rules** (the contract lives in the controller's
 `params.expect`/`permit`, not the YAML — read the action first):
@@ -235,21 +218,26 @@ chaining becomes skill instruction (Phase C).
    `cli:manifest:check` verdes E `curl` real contra o backend local de pé (PAT) — os
    dois passando, saída do curl colada na descrição** (ver CLAUDE.local.md). Stack
    dependentes com `gh-stack`.
-2. **cli — nenhum PR por comando.** O `lk` lê o manifest do backend (ver acima), e o
-   comando chega no mesmo deploy. Prove e2e com o binário atual contra o backend
-   local (`LK_API_URL`), incluindo os caminhos de erro. Re-vendorizar o manifest
-   embutido (`make update-manifest`, que lê a `main`) só atualiza o fallback: faça
-   antes de um release, não por comando.
-3. **lk-stack — nenhum PR por comando.** A skill `lk` ensina `lk cli search` e
-   `lk <comando> --help`, e o reference chaining vive na descrição do comando
-   (`config/cli/<x>.yml`). Só edite a skill para uma regra que não cabe na descrição
-   (efeito colateral, lote, confirmação).
+2. **cli — UM PR consolidado por LOTE, só depois que TODOS os PRs de linkana do lote
+   estiverem mergeados na `main`.** NÃO abrir um PR de cli por comando. Quando o
+   último backend entrar na `main`, rode `make update-manifest` **uma vez** (ele
+   vendoriza o manifest inteiro e atualizado, capturando todos os comandos do lote de
+   uma vez); `TestSurfaceGolden -update`; `make test|lint|cover` (≥95%); **prove
+   e2e com o binário real** contra o backend local (`make dev` / `LK_API_URL`),
+   incluindo os caminhos de erro. `make update-manifest` lê a `main`.
+3. **lk-stack — PAREADO com o PR de cli (abrir juntos).** Update the `lk` skill in
+   `lk-stack/lk-tools/skills/lk/` — `SKILL.md` and/or `references/command-catalog.md`
+   — ensinando todos os comandos novos/alterados do lote (syntax, flags) e o
+   **reference chaining** (qual comando rodar antes para obter cada id). O PR de cli e
+   o de lk-stack são um par: o cli expõe, a skill ensina; revisar/mergear juntos.
 
-**Ordering & stacking:** planos dependentes rodam em ondas (um comando que precisa
-do id de outro é onda posterior). **No linkana, um PR por comando, empilhando
-dependentes com `gh-stack`** (base primeiro), review na ordem do stack. PR no cli só
-quando muda o próprio CLI (auth, executor, formato de saída, tipo novo de param) ou
-antes de um release; no lk-stack, só quando a skill ganha uma regra nova.
+**Ordering & stacking:** ordem cross-repo é sempre linkana (todos os PRs do lote
+mergeados na `main`) → cli → lk-stack. Planos dependentes rodam em ondas (um comando
+que precisa do id de outro é onda posterior). **No linkana, um PR por comando,
+empilhando dependentes com `gh-stack`** (base primeiro), review na ordem do stack.
+**As fases cli e lk-stack acontecem UMA vez por lote** (não por comando): um único PR
+de cli consolidado + um único PR de lk-stack, abertos juntos depois que o backend do
+lote estiver 100% mergeado.
 
 ## Impersonation / buyer-scope (LIN-5921)
 
