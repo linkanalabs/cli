@@ -114,7 +114,10 @@ func (r *Remote) fetch(ctx context.Context, cached *Manifest, meta *cacheMeta) *
 	if err != nil || int64(len(body)) > maxBodyBytes {
 		return nil
 	}
-	m, err := Parse(body)
+	m, skipped, err := ParseLenient(body)
+	if err == nil && len(m.Endpoints) == 0 && len(skipped) > 0 {
+		err = fmt.Errorf("none of its %d commands is readable", len(skipped))
+	}
 	if err != nil {
 		r.warnf("warning: the backend manifest is not readable by this lk version (%v); using the previous copy. Run `lk update`.\n", err)
 		return nil
@@ -122,9 +125,30 @@ func (r *Remote) fetch(ctx context.Context, cached *Manifest, meta *cacheMeta) *
 	if err := r.writeManifest(body); err != nil {
 		return nil
 	}
+	r.warnNewer(m, skipped)
 	next.ETag = resp.Header.Get("ETag")
 	m.Origin = OriginBackend
 	return m
+}
+
+// warnNewer says, once per fetch, what this binary left out of a manifest
+// written for a newer lk. The other commands keep working.
+func (r *Remote) warnNewer(m *Manifest, skipped []Skipped) {
+	if len(skipped) > 0 {
+		names := make([]string, len(skipped))
+		for i, s := range skipped {
+			names[i] = s.Command
+			if names[i] == "" {
+				names[i] = "(unnamed)"
+			}
+		}
+		r.warnf("warning: %d backend command(s) need a newer lk and were left out: %s. Run `lk update`.\n",
+			len(skipped), strings.Join(names, ", "))
+	}
+	if m.ManifestVersion > SupportedVersion {
+		r.warnf("warning: the backend manifest is version %d and this lk knows up to %d; some commands may behave differently. Run `lk update`.\n",
+			m.ManifestVersion, SupportedVersion)
+	}
 }
 
 func (r *Remote) request(ctx context.Context, conditional bool, etag string) (*http.Response, error) {
@@ -160,9 +184,10 @@ func (c cancelOnClose) Close() error {
 	return c.ReadCloser.Close()
 }
 
-// readCache returns the stored copy and its metadata. A copy that no longer
-// parses (written by a newer lk, or truncated) is ignored, but its metadata
-// still counts so a broken copy does not trigger a fetch on every command.
+// readCache returns the stored copy and its metadata. Commands of the copy this
+// binary cannot build are left out silently (fetch already warned); a copy that
+// does not decode, or keeps no command, is ignored, but its metadata still
+// counts so a broken copy does not trigger a fetch on every command.
 func (r *Remote) readCache() (*Manifest, *cacheMeta) {
 	dir := r.dir()
 	if dir == "" {
@@ -179,8 +204,8 @@ func (r *Remote) readCache() (*Manifest, *cacheMeta) {
 	if err != nil {
 		return nil, meta
 	}
-	m, err := Parse(data)
-	if err != nil {
+	m, _, err := ParseLenient(data)
+	if err != nil || len(m.Endpoints) == 0 {
 		return nil, meta
 	}
 	return m, meta
