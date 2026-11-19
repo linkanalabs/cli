@@ -1,0 +1,31 @@
+.claude/skills/release/SKILL.md
+  s_868eb6e2c9b807::t_650c677797c666 3,19
+AGENTS.md
+  s_868eb6e2c9b807::t_5a71c89976f25a 1-380
+CLAUDE.md
+  s_868eb6e2c9b807::t_629772d329c20a 1
+README.md
+  s_868eb6e2c9b807::t_8d658715096911 186
+internal/commands/auth.go
+  s_868eb6e2c9b807::t_f00e1f2c59065e 229
+internal/update/latest.go
+  s_868eb6e2c9b807::t_5c3c758b31ac87 26
+scripts/release-preflight.sh
+  s_868eb6e2c9b807::t_7a31d892877e81 327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b0d9aaabdaf3bb929dffb4231d934326bcc25747",
+  "prompts": {},
+  "sessions": {
+    "s_868eb6e2c9b807": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1fa340f6-78ff-46c0-83a9-c650fda7217a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cirdes <cirdes@linkana.com>"
+    }
+  }
+}
