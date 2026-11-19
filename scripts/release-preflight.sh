@@ -324,7 +324,7 @@ fi
 
 # --- 6. testes, cobertura e lint ---
 # make test e make cover se sobrepõem em parte (cover roda só ./internal/...),
-# mas os dois são o gate documentado no CLAUDE.md — rodar ambos é intencional.
+# mas os dois são o gate documentado no AGENTS.md — rodar ambos é intencional.
 step 'Testes'
 if make test >/dev/null 2>&1; then
   pass 'make test'
