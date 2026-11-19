@@ -1,0 +1,19 @@
+internal/manifest/cli-manifest.json
+  s_2f3d55c6ea470e::t_ad1602dac71ad8 3-4,1955,1988-1995,3077-3084
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "51450c3e5f9c27538ffda2c5cec6733e16ec6437",
+  "prompts": {},
+  "sessions": {
+    "s_2f3d55c6ea470e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cef96e0-a6a7-4491-9840-0a90ea915aa1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jean Mendonça <pierrybm@gmail.com>"
+    }
+  }
+}

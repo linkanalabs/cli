@@ -1,0 +1,25 @@
+internal/commands/certificate_lists.go
+  s_9b8efbc2af2c66::t_c458f9db1482ea 119
+internal/commands/certificate_lists_test.go
+  s_9b8efbc2af2c66::t_be29aa690fb980 15-16,503-522
+internal/commands/dynamic.go
+  s_9b8efbc2af2c66::t_9dc0b5c91c55b4 97-107,112
+internal/commands/dynamic_test.go
+  s_9b8efbc2af2c66::t_f55f15a38f1d51 10,249-281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "4c976610166c8cd0ea7b56655034b25bcdfed9c0",
+  "prompts": {},
+  "sessions": {
+    "s_9b8efbc2af2c66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d447f4cd-94f4-4899-9bc2-8bd428feb531",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jean Mendonça <pierrybm@gmail.com>"
+    }
+  }
+}
