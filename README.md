@@ -183,7 +183,7 @@ make lint    # golangci-lint
 make dev     # lk doctor contra localhost:3000
 ```
 
-Regras do repo em `CLAUDE.md`. **Não abra PR sem `make test` verde e cobertura ≥95%.**
+Regras do repo em `AGENTS.md`. **Não abra PR sem `make test` verde e cobertura ≥95%.**
 
 ## Release
 

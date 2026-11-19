@@ -226,7 +226,7 @@ func newAuthStatusCmd() *cobra.Command {
 					Expired:           expired,
 				}
 				// Impersonation context takes precedence over the base token
-				// (see CLAUDE.md). While active, auth status reflects the
+				// (see AGENTS.md). While active, auth status reflects the
 				// impersonation: authenticated only while not expired. An
 				// expired context is sticky — a hard error with no fallback to
 				// the original token — so it reads as not authenticated.

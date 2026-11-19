@@ -23,7 +23,7 @@ var (
 	// tapCaskURL is the cask GoReleaser commits on every release. It answers a
 	// sharper question than the release list does: what `brew upgrade` would
 	// actually install. The two diverge when a release ships but the tap commit
-	// fails — the pitfall documented in CLAUDE.md.
+	// fails — the pitfall documented in AGENTS.md.
 	tapCaskURL = "https://raw.githubusercontent.com/linkanalabs/homebrew-tap/main/Casks/lk.rb"
 )
 

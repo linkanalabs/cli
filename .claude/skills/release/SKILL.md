@@ -1,6 +1,6 @@
 ---
 name: release
-description: Publica uma nova versão do binário lk — roda os gates determinísticos (make release-preflight), resolve o número semver a partir do SURFACE.txt, cria a tag que dispara o GoReleaser e confirma o cask no tap da Homebrew (make release-verify). Use quando pedirem para publicar, lançar ou subir uma versão do lk, taguear vX.Y.Z, ou quando o brew estiver servindo versão antiga. NÃO cobre expor comandos novos na CLI (ver "Exposing/changing a command" no CLAUDE.md, que acontece antes da release) nem instalação para usuário final (README).
+description: Publica uma nova versão do binário lk — roda os gates determinísticos (make release-preflight), resolve o número semver a partir do SURFACE.txt, cria a tag que dispara o GoReleaser e confirma o cask no tap da Homebrew (make release-verify). Use quando pedirem para publicar, lançar ou subir uma versão do lk, taguear vX.Y.Z, ou quando o brew estiver servindo versão antiga. NÃO cobre expor comandos novos na CLI (ver "Exposing/changing a command" no AGENTS.md, que acontece antes da release) nem instalação para usuário final (README).
 user-invokable: true
 ---
 
@@ -16,7 +16,7 @@ versão, o momento de pedir aprovação) e chama os gates.
   entra na release chega por lá; a release em si não abre PR.
 - Skill `lk` (`lk-stack/lk-tools/skills/lk/`) — uso do binário pelo agente.
 - Mudança de superfície da CLI (comando novo ou removido) é o processo
-  "Exposing/changing a command" do `CLAUDE.md` e acontece **antes** da release.
+  "Exposing/changing a command" do `AGENTS.md` e acontece **antes** da release.
 
 ## Invariantes
 
