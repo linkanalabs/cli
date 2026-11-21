@@ -50,10 +50,13 @@ binários diferentes com o mesmo nome.
 (`v0.8.0-rc1`) entra como prerelease: não vira `latest` e o `install.sh`, que lê
 `releases/latest`, não a pega por default (só com `LK_VERSION=v0.8.0-rc1`).
 
-**Antes de usar uma tag `-rc` para testar:** conferir se `homebrew_casks` sobe o
-cask em prerelease. O bloco não declara `skip_upload`, então o comportamento
-default do GoReleaser decide — verificar na doc da versão em uso, porque um cask
-apontando para um rc afeta todo mundo que instala via brew.
+O bloco `homebrew_casks` tem `skip_upload: auto`: numa tag `-rc` o GoReleaser
+publica só a release no GitHub e não toca no cask, então o `brew upgrade` e o
+auto-update de todo mundo seguem na última versão estável. O job `verify` pula as
+checagens de cask e de brew em prerelease. Para testar um rc, instalar por
+`LK_VERSION=v0.8.0-rc1 sh scripts/install.sh` ou baixar o asset com `gh release
+download v0.8.0-rc1 -R linkanalabs/cli`. A tag continua tendo de estar num commit
+da `main` (job `guard`).
 
 ## Brew servindo versão antiga mesmo com o cask novo
 

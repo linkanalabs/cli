@@ -6,10 +6,13 @@ import (
 	"github.com/linkanalabs/cli/internal/output"
 )
 
-// manifestInfo is the embedded-manifest metadata shown by the version command.
+// manifestInfo is the metadata of the manifest in use shown by the version
+// command. Origin says whether it is the embedded one, the local copy of the
+// backend's, or one the backend just confirmed.
 type manifestInfo struct {
 	GeneratedAt string `json:"generated_at"`
 	Source      string `json:"source"`
+	Origin      string `json:"origin"`
 }
 
 // versionInfo is the payload for the version command. Manifest is nil when
@@ -25,7 +28,7 @@ func (v versionInfo) Styled() string {
 	if v.Manifest == nil {
 		return s + "manifest: (unavailable)\n"
 	}
-	return s + "manifest: " + v.Manifest.GeneratedAt + " (" + v.Manifest.Source + ")\n"
+	return s + "manifest: " + v.Manifest.GeneratedAt + " (" + v.Manifest.Source + ", " + v.Manifest.Origin + ")\n"
 }
 
 func newVersionCmd() *cobra.Command {
@@ -38,8 +41,8 @@ func newVersionCmd() *cobra.Command {
 		Annotations: map[string]string{annotationNoAutoUpdate: "true"},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			info := versionInfo{Version: version}
-			if m, err := loadManifest(); err == nil {
-				info.Manifest = &manifestInfo{GeneratedAt: m.GeneratedAt, Source: m.Source}
+			if m, err := loadManifest(false); err == nil {
+				info.Manifest = &manifestInfo{GeneratedAt: m.GeneratedAt, Source: m.Source, Origin: m.Origin}
 			}
 			return output.Render(cmd.OutOrStdout(), formatFlag(cmd), info)
 		},

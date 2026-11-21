@@ -30,7 +30,7 @@ func fixtureManifest(t *testing.T) *manifest.Manifest {
 func swapManifest(t *testing.T, m *manifest.Manifest, err error) {
 	t.Helper()
 	prev := loadManifest
-	loadManifest = func() (*manifest.Manifest, error) { return m, err }
+	loadManifest = func(bool) (*manifest.Manifest, error) { return m, err }
 	t.Cleanup(func() { loadManifest = prev })
 }
 

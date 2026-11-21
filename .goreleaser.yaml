@@ -42,6 +42,9 @@ changelog:
 
 homebrew_casks:
   - name: lk
+    # A prerelease tag (vX.Y.Z-rc.N) publishes only the GitHub release, so a
+    # build under test never reaches `brew upgrade` nor the auto-update.
+    skip_upload: auto
     repository:
       owner: linkanalabs
       name: homebrew-tap

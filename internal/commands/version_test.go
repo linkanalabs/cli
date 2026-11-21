@@ -44,6 +44,7 @@ func TestVersionShowsManifestJSON(t *testing.T) {
 	wants := []string{
 		`"generated_at": "` + m.GeneratedAt + `"`,
 		`"source": "` + m.Source + `"`,
+		`"origin": "embedded"`,
 	}
 	for _, want := range wants {
 		if !strings.Contains(out.String(), want) {
@@ -62,7 +63,7 @@ func TestVersionShowsManifestStyled(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, stderr = %q", code, errOut.String())
 	}
-	if !strings.Contains(out.String(), "manifest: "+m.GeneratedAt+" ("+m.Source+")") {
+	if !strings.Contains(out.String(), "manifest: "+m.GeneratedAt+" ("+m.Source+", embedded)") {
 		t.Errorf("output = %q", out.String())
 	}
 }

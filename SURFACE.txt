@@ -3,6 +3,8 @@ lk auth
 lk auth login
 lk auth logout
 lk auth status
+lk cli
+lk cli search
 lk config
 lk config set-url
 lk doctor

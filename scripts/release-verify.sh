@@ -75,6 +75,13 @@ else
   ASSETS=$(printf '%s' "$RELEASE" | jq -r '.assets[].name')
 fi
 
+# A prerelease (vX.Y.Z-rc.N) is a build under test: goreleaser skips the cask
+# (skip_upload: auto), so the tap keeps serving the last stable version.
+PRERELEASE=false
+if [ -n "$RELEASE" ] && [ "$(printf '%s' "$RELEASE" | jq -r .isPrerelease)" = true ]; then
+  PRERELEASE=true
+fi
+
 if [ -n "$ASSETS" ]; then
   # Nome por nome: o name_template do goreleaser é contrato com o install.sh e
   # com o cask, então um asset faltando ou renomeado tem de falhar aqui.
@@ -95,7 +102,7 @@ if [ -n "$ASSETS" ]; then
 fi
 
 if [ -n "$RELEASE" ]; then
-  if [ "$(printf '%s' "$RELEASE" | jq -r .isPrerelease)" = true ]; then
+  if [ "$PRERELEASE" = true ]; then
     skip 'prerelease: não vira "latest", o install.sh não pega por default'
   else
     LATEST=$(gh release view --json tagName --jq .tagName 2>/dev/null || true)
@@ -112,8 +119,14 @@ step "Cask em $TAP_REPO"
 # Via API de contents, não pela raw.githubusercontent: a raw passa por CDN e
 # poderia devolver o cask antigo em cache logo depois da release, gerando um
 # falso negativo justo na janela que mais importa.
-CASK=$(gh api "repos/$TAP_REPO/contents/$CASK_PATH" --jq .content 2>/dev/null | tr -d '\n' | openssl base64 -d -A 2>/dev/null || true)
-if [ -z "$CASK" ]; then
+if [ "$PRERELEASE" = true ]; then
+  CASK=""
+else
+  CASK=$(gh api "repos/$TAP_REPO/contents/$CASK_PATH" --jq .content 2>/dev/null | tr -d '\n' | openssl base64 -d -A 2>/dev/null || true)
+fi
+if [ "$PRERELEASE" = true ]; then
+  skip 'prerelease: o cask não muda, o brew segue na última versão estável'
+elif [ -z "$CASK" ]; then
   fail "não consegui ler $CASK_PATH em $TAP_REPO"
 else
   CASK_VERSION=$(printf '%s\n' "$CASK" | awk -F'"' '/^[[:space:]]*version "/ { print $2; exit }')
@@ -175,6 +188,8 @@ fi
 step 'Instalação via Homebrew'
 if [ "$LOCAL" -eq 0 ]; then
   skip 'sem --local: nada instalado no sistema'
+elif [ "$PRERELEASE" = true ]; then
+  skip 'prerelease: o brew não instala esta versão'
 elif ! command -v brew >/dev/null 2>&1; then
   skip 'brew não instalado nesta máquina'
 else
